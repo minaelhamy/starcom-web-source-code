@@ -58,9 +58,9 @@
     @endif
 
     <script>
-        const APP_URL = "{{ env('VITE_HOST') }}";
-        const APP_DEMO = "{{ env('VITE_DEMO') }}";
-        const APP_KEY = "{{ env('VITE_API_KEY') }}";
+        window.APP_URL = "{{ rtrim(url('/'), '/') }}";
+        window.APP_DEMO = "{{ env('VITE_DEMO') }}";
+        window.APP_KEY = "{{ env('VITE_API_KEY') }}";
     </script>
 
     <script src="{{ asset('themes/default/js/modal.js') }}"></script>

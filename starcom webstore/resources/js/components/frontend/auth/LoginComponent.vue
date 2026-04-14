@@ -215,7 +215,7 @@ export default {
                     }, 1000);
                 }).catch((err) => {
                     this.loading.isActive = false;
-                    this.errors = err.response.data.errors;
+                    this.errors = err?.response?.data?.errors || { validation: err?.response?.data?.message || this.$t('message.something_wrong') };
                 })
             } catch (err) {
                 this.loading.isActive = false;
