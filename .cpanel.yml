@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - /bin/mkdir -p /home/shargtvh/starcom-web-source-code
+    - /bin/rsync -a --delete --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r --exclude '.git' --exclude '.github' --exclude '.cpanel.yml' --exclude '.DS_Store' --exclude '.env' --exclude '.env.local' --exclude '.env.production' --exclude 'AGENTS.md' --exclude 'vendor/' --exclude 'node_modules/' --exclude 'bootstrap/cache/' --exclude 'storage/' --exclude 'public/storage/' --exclude 'public/file/' --exclude 'error_log' --exclude 'php/error_log' "./starcom webstore/" /home/USERNAME/starcom-web/
