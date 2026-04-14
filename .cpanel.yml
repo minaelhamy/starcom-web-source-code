@@ -2,6 +2,7 @@
 deployment:
   tasks:
     - /bin/mkdir -p /home/shargtvh/starcom-web-source-code
+    - /bin/mkdir -p /home/shargtvh/public_html
     - /bin/mkdir -p /home/shargtvh/starcom-web-source-code/bootstrap/cache
     - /bin/mkdir -p /home/shargtvh/starcom-web-source-code/storage/framework/cache
     - /bin/mkdir -p /home/shargtvh/starcom-web-source-code/storage/framework/sessions
@@ -13,6 +14,8 @@ deployment:
     - /bin/bash -lc 'cd /home/shargtvh/starcom-web-source-code && php artisan optimize:clear'
     - /bin/bash -lc 'cd /home/shargtvh/starcom-web-source-code && php artisan migrate --force'
     - /bin/bash -lc 'cd /home/shargtvh/starcom-web-source-code && php artisan storage:link'
+    - /usr/bin/rsync -a --delete --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r --exclude 'storage/' --exclude 'file/' --exclude 'error_log' /home/shargtvh/starcom-web-source-code/public/ /home/shargtvh/public_html/
+    - /bin/cp /home/shargtvh/repositories/starcom-web-source-code/deploy/public_html.index.php /home/shargtvh/public_html/index.php
     - /bin/bash -lc 'cd /home/shargtvh/starcom-web-source-code && php artisan config:cache'
     - /bin/bash -lc 'cd /home/shargtvh/starcom-web-source-code && php artisan route:cache'
     - /bin/bash -lc 'cd /home/shargtvh/starcom-web-source-code && php artisan view:cache'
