@@ -8,11 +8,14 @@ import store from "../store";
 import administratorRoutes from "./modules/administratorRoutes";
 import authRoutes from "./modules/authRoutes";
 import couponRoutes from "./modules/couponRoutes";
+import creditRequestRoutes from "./modules/creditRequestRoutes";
 import creditBalanceReportRoutes from "./modules/creditBalanceReportRoutes";
 import customerRoutes from "./modules/customerRoutes";
 import damageRoutes from "./modules/damageRoutes";
 import employeeRoutes from "./modules/employeeRoutes";
+import financialInstitutionRoutes from "./modules/financialInstitutionRoutes";
 import frontendRoutes from "./modules/frontendRoutes";
+import lendingPortfolioRoutes from "./modules/lendingPortfolioRoutes";
 import onlineOrderRoutes from "./modules/onlineOrderRoutes";
 import posOrderRoutes from "./modules/posOrderRoutes";
 import posRoutes from "./modules/posRoutes";
@@ -73,9 +76,12 @@ const routes = baseRoutes.concat(
     administratorRoutes,
     customerRoutes,
     employeeRoutes,
+    financialInstitutionRoutes,
     transactionRoutes,
     salesReportRoutes,
     creditBalanceReportRoutes,
+    creditRequestRoutes,
+    lendingPortfolioRoutes,
     pushNotificationRoutes,
     productsRoutes,
     couponRoutes,

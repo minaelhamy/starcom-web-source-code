@@ -146,6 +146,9 @@ return [
         "the_price_field_is_required"      => "حقل السعر مطلوب",
         'product_attribute_required'       => 'يجب توفير معرف سمة المنتج هذا',
         'database_error_message'           => 'حدث خطأ في قاعدة البيانات.',
-        'transaction_failed'               => 'فشلت المعاملة'
+        'transaction_failed'               => 'فشلت المعاملة',
+        'insufficient_wallet_balance'      => 'رصيد المحفظة غير كافٍ لإتمام هذا الطلب.',
+        'credit_application_pending_exists'=> 'لديك بالفعل طلب اشتري بالآجل قيد المراجعة.',
+        'credit_application_already_reviewed' => 'تمت مراجعة هذا الطلب بالفعل من جهتك.'
     ]
 ];

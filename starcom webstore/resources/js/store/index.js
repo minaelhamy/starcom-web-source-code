@@ -14,6 +14,7 @@ import { cookies } from "./modules/cookies";
 import { country } from "./modules/country";
 import { countryCode } from "./modules/countryCode";
 import { coupon } from "./modules/coupon";
+import { creditApplicationReview } from "./modules/creditApplicationReview";
 import { creditBalanceReport } from "./modules/creditBalanceReport";
 import { currency } from "./modules/currency";
 import { customer } from "./modules/customer";
@@ -22,6 +23,7 @@ import { damage } from "./modules/damage";
 import { dashboard } from "./modules/dashboard";
 import { employee } from "./modules/employee";
 import { employeeAddress } from "./modules/employeeAddress";
+import { financialInstitution } from "./modules/financialInstitution";
 import { frontendAddress } from "./modules/frontend/frontendAddress";
 import { frontendBenefit } from "./modules/frontend/frontendBenefit";
 import { frontendCart } from "./modules/frontend/frontendCart";
@@ -35,6 +37,7 @@ import { frontendOrderArea } from "./modules/frontend/frontendOrderArea";
 import { frontendOutlet } from "./modules/frontend/frontendOutlet";
 import { frontendOverview } from "./modules/frontend/frontendOverview";
 import { frontendPage } from "./modules/frontend/frontendPage";
+import { frontendPayLater } from "./modules/frontend/frontendPayLater";
 import { frontendPaymentGateway } from "./modules/frontend/frontendPaymentGateway";
 import { frontendProduct } from "./modules/frontend/frontendProduct";
 import { frontendProductBrand } from "./modules/frontend/frontendProductBrand";
@@ -174,6 +177,7 @@ export default new createStore({
         supplier,
         outlet,
         coupon,
+        creditApplicationReview,
         frontendSetting,
         frontendLanguage,
         frontendEditProfile,
@@ -203,6 +207,7 @@ export default new createStore({
         frontendReturnAndRefund,
         frontendReturnReason,
         frontendOverview,
+        frontendPayLater,
         onlineOrder,
         productsReport,
         myOrderDetails,
@@ -221,6 +226,7 @@ export default new createStore({
         state,
         city,
         review,
+        financialInstitution,
     },
     plugins: [
         createPersistedState({

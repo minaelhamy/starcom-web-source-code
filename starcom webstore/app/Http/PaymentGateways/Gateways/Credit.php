@@ -8,6 +8,7 @@ use App\Models\PaymentGateway;
 use App\Models\User;
 use App\Services\PaymentAbstract;
 use App\Services\PaymentService;
+use App\Services\WalletService;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -76,8 +77,7 @@ class Credit extends PaymentAbstract
                     if (!blank($token) && $order->id == $token->order_id) {
                         $user = User::find($order->user_id);
                         if ($user) {
-                            $user->balance = ($user->balance - $order->total);
-                            $user->save();
+                            app(WalletService::class)->debitForOrder($order);
                             $this->paymentService->payment($order, 'credit', $token->token);
                             $capturePaymentNotification->delete();
                             $this->response = true;

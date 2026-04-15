@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\BenefitController;
 use App\Http\Controllers\Admin\CityController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\CookiesController;
+use App\Http\Controllers\Admin\CreditApplicationController;
 use App\Http\Controllers\Admin\CountryCodeController;
 use App\Http\Controllers\Admin\CountryController;
 use App\Http\Controllers\Admin\CouponController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Admin\DamageController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EmployeeAddressController;
 use App\Http\Controllers\Admin\EmployeeController;
+use App\Http\Controllers\Admin\FinancialInstitutionController;
 use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Admin\LicenseController;
 use App\Http\Controllers\Admin\MailController;
@@ -85,6 +87,7 @@ use App\Http\Controllers\Frontend\BenefitController as FrontendBenefitController
 use App\Http\Controllers\Frontend\CookiesController as FrontendCookiesController;
 use App\Http\Controllers\Frontend\CountryCodeController as FrontendCountryCodeController;
 use App\Http\Controllers\Frontend\CountryStateCityController as FrontendCountryStateCityController;
+use App\Http\Controllers\Frontend\CreditApplicationController as FrontendCreditApplicationController;
 use App\Http\Controllers\Frontend\CouponController as FrontendCouponController;
 use App\Http\Controllers\Frontend\LanguageController as FrontendLanguageController;
 use App\Http\Controllers\Frontend\OrderAreaController as FrontendOrderAreaController;
@@ -577,6 +580,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::delete('/address/{employee}/{address}', [EmployeeAddressController::class, 'destroy']);
     });
 
+    Route::prefix('financial-institution')->name('financial-institution.')->group(function () {
+        Route::get('/', [FinancialInstitutionController::class, 'index']);
+        Route::post('/', [FinancialInstitutionController::class, 'store']);
+        Route::get('/show/{financialInstitution}', [FinancialInstitutionController::class, 'show']);
+        Route::match(['put', 'patch'], '/{financialInstitution}', [FinancialInstitutionController::class, 'update']);
+    });
+
+    Route::prefix('credit-application')->name('credit-application.')->group(function () {
+        Route::get('/', [CreditApplicationController::class, 'index']);
+        Route::get('/show/{creditApplication}', [CreditApplicationController::class, 'show']);
+        Route::post('/approve/{creditApplication}', [CreditApplicationController::class, 'approve']);
+        Route::post('/decline/{creditApplication}', [CreditApplicationController::class, 'decline']);
+        Route::get('/portfolio', [CreditApplicationController::class, 'portfolio']);
+    });
+
     Route::prefix('my-order')->name('my-order.')->group(function () {
         Route::get('/show/{user}/{order}', [MyOrderDetailsController::class, 'orderDetails']);
     });
@@ -869,6 +887,13 @@ Route::prefix('frontend')->name('frontend.')->middleware(['apiKey', 'localizatio
         Route::get('/total-complete-orders', [OverviewController::class, 'totalCompletedOrders']);
         Route::get('/total-return-orders', [OverviewController::class, 'totalReturnedOrders']);
         Route::get('/wallet-balance', [OverviewController::class, 'walletBalance']);
+    });
+
+    Route::prefix('pay-later')->name('pay-later.')->middleware(['auth:sanctum'])->group(function () {
+        Route::get('/applications', [FrontendCreditApplicationController::class, 'index']);
+        Route::post('/applications', [FrontendCreditApplicationController::class, 'store']);
+        Route::get('/summary', [FrontendCreditApplicationController::class, 'summary']);
+        Route::get('/wallet-transactions', [FrontendCreditApplicationController::class, 'walletTransactions']);
     });
 
     Route::prefix('product-review')->name('product-review.')->middleware(['auth:sanctum'])->group(function () {

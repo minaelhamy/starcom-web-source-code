@@ -13,14 +13,15 @@
                         :class="Object.keys(paymentMethod).length > 0 && cashOnDelivery.id === paymentMethod.id ? 'border-primary/50 bg-[#FFF4F1]' : 'border-white bg-white'"
                         class="flex flex-col items-center justify-center gap-2.5 py-4 rounded-lg shadow-xs cursor-pointer border">
                         <img class="h-6" :src="cashOnDelivery.image" alt="payment" />
-                        <span class="text-xs font-medium">{{ cashOnDelivery.name }}</span>
+                        <span class="text-xs font-medium">كاش عند الاستلام</span>
                     </div>
 
-                    <div v-if="profile.balance >= total" @click.prevent="selectPaymentMethod(credit)"
+                    <div v-if="Object.keys(credit).length > 0" @click.prevent="selectPaymentMethod(credit)"
                         :class="Object.keys(paymentMethod).length > 0 && credit.id === paymentMethod.id ? 'border-primary/50 bg-[#FFF4F1]' : 'border-white bg-white'"
                         class="flex flex-col items-center justify-center gap-2.5 py-4 rounded-lg shadow-xs cursor-pointer border">
                         <img class="h-6" :src="credit.image" alt="payment" />
-                        <span class="text-xs font-medium">{{ credit.name }} ({{ profile.balance }})</span>
+                        <span class="text-xs font-medium text-center">اشتري بالآجل</span>
+                        <span class="text-[11px] text-text text-center">رصيد المحفظة: {{ profile.balance }}</span>
                     </div>
 
                     <div v-if="setting.site_online_payment_gateway === ActivityEnum.ENABLE"
@@ -73,6 +74,7 @@ import alertService from "../../../../services/alertService";
 import sourceEnum from "../../../../enums/modules/sourceEnum";
 import ENV from "../../../../config/env";
 import ActivityEnum from "../../../../enums/modules/activityEnum";
+import router from "../../../../router";
 
 export default {
     name: "PaymentComponent",
@@ -163,7 +165,27 @@ export default {
             this.$store.dispatch("frontendCart/paymentMethod", paymentMethod);
         },
         confirmOrder: function (e) {
-            e.target.disabled = true;
+            if (e?.target) {
+                e.target.disabled = true;
+            }
+
+            if (Object.keys(this.paymentMethod).length === 0) {
+                alertService.error(this.$t('message.payment_method_required'));
+                if (e?.target) {
+                    e.target.disabled = false;
+                }
+                return;
+            }
+
+            if (this.paymentMethod.slug === "credit" && Number(this.profile.balance) < Number(this.total)) {
+                alertService.info("رصيد المحفظة الحالي غير كافٍ. قدم طلب اشتري بالآجل لإضافة رصيد إلى محفظتك.");
+                if (e?.target) {
+                    e.target.disabled = false;
+                }
+                router.push({ name: "frontend.account.payLater" });
+                return;
+            }
+
             this.form = {
                 subtotal: this.subtotal,
                 discount: this.discount,
@@ -187,13 +209,21 @@ export default {
                     window.location.href = ENV.API_URL + "/payment/" + paymentSlug + "/pay/" + orderResponse.data.data.id;
                 } else {
                     alertService.error(this.$t('message.payment_method_required'));
+                    if (e?.target) {
+                        e.target.disabled = false;
+                    }
                 }
             }).catch((err) => {
                 this.loading.isActive = false;
+                if (e?.target) {
+                    e.target.disabled = false;
+                }
                 if (typeof err.response.data.errors === 'object') {
                     _.forEach(err.response.data.errors, (error) => {
                         alertService.error(error[0]);
                     });
+                } else if (err.response?.data?.message) {
+                    alertService.error(err.response.data.message);
                 }
             });
         }

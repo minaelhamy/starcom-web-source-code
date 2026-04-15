@@ -17,6 +17,7 @@ const  OfferProductComponent = () => import("../../components/frontend/product/O
 const  OverviewComponent = () => import("../../components/frontend/account/overview/OverviewComponent");
 const  AccountComponent = () => import("../../components/frontend/account/AccountComponent");
 const  AccountInfoComponent = () => import("../../components/frontend/account/accountInfo/AccountInfoComponent");
+const  PayLaterComponent = () => import("../../components/frontend/account/payLater/PayLaterComponent");
 const  CheckoutComponent = () => import("../../components/frontend/checkout/CheckoutComponent");
 const  CheckoutCartListComponent = () => import("../../components/frontend/checkout/cartList/CartListComponent");
 const  CartListHeaderComponent = () => import("../../components/frontend/checkout/cartList/HeaderComponent");
@@ -223,6 +224,15 @@ export default [
                 path: "address",
                 component: AddressComponent,
                 name: "frontend.account.address",
+                meta: {
+                    isFrontend: true,
+                    auth: true,
+                },
+            },
+            {
+                path: "pay-later",
+                component: PayLaterComponent,
+                name: "frontend.account.payLater",
                 meta: {
                     isFrontend: true,
                     auth: true,

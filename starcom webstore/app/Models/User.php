@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 
 class User extends Authenticatable implements HasMedia
@@ -114,6 +116,31 @@ class User extends Authenticatable implements HasMedia
     public function addresses(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Address::class);
+    }
+
+    public function financialInstitutionProfile(): HasOne
+    {
+        return $this->hasOne(FinancialInstitutionProfile::class);
+    }
+
+    public function creditApplications(): HasMany
+    {
+        return $this->hasMany(CreditApplication::class);
+    }
+
+    public function creditFacilities(): HasMany
+    {
+        return $this->hasMany(CreditFacility::class);
+    }
+
+    public function institutionCreditFacilities(): HasMany
+    {
+        return $this->hasMany(CreditFacility::class, 'financial_institution_user_id');
+    }
+
+    public function walletTransactions(): HasMany
+    {
+        return $this->hasMany(WalletTransaction::class);
     }
 
 

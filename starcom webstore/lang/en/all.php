@@ -146,6 +146,9 @@ return [
         "the_price_field_is_required"      => "The price field is required",
         'product_attribute_required'       => 'This product attribute id provide required.',
         'database_error_message'           => 'A database error occurred.',
-        'transaction_failed'               => 'Transaction Failed'
+        'transaction_failed'               => 'Transaction Failed',
+        'insufficient_wallet_balance'      => 'Your wallet balance is not enough to complete this order.',
+        'credit_application_pending_exists'=> 'You already have a pay later request under review.',
+        'credit_application_already_reviewed' => 'This request has already been reviewed by your institution.'
     ]
 ];

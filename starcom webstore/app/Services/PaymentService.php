@@ -81,8 +81,12 @@ class PaymentService
 
             $user = User::find($order->user_id);
             if ($user) {
-                $user->balance = ($user->balance + $order->total);
-                $user->save();
+                if ($gatewaySlug === 'credit') {
+                    app(WalletService::class)->refundOrder($order, 'Refund for order #' . $order->order_serial_no);
+                } else {
+                    $user->balance = ($user->balance + $order->total);
+                    $user->save();
+                }
             }
         }
 

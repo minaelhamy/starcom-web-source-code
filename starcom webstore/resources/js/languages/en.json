@@ -105,7 +105,12 @@
         "sales-report": "Sales Report",
         "products-report": "Products Report",
         "credit-balance-report": "Credit balance report",
-        "pos-orders": "POS orders"
+        "pos-orders": "POS orders",
+        "finance_operations": "Finance Operations",
+        "financial_institutions": "Financial Institutions",
+        "credit_requests": "Credit Requests",
+        "lending_portfolio": "Lending Portfolio",
+        "pay_later_wallet": "Pay Later Wallet"
     },
     "label": {
         "google_status": "Google Status",
