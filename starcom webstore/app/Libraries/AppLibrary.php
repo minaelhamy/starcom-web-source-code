@@ -12,43 +12,71 @@ use Illuminate\Support\Facades\File;
 
 class AppLibrary
 {
+    protected const DEFAULT_DATE_FORMAT = 'Y-m-d';
+    protected const DEFAULT_TIME_FORMAT = 'h:i A';
+
     public static function date($date, $pattern = null): string
     {
-        if (!$pattern) {
-            $pattern = env('DATE_FORMAT');
+        if (blank($date)) {
+            return '';
         }
+
+        if (!$pattern) {
+            $pattern = env('DATE_FORMAT') ?: self::DEFAULT_DATE_FORMAT;
+        }
+
         return Carbon::parse($date)->format($pattern);
     }
 
     public static function time($time, $pattern = null): string
     {
-        if (!$pattern) {
-            $pattern = env('TIME_FORMAT');
+        if (blank($time)) {
+            return '';
         }
+
+        if (!$pattern) {
+            $pattern = env('TIME_FORMAT') ?: self::DEFAULT_TIME_FORMAT;
+        }
+
         return Carbon::parse($time)->format($pattern);
     }
 
     public static function datetime($dateTime, $pattern = null): string
     {
-        if (!$pattern) {
-            $pattern = env('TIME_FORMAT') . ', ' . env('DATE_FORMAT');
+        if (blank($dateTime)) {
+            return '';
         }
+
+        if (!$pattern) {
+            $pattern = (env('TIME_FORMAT') ?: self::DEFAULT_TIME_FORMAT) . ', ' . (env('DATE_FORMAT') ?: self::DEFAULT_DATE_FORMAT);
+        }
+
         return Carbon::parse($dateTime)->format($pattern);
     }
 
     public static function increaseDate($dateTime, $days, $pattern = null): string
     {
-        if (!$pattern) {
-            $pattern = env('DATE_FORMAT');
+        if (blank($dateTime)) {
+            return '';
         }
+
+        if (!$pattern) {
+            $pattern = env('DATE_FORMAT') ?: self::DEFAULT_DATE_FORMAT;
+        }
+
         return Carbon::parse($dateTime)->addDays($days)->format($pattern);
     }
 
     public static function deliveryTime($dateTime, $pattern = null): string
     {
-        if (!$pattern) {
-            $pattern = env('TIME_FORMAT');
+        if (blank($dateTime)) {
+            return '';
         }
+
+        if (!$pattern) {
+            $pattern = env('TIME_FORMAT') ?: self::DEFAULT_TIME_FORMAT;
+        }
+
         $explode = explode('-', $dateTime);
         if (count($explode) == 2) {
             return Carbon::parse(trim($explode[0]))->format($pattern) . ' - ' . Carbon::parse(
