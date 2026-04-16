@@ -1,8 +1,8 @@
 <template>
     <div class="backdrop"></div>
     <header class="db-header">
-        <router-link class="w-32 flex-shrink-0" :to="{ name: 'frontend.home' }">
-            <img class="w-full" :src="setting.theme_logo" alt="logo">
+        <router-link class="w-32 flex-shrink-0" :to="backendHomeRoute">
+            <img class="w-full object-contain" :src="resolvedThemeLogo" alt="logo" @error="applyLogoFallback">
         </router-link>
         <div class="flex items-center justify-end w-full gap-4">
             <div
@@ -117,6 +117,7 @@
 <script>
 
 import activityEnum from "../../../enums/modules/activityEnum";
+import roleEnum from "../../../enums/modules/roleEnum";
 import _ from "lodash";
 import alertService from "../../../services/alertService";
 import targetService from "../../../services/targetService";
@@ -146,6 +147,7 @@ export default {
                 permission: false,
                 url: ""
             },
+            defaultThemeLogo: "/images/required/theme-logo.png",
             languageProps: {
                 paginate: 0,
                 order_column: "id",
@@ -157,6 +159,18 @@ export default {
     computed: {
         setting: function () {
             return this.$store.getters['frontendSetting/lists'];
+        },
+        resolvedThemeLogo: function () {
+            return this.setting.theme_logo || this.defaultThemeLogo;
+        },
+        backendHomeRoute: function () {
+            const defaultMenu = this.$store.getters.authDefaultMenu || {};
+
+            if (this.authInfo?.role_id && this.authInfo.role_id !== roleEnum.CUSTOMER) {
+                return `/admin/${defaultMenu.url || "dashboard"}`;
+            }
+
+            return { name: "frontend.home" };
         },
         authInfo: function () {
             return this.$store.getters.authInfo;
@@ -242,6 +256,9 @@ export default {
     methods: {
         textShortener: function (text, number = 30) {
             return appService.textShortener(text, number);
+        },
+        applyLogoFallback: function (event) {
+            event.target.src = this.defaultThemeLogo;
         },
         logout: function () {
             this.$store.dispatch("logout").then(res => {

@@ -47,8 +47,11 @@ class CreditApplicationService
                 'notes'   => $request->notes,
             ]);
 
-            $application->addMediaFromRequest('national_id_document')->toMediaCollection('national_id_document');
-            $application->addMediaFromRequest('commercial_register_document')->toMediaCollection('commercial_register_document');
+            $application->addMediaFromRequest('national_id_front_document')->toMediaCollection('national_id_front_document');
+            $application->addMediaFromRequest('national_id_back_document')->toMediaCollection('national_id_back_document');
+            foreach ($request->file('commercial_register_documents', []) as $commercialRegisterDocument) {
+                $application->addMedia($commercialRegisterDocument)->toMediaCollection('commercial_register_documents');
+            }
             if ($request->hasFile('tax_card_document')) {
                 $application->addMediaFromRequest('tax_card_document')->toMediaCollection('tax_card_document');
             }
@@ -88,7 +91,7 @@ class CreditApplicationService
         $method = $request->get('paginate', 0) == 1 ? 'paginate' : 'get';
         $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
 
-        return CreditFacility::with(['user', 'application', 'institution.financialInstitutionProfile'])
+        return CreditFacility::with(['user', 'institution.financialInstitutionProfile'])
             ->where(function ($query) use ($actor) {
                 if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
                     $query->where('financial_institution_user_id', $actor->id);
@@ -100,7 +103,38 @@ class CreditApplicationService
 
     public function show(CreditApplication $creditApplication): CreditApplication
     {
+        $actor = Auth::user();
+
+        if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
+            $hasReviewed = $creditApplication->facilities()
+                ->where('financial_institution_user_id', $actor->id)
+                ->exists();
+
+            if ($hasReviewed && $creditApplication->status !== CreditApplicationStatus::PENDING) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+        }
+
         return $creditApplication->load(['user', 'facilities.institution.financialInstitutionProfile']);
+    }
+
+    public function showFacility(CreditFacility $creditFacility): CreditFacility
+    {
+        $actor = Auth::user();
+
+        if (
+            $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+            (int)$creditFacility->financial_institution_user_id !== (int)$actor->id
+        ) {
+            throw new Exception(trans('all.message.permission_denied'), 422);
+        }
+
+        return $creditFacility->load([
+            'user',
+            'application.user',
+            'application.facilities.institution.financialInstitutionProfile',
+            'institution.financialInstitutionProfile',
+        ]);
     }
 
     public function approve(CreditApplication $creditApplication, CreditApplicationDecisionRequest $request): CreditFacility

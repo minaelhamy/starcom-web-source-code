@@ -593,6 +593,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::post('/approve/{creditApplication}', [CreditApplicationController::class, 'approve']);
         Route::post('/decline/{creditApplication}', [CreditApplicationController::class, 'decline']);
         Route::get('/portfolio', [CreditApplicationController::class, 'portfolio']);
+        Route::get('/portfolio/show/{creditFacility}', [CreditApplicationController::class, 'showFacility']);
     });
 
     Route::prefix('my-order')->name('my-order.')->group(function () {

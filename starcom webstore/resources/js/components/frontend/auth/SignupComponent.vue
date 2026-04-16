@@ -1,7 +1,7 @@
 <template>
     <LoadingComponent :props="loading" />
     <div class="w-full max-w-3xl mx-auto rounded-2xl flex overflow-hidden gap-y-6 bg-white shadow-card mb-24 !sm:mb-0">
-        <img :src="APP_URL + '/images/required/auth.jpg'" alt="banners"
+        <img :src="authImage" alt="banners"
             class="w-full hidden sm:block sm:max-w-xs md:max-w-sm flex-shrink-0" loading="lazy">
         <form class="w-full p-6" @submit.prevent="signup">
             <div class="text-center mb-8">
@@ -102,6 +102,7 @@ export default {
             errors: {},
             demo: ENV.DEMO,
             APP_URL: ENV.API_URL,
+            authImage: "/images/required/auth.jpg",
             toggleValue: false,
             inputLabel: this.$t('label.email'),
             inputButton: this.$t('label.use_phone_instead')

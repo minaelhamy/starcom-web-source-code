@@ -35,18 +35,35 @@ class CreditApplication extends Model implements HasMedia
         return $this->hasMany(CreditFacility::class);
     }
 
-    public function getNationalIdDocumentAttribute(): ?string
+    public function getNationalIdFrontDocumentAttribute(): ?string
     {
-        return $this->getFirstMediaUrl('national_id_document') ?: null;
+        return $this->getFirstMediaUrl('national_id_front_document') ?: null;
     }
 
-    public function getCommercialRegisterDocumentAttribute(): ?string
+    public function getNationalIdBackDocumentAttribute(): ?string
     {
-        return $this->getFirstMediaUrl('commercial_register_document') ?: null;
+        return $this->getFirstMediaUrl('national_id_back_document') ?: null;
+    }
+
+    public function getCommercialRegisterDocumentsAttribute(): array
+    {
+        return $this->getMedia('commercial_register_documents')->map(function ($media) {
+            return $media->getUrl();
+        })->values()->all();
     }
 
     public function getTaxCardDocumentAttribute(): ?string
     {
         return $this->getFirstMediaUrl('tax_card_document') ?: null;
+    }
+
+    public function getNationalIdDocumentAttribute(): ?string
+    {
+        return $this->national_id_front_document;
+    }
+
+    public function getCommercialRegisterDocumentAttribute(): ?string
+    {
+        return $this->commercial_register_documents[0] ?? null;
     }
 }

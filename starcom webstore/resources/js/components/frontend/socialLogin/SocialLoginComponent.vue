@@ -10,6 +10,7 @@ import router from "../../../router";
 import LoadingComponent from "../components/LoadingComponent";
 import alertService from "../../../services/alertService";
 import appService from "../../../services/appService";
+import roleEnum from "../../../enums/modules/roleEnum";
 
 export default {
 
@@ -38,12 +39,7 @@ export default {
                 this.loading.isActive = false;
                 alertService.success(res.data.message);
                 this.$store.dispatch("frontendWishlist/lists").then().catch();
-                if (this.carts.length > 0) {
-                    router.push({ name: "frontend.checkout" });
-                } else {
-                    router.push({ name: "frontend.home" });
-                }
-                router.push({ name: "frontend.home" });
+                this.redirectAfterLogin();
                 setTimeout(() => {
                     appService.recursiveRouter(router.options.routes, this.$store.getters.authPermission);
                 }, 1000);
@@ -54,7 +50,22 @@ export default {
         }
     },
     methods: {
+        redirectAfterLogin: function () {
+            const authInfo = this.$store.getters.authInfo || {};
+            const defaultMenu = this.$store.getters.authDefaultMenu || {};
 
+            if (authInfo.role_id && authInfo.role_id !== roleEnum.CUSTOMER) {
+                router.push({ path: `/admin/${defaultMenu.url || "dashboard"}` });
+                return;
+            }
+
+            if (this.carts.length > 0) {
+                router.push({ name: "frontend.checkout" });
+                return;
+            }
+
+            router.push({ name: "frontend.home" });
+        },
     }
 }
 </script>

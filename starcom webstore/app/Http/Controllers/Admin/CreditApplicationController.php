@@ -7,6 +7,7 @@ use App\Http\Requests\PaginateRequest;
 use App\Http\Resources\CreditApplicationResource;
 use App\Http\Resources\CreditFacilityResource;
 use App\Models\CreditApplication;
+use App\Models\CreditFacility;
 use App\Services\CreditApplicationService;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
@@ -28,6 +29,7 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
             new Middleware('permission:credit-requests_show', only: ['show']),
             new Middleware('permission:credit-requests_review', only: ['approve', 'decline']),
             new Middleware('permission:lending-portfolio', only: ['portfolio']),
+            new Middleware('permission:lending-portfolio_show', only: ['showFacility']),
         ];
     }
 
@@ -53,6 +55,15 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
     {
         try {
             return new CreditApplicationResource($this->creditApplicationService->show($creditApplication));
+        } catch (\Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function showFacility(CreditFacility $creditFacility): CreditFacilityResource|Response|Application|ResponseFactory
+    {
+        try {
+            return new CreditFacilityResource($this->creditApplicationService->showFacility($creditFacility));
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

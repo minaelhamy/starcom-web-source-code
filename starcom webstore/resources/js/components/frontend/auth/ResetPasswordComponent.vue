@@ -1,7 +1,7 @@
 <template>
     <LoadingComponent :props="loading" />
     <div class="w-full max-w-3xl mx-auto rounded-2xl flex overflow-hidden gap-y-6 bg-white shadow-card mb-24 !sm:mb-0">
-        <img :src="APP_URL + '/images/required/auth.jpg'" alt="banners"
+        <img :src="authImage" alt="banners"
             class="w-full hidden sm:block sm:max-w-xs md:max-w-sm flex-shrink-0">
         <form class="w-full p-6" @submit.prevent="save">
             <div class="text-center mb-8">
@@ -38,6 +38,7 @@ import router from "../../../router";
 import LoadingComponent from "../components/LoadingComponent";
 import alertService from "../../../services/alertService";
 import appService from "../../../services/appService";
+import roleEnum from "../../../enums/modules/roleEnum";
 import ENV from "../../../config/env";
 
 export default {
@@ -61,6 +62,7 @@ export default {
             firstMenu: null,
             demo: ENV.DEMO,
             APP_URL: ENV.API_URL,
+            authImage: "/images/required/auth.jpg",
             toggleValue: false,
             inputLabel: this.$t('label.email'),
             inputButton: this.$t('label.use_phone_instead')
@@ -105,12 +107,7 @@ export default {
                     this.loading.isActive = false;
                     alertService.success(res.data.message);
                     this.$store.dispatch("reset");
-                    if (this.carts.length > 0) {
-                        router.push({ name: "frontend.checkout" });
-                    } else {
-                        router.push({ name: "frontend.home" });
-                    }
-                    router.push({ name: "frontend.home" });
+                    this.redirectAfterLogin();
                 }).catch((err) => {
                     this.loading.isActive = false;
                     this.errors = err.response.data.errors;
@@ -121,6 +118,22 @@ export default {
         },
         close: function () {
             this.errors = {}
+        },
+        redirectAfterLogin: function () {
+            const authInfo = this.$store.getters.authInfo || {};
+            const defaultMenu = this.$store.getters.authDefaultMenu || {};
+
+            if (authInfo.role_id && authInfo.role_id !== roleEnum.CUSTOMER) {
+                router.push({ path: `/admin/${defaultMenu.url || "dashboard"}` });
+                return;
+            }
+
+            if (this.carts.length > 0) {
+                router.push({ name: "frontend.checkout" });
+                return;
+            }
+
+            router.push({ name: "frontend.home" });
         },
     }
 }

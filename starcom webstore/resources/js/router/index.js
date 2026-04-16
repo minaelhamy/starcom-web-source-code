@@ -3,6 +3,7 @@ import DashboardComponent from "../components/admin/dashboard/DashboardComponent
 import ExceptionComponent from "../components/exception/ExceptionComponent.vue";
 import NotFoundComponent from "../components/exception/NotFoundComponent.vue";
 import ENV from "../config/env";
+import roleEnum from "../enums/modules/roleEnum";
 import appService from "../services/appService";
 import store from "../store";
 import administratorRoutes from "./modules/administratorRoutes";
@@ -114,11 +115,24 @@ const router = createRouter({
     },
 });
 
+const lenderLandingPath = function () {
+    const defaultUrl = store.getters.authDefaultMenu?.url || "credit-requests";
+    return `/admin/${defaultUrl}`;
+};
+
 router.beforeEach((to, from, next) => {
+    const isAuthenticated = store.getters.authStatus;
+    const authInfo = store.getters.authInfo || {};
+    const isLender = authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION;
+
     if (to.meta.auth === true) {
-        if (!store.getters.authStatus) {
+        if (!isAuthenticated) {
             next({ name: "auth.login" });
         } else {
+            if (isLender && to.meta.isFrontend === true) {
+                next({ path: lenderLandingPath() });
+                return;
+            }
             if (to.meta.isFrontend === false) {
                 if (to.meta.access === false) {
                     next({
@@ -135,9 +149,11 @@ router.beforeEach((to, from, next) => {
         (to.name === "auth.login" ||
             to.name === "auth.signup" ||
             to.name === "auth.forgotPassword") &&
-        store.getters.authStatus
+        isAuthenticated
     ) {
-        next({ name: "frontend.home" });
+        next(isLender ? { path: lenderLandingPath() } : { name: "frontend.home" });
+    } else if (isAuthenticated && isLender && to.meta.isFrontend === true) {
+        next({ path: lenderLandingPath() });
     } else {
         next();
     }

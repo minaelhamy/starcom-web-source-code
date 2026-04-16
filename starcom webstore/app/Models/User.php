@@ -76,8 +76,9 @@ class User extends Authenticatable implements HasMedia
 
     public function getImageAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('profile'))) {
-            return asset($this->getFirstMediaUrl('profile'));
+        $url = $this->getFirstMediaUrl('profile');
+        if (!empty($url)) {
+            return str_starts_with($url, 'http') ? $url : asset($url);
         }
         return asset('images/required/profile.png');
     }

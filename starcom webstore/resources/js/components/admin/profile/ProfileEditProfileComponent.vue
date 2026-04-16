@@ -163,10 +163,21 @@ export default {
             try {
                 this.loading.isActive = true;
                 this.$store.dispatch("frontendEditProfile/updateProfile", this.form).then((res) => {
-                    this.$store.dispatch('updateAuthInfo', res.data.data).then(res => {
-                        this.loading.isActive = false;
-                        alertService.success(this.$t("message.profile_update"));
-                        this.errors = {};
+                    this.$store.dispatch('profile').then((profileRes) => {
+                        this.$store.dispatch('updateAuthInfo', profileRes.data.data).then(() => {
+                            this.form = {
+                                name: profileRes.data.data.name,
+                                email: profileRes.data.data.email,
+                                phone: profileRes.data.data.phone,
+                                country_code: profileRes.data.data.country_code,
+                            };
+                            this.loading.isActive = false;
+                            alertService.success(this.$t("message.profile_update"));
+                            this.errors = {};
+                        }).catch((err) => {
+                            this.loading.isActive = false;
+                            alertService.error(err);
+                        });
                     }).catch((err) => {
                         this.loading.isActive = false;
                         alertService.error(err);

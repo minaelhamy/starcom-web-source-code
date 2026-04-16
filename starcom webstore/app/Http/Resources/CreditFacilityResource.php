@@ -12,6 +12,7 @@ class CreditFacilityResource extends JsonResource
     public function toArray($request): array
     {
         $showInstitution = Auth::check() && !Auth::user()->hasRole(Role::CUSTOMER);
+        $application = $this->relationLoaded('application') ? $this->application : null;
 
         return [
             'id'                => $this->id,
@@ -33,11 +34,46 @@ class CreditFacilityResource extends JsonResource
             'due_at'            => $this->due_at ? $this->due_at->toDateString() : null,
             'reviewed_at'       => $this->reviewed_at ? $this->reviewed_at->toDateTimeString() : null,
             'notes'             => $this->notes,
+            'starcom_intelligence' => $this->starcomIntelligence($this->user),
             'institution'       => $showInstitution && $this->institution ? [
                 'id'           => $this->institution->id,
                 'name'         => $this->institution->name,
                 'company_name' => $this->institution->financialInstitutionProfile?->company_name,
             ] : null,
+            'application'       => $application ? [
+                'id'                            => $application->id,
+                'status'                        => $application->status,
+                'created_at'                    => $application->created_at ? $application->created_at->toDateTimeString() : null,
+                'created_date'                  => $application->created_at ? AppLibrary::date($application->created_at) : null,
+                'notes'                         => $application->notes,
+                'national_id_front_document'    => $application->national_id_front_document,
+                'national_id_back_document'     => $application->national_id_back_document,
+                'commercial_register_documents' => $application->commercial_register_documents,
+                'tax_card_document'             => $application->tax_card_document,
+            ] : null,
+        ];
+    }
+
+    private function starcomIntelligence($user): array
+    {
+        $seed = (int)($user?->id ?? 1);
+        $weeklyPurchase = 12000 + ($seed % 5) * 1750;
+        $dailySales = 3200 + ($seed % 4) * 450;
+        $monthlySales = $dailySales * 26;
+        $monthlyPurchase = $weeklyPurchase * 4;
+
+        return [
+            'is_placeholder'                    => true,
+            'average_weekly_purchase'           => $weeklyPurchase,
+            'average_weekly_purchase_currency'  => AppLibrary::currencyAmountFormat($weeklyPurchase),
+            'average_daily_sales'               => $dailySales,
+            'average_daily_sales_currency'      => AppLibrary::currencyAmountFormat($dailySales),
+            'average_monthly_sales'             => $monthlySales,
+            'average_monthly_sales_currency'    => AppLibrary::currencyAmountFormat($monthlySales),
+            'total_monthly_purchase'            => $monthlyPurchase,
+            'total_monthly_purchase_currency'   => AppLibrary::currencyAmountFormat($monthlyPurchase),
+            'label'                             => 'Starcom Intelligence',
+            'note'                              => 'قيم مبدئية للعرض فقط حتى يتم اعتماد طريقة الحساب النهائية.',
         ];
     }
 }

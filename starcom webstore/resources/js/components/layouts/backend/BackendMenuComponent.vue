@@ -1,8 +1,8 @@
 <template>
     <aside class="db-sidebar">
         <div class="db-sidebar-header">
-            <router-link class="w-24" :to="{ name: 'frontend.home' }">
-                <img :src="setting.theme_logo" alt="logo">
+            <router-link class="w-24" :to="backendHomeRoute">
+                <img :src="resolvedThemeLogo" alt="logo" class="object-contain" @error="applyLogoFallback">
             </router-link>
             <button @click="closeSidebar" class="fa-solid fa-xmark xmark-btn close-db-menu"></button>
         </div>
@@ -34,17 +34,32 @@
 
 <script>
 import appService from "../../../services/appService";
+import roleEnum from "../../../enums/modules/roleEnum";
 export default {
     name: "BackendMenuComponent",
     data: function () {
         return {
             activeParentId: 1,
-            activeChildId: 0
+            activeChildId: 0,
+            defaultThemeLogo: "/images/required/theme-logo.png",
         }
     },
     computed: {
         setting: function () {
             return this.$store.getters['frontendSetting/lists'];
+        },
+        resolvedThemeLogo: function () {
+            return this.setting.theme_logo || this.defaultThemeLogo;
+        },
+        backendHomeRoute: function () {
+            const authInfo = this.$store.getters.authInfo || {};
+            const defaultMenu = this.$store.getters.authDefaultMenu || {};
+
+            if (authInfo.role_id && authInfo.role_id !== roleEnum.CUSTOMER) {
+                return `/admin/${defaultMenu.url || "dashboard"}`;
+            }
+
+            return { name: "frontend.home" };
         },
         menus: function () {
             return this.$store.getters.authMenu;
@@ -55,13 +70,16 @@ export default {
         this.defaultSidebarActive();
 
     },
-        methods: {
+    methods: {
         sidebarActive: function (e) {
             const activeMenu = document.querySelector('.db-sidebar-nav-item.active');
             if (activeMenu) {
                 activeMenu.classList.remove('active');
             }
             e?.currentTarget?.classList?.add('active');
+        },
+        applyLogoFallback: function (event) {
+            event.target.src = this.defaultThemeLogo;
         },
         defaultSidebarActive: function () {
             if (document?.querySelector(".db-sidebar-nav-menu")?.classList?.contains("active")) {
@@ -73,6 +91,6 @@ export default {
         closeSidebar : function(){
             return appService.closeSidebar()
         }
-        }
+    }
 }
 </script>

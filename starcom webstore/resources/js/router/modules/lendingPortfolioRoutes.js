@@ -1,5 +1,6 @@
 const LendingPortfolioComponent = () => import("../../components/admin/lendingPortfolio/LendingPortfolioComponent");
 const LendingPortfolioListComponent = () => import("../../components/admin/lendingPortfolio/LendingPortfolioListComponent");
+const LendingPortfolioShowComponent = () => import("../../components/admin/lendingPortfolio/LendingPortfolioShowComponent");
 
 export default [
     {
@@ -23,6 +24,17 @@ export default [
                     auth: true,
                     permissionUrl: "lending-portfolio",
                     breadcrumb: "",
+                },
+            },
+            {
+                path: ":id",
+                component: LendingPortfolioShowComponent,
+                name: "admin.lendingPortfolio.show",
+                meta: {
+                    isFrontend: false,
+                    auth: true,
+                    permissionUrl: "lending-portfolio/show",
+                    breadcrumb: "lending_portfolio",
                 },
             },
         ],

@@ -11,6 +11,7 @@ export const creditApplicationReview = {
         portfolio: [],
         portfolioPage: {},
         portfolioPagination: [],
+        portfolioShow: {},
     },
     getters: {
         lists: function (state) {
@@ -33,6 +34,9 @@ export const creditApplicationReview = {
         },
         portfolioPagination: function (state) {
             return state.portfolioPagination;
+        },
+        portfolioShow: function (state) {
+            return state.portfolioShow;
         },
     },
     actions: {
@@ -100,6 +104,16 @@ export const creditApplicationReview = {
                 });
             });
         },
+        showFacility: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.get(`admin/credit-application/portfolio/show/${payload}`).then((res) => {
+                    context.commit("portfolioShow", res.data.data);
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
     },
     mutations: {
         lists: function (state, payload) {
@@ -134,6 +148,9 @@ export const creditApplicationReview = {
         },
         portfolioPagination: function (state, payload) {
             state.portfolioPagination = payload;
+        },
+        portfolioShow: function (state, payload) {
+            state.portfolioShow = payload;
         },
     },
 };

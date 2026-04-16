@@ -16,6 +16,7 @@
                             <th class="db-table-head-th">المستخدم</th>
                             <th class="db-table-head-th">بداية المدة</th>
                             <th class="db-table-head-th">تاريخ الاستحقاق</th>
+                            <th class="db-table-head-th">الملف</th>
                         </tr>
                     </thead>
                     <tbody class="db-table-body" v-if="portfolio.length">
@@ -30,11 +31,14 @@
                             <td class="db-table-body-td">{{ item.utilized_currency }}</td>
                             <td class="db-table-body-td">{{ item.starts_at || "--" }}</td>
                             <td class="db-table-body-td">{{ item.due_at || "--" }}</td>
+                            <td class="db-table-body-td">
+                                <router-link :to="{ name: 'admin.lendingPortfolio.show', params: { id: item.id } }" class="text-primary font-semibold">فتح الملف</router-link>
+                            </td>
                         </tr>
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="7">لا توجد عمليات تمويل معتمدة حتى الآن.</td>
+                            <td class="db-table-body-td text-center" colspan="8">لا توجد عمليات تمويل معتمدة حتى الآن.</td>
                         </tr>
                     </tbody>
                 </table>

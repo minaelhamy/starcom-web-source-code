@@ -14,24 +14,27 @@ class ThemeSetting extends Model implements HasMedia
 
     public function getLogoAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('theme-logo'))) {
-            return asset($this->getFirstMediaUrl('theme-logo'));
+        $url = $this->getFirstMediaUrl('theme-logo');
+        if (!empty($url)) {
+            return str_starts_with($url, 'http') ? $url : asset($url);
         }
         return asset('images/required/theme-logo.png');
     }
 
     public function getFaviconLogoAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('theme-favicon-logo'))) {
-            return asset($this->getFirstMediaUrl('theme-favicon-logo'));
+        $url = $this->getFirstMediaUrl('theme-favicon-logo');
+        if (!empty($url)) {
+            return str_starts_with($url, 'http') ? $url : asset($url);
         }
         return asset('images/required/theme-favicon-logo.png');
     }
 
     public function getFooterLogoAttribute(): string
     {
-        if (!empty($this->getFirstMediaUrl('theme-footer-logo'))) {
-            return asset($this->getFirstMediaUrl('theme-footer-logo'));
+        $url = $this->getFirstMediaUrl('theme-footer-logo');
+        if (!empty($url)) {
+            return str_starts_with($url, 'http') ? $url : asset($url);
         }
         return asset('images/required/theme-footer-logo.png');
     }
