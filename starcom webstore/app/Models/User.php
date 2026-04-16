@@ -40,6 +40,12 @@ class User extends Authenticatable implements HasMedia
         'username',
         'phone',
         'country_code',
+        'address',
+        'city',
+        'area',
+        'latitude',
+        'longitude',
+        'distribution_route',
         'is_guest',
         'status',
         'email_verified_at'
@@ -69,6 +75,12 @@ class User extends Authenticatable implements HasMedia
         'username'          => 'string',
         'phone'             => 'string',
         'country_code'      => 'string',
+        'address'           => 'string',
+        'city'              => 'string',
+        'area'              => 'string',
+        'latitude'          => 'string',
+        'longitude'         => 'string',
+        'distribution_route'=> 'string',
         'is_guest'          => 'integer',
         'status'            => 'integer',
         'email_verified_at' => 'datetime',
@@ -142,6 +154,21 @@ class User extends Authenticatable implements HasMedia
     public function walletTransactions(): HasMany
     {
         return $this->hasMany(WalletTransaction::class);
+    }
+
+    public function cartonaCustomerProfile(): HasOne
+    {
+        return $this->hasOne(CartonaCustomer::class);
+    }
+
+    public function cartonaOrders(): HasMany
+    {
+        return $this->hasMany(CartonaOrder::class);
+    }
+
+    public function intelligenceCustomers(): HasMany
+    {
+        return $this->hasMany(StarcomIntelligenceCustomer::class);
     }
 
 

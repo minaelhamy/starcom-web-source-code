@@ -5,28 +5,17 @@
             class="w-full hidden sm:block sm:max-w-xs md:max-w-sm flex-shrink-0" />
         <form class="w-full p-6" @submit.prevent="save">
             <div class="text-center mb-8 relative">
-                <h3 class="capitalize text-2xl mb-2 font-bold text-primary"
-                    v-if="props.form.country_code && props.form.phone">{{ $t('label.verify_number') }}</h3>
-                <h3 class="capitalize text-2xl mb-2 font-bold text-primary" v-else>{{ $t('label.verify_email') }}</h3>
+                <h3 class="capitalize text-2xl mb-2 font-bold text-primary">{{ $t('label.verify_number') }}</h3>
             </div>
             <div class="mb-6">
                 <label class="text-sm first-letter:uppercase mb-1 text-heading">{{ $t('label.enter_the_code_sent_to') }}
-                    <span class="font-medium" v-if="props.form.country_code && props.form.phone">
-                        {{ props.form.country_code + '' + props.form.phone }}
-                    </span>
-                    <span class="font-medium" v-else>
-                        {{ props.form.email }}
-                    </span>
+                    <span class="font-medium">{{ props.form.country_code + '' + props.form.phone }}</span>
                 </label>
                 <input type="text" v-model="props.form.token"
                     class="w-full h-12 px-4 rounded-lg text-base border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500" />
                 <small class="db-field-alert" v-if="errors">{{ errors }}</small>
                 <small class="block mt-3 text-center text-sm font-medium">{{ $t('label.not_receive_code') }}
-                    <button v-if="props.form.phone" @click.prevent="resendCodeToPhone" type="button"
-                        class="font-bold text-primary">
-                        {{ $t('button.resend_code') }}
-                    </button>
-                    <button v-else @click.prevent="resendCodeToEmail" type="button" class="font-bold text-primary">
+                    <button @click.prevent="resendCodeToPhone" type="button" class="font-bold text-primary">
                         {{ $t('button.resend_code') }}
                     </button>
                 </small>
@@ -58,7 +47,6 @@ export default {
             },
             props: {
                 form: {
-                    email: "",
                     phone: "",
                     token: "",
                     country_code: "",
@@ -77,20 +65,11 @@ export default {
         phoneOrEmailChecking: function () {
             this.loading.isActive = true;
             const otpPhone = this.$store.getters['frontendSignup/phone'];
-            const otpEmail = this.$store.getters['frontendSignup/email'];
             if (Object.keys(otpPhone).length > 0 && otpPhone.otp.phone !== "") {
                 this.props.form.phone = otpPhone.otp.phone;
                 this.props.form.country_code = otpPhone.otp.country_code;
-                this.props.form.email = "";
                 this.loading.isActive = false;
-            } else if (Object.keys(otpEmail).length > 0 && otpPhone.otp.email !== "") {
-                this.props.form.email = otpPhone.otp.email;
-                this.props.form.phone = "";
-                this.props.form.country_code = "";
-                this.loading.isActive = false;
-
-            }
-            else {
+            } else {
                 this.$router.push({ name: 'auth.signup' });
             }
             this.loading.isActive = false;
@@ -111,41 +90,15 @@ export default {
                 alertService.error(err);
             }
         },
-        resendCodeToEmail: function () {
+        save: function () {
             try {
                 this.loading.isActive = true;
-                this.$store.dispatch("frontendSignup/otpEmail", this.props.form).then((res) => {
-                    this.loading.isActive = false;
-                    this.errors = "";
-                    alertService.success(res.data.message, 'bottom-center');
+                this.$store.dispatch("verifyPhone", this.props.form).then((res) => {
+                    this.signup();
                 }).catch((err) => {
                     this.loading.isActive = false;
                     this.errors = err.response.data.message;
                 });
-            } catch (err) {
-                this.loading.isActive = false;
-                alertService.error(err);
-            }
-        },
-        save: function () {
-            try {
-                this.loading.isActive = true;
-                if (this.props.form.country_code !== "" && this.props.form.phone !== "") {
-                    this.$store.dispatch("verifyPhone", this.props.form).then((res) => {
-                        this.signup();
-                    }).catch((err) => {
-                        this.loading.isActive = false;
-                        this.errors = err.response.data.message;
-                    });
-                } else {
-                    this.$store.dispatch("verifyEmail", this.props.form).then((res) => {
-                        this.signup();
-                    }).catch((err) => {
-                        this.loading.isActive = false;
-                        this.errors = err.response.data.message;
-                    });
-                }
-
             } catch (err) {
                 this.loading.isActive = false;
                 alertService.error(err);
@@ -164,7 +117,6 @@ export default {
                     });
                     this.$store.dispatch("frontendSignup/reset");
                     this.props.form = {
-                        email: "",
                         phone: "",
                         token: "",
                         country_code: "",

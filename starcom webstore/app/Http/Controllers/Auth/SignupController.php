@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use Exception;
 use App\Enums\Ask;
-use Carbon\Carbon;
 use App\Models\User;
 use App\Enums\Activity;
 use Illuminate\Support\Str;
@@ -116,31 +115,16 @@ class SignupController extends Controller
             } else {
                 return response(['status' => true, 'message' => trans('all.message.phone_not_verified')]);
             }
-        } else if (
-            !blank($request->email) && Settings::group('site')->get('site_email_verification') === Ask::YES &&
-            (env('DEMO') !== "true" && env('DEMO') !== "TRUE" && env('DEMO') !== "True" &&
-                env('DEMO') !== true && env('DEMO') !== TRUE && env('DEMO') !== True && env('DEMO') !== '1' && env('DEMO') !== 1)
-        ) {
-
-            $otp = DB::table('password_reset_tokens')->where([
-                ['email', $request->post('email')],
-            ]);
-            $otpCheck = $otp->first();
-            if ($otp->exists() && $otpCheck->is_verified == Ask::YES) {
-                $otp->delete();
-            } else {
-                return response(['status' => true, 'message' => trans('all.message.email_not_verified')]);
-            }
         }
 
 
         $user = User::create([
             'name' => $request->post('name'),
             'username' => Str::slug($request->post('name')) . rand(1, 500),
-            'email' => $request->post('email'),
+            'email' => null,
             'phone' => $request->post('phone'),
             'country_code' => $request->post('country_code'),
-            'email_verified_at' => Carbon::now()->getTimestamp(),
+            'email_verified_at' => null,
             'is_guest' => Ask::NO,
             'password' => Hash::make($request->post('password'))
         ]);
@@ -155,17 +139,13 @@ class SignupController extends Controller
     public function signupLoginVerify(Request $request)
     {
         try {
-            $user = null;
-            if (isset($request->phone) && !blank($request->phone)) {
-                $user = User::where(['phone' => $request->phone, 'country_code' => $request->country_code])->first();
-            } else {
-                $user = User::where(['email' => $request->email])->first();
-            }
+            $user = User::where(['phone' => $request->phone, 'country_code' => $request->country_code])->first();
             if ($user) {
                 Auth::guard('web')->loginUsingId($user->id);
                 $this->token = $user->createToken('auth_token')->plainTextToken;
                 $permission = PermissionResource::collection($this->permissionService->permission($user->roles[0]));
                 $defaultPermission = AppLibrary::defaultPermission($permission);
+                $defaultMenu = (object) AppLibrary::defaultMenu($this->menuService->menu($user->roles[0]), $defaultPermission);
                 return new JsonResponse([
                     'status' => true,
                     'message' => trans('all.message.register_successfully'),
@@ -174,6 +154,7 @@ class SignupController extends Controller
                     'menu' => MenuResource::collection(collect($this->menuService->menu($user->roles[0]))),
                     'permission' => $permission,
                     'defaultPermission' => $defaultPermission,
+                    'defaultMenu' => $defaultMenu,
                 ], 201);
             } else {
                 return response(['status' => false, 'message' => trans('all.message.register_not_completed')], 422);

@@ -15,21 +15,16 @@
                 <small class="db-field-alert" v-if="errors.name">{{ errors.name[0] }}</small>
             </div>
 
-            <div :class="!toggleValue ? 'mb-6' : ''">
-                <div class="flex items-center justify-between">
-                    <label :for="!toggleValue ? 'formEmail' : 'phone'"
-                        class="text-sm font-medium capitalize mb-1 field-title required">{{ inputLabel
-                        }}</label>
-                    <button type="button" class="text-sm font-medium capitalize mb-1 underline text-primary"
-                        @click="handleField()">{{ inputButton }}</button>
-                </div>
-                <div v-if="toggleValue" :class="errors.phone ? 'invalid' : ''"
+            <div class="mb-6">
+                <label for="phone" class="text-sm font-medium capitalize mb-1 field-title required">
+                    {{ $t('label.phone') }}
+                </label>
+                <div :class="errors.phone ? 'invalid' : ''"
                     class="flex items-center gap-1.5 px-4 h-12 rounded-lg border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500">
                     <div class="w-fit flex-shrink-0 dropdown-group">
                         <button type="button" class="flex items-center gap-1 dropdown-btn">
                             {{ flag }}
-                            <span class="whitespace-nowrap flex-shrink-0 text-xs">{{ form.country_code
-                            }}</span>
+                            <span class="whitespace-nowrap flex-shrink-0 text-xs">{{ form.country_code }}</span>
                             <i class="fa-solid fa-caret-down text-xs"></i>
                         </button>
                         <ul
@@ -40,19 +35,11 @@
                                 <span class="whitespace-nowrap text-xs">{{ countryCode.calling_code }}</span>
                             </li>
                         </ul>
-
                     </div>
-                    <input v-model="form.phone" v-on:keypress="phoneNumber($event)" v-bind:class="errors.phone
-                        ? 'invalid' : ''" type="text" id="phone" class="pl-2 text-sm w-full h-full" />
+                    <input v-model="form.phone" v-on:keypress="phoneNumber($event)" :class="errors.phone ? 'invalid' : ''"
+                        type="text" id="phone" class="pl-2 text-sm w-full h-full" />
                 </div>
-                <input v-if="!toggleValue" v-model="form.email" :class="errors.email ? 'invalid' : ''" id="formEmail"
-                    type="email"
-                    class="w-full h-12 px-4 rounded-lg text-base border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500" />
-                <small class="db-field-alert" v-if="errors.email_or_phone">{{ errors.email_or_phone }}</small>
-                <span v-else>
-                    <small class="db-field-alert" v-if="errors.phone && toggleValue">{{ errors.phone[0] }}</small>
-                    <small class="db-field-alert" v-if="errors.email && !toggleValue">{{ errors.email[0] }}</small>
-                </span>
+                <small class="db-field-alert" v-if="errors.phone">{{ errors.phone[0] }}</small>
             </div>
 
             <div class="mb-6">
@@ -93,7 +80,6 @@ export default {
             },
             form: {
                 name: "",
-                email: "",
                 phone: "",
                 country_code: "",
                 password: ""
@@ -101,11 +87,7 @@ export default {
             flag: "",
             errors: {},
             demo: ENV.DEMO,
-            APP_URL: ENV.API_URL,
             authImage: "/images/required/auth.jpg",
-            toggleValue: false,
-            inputLabel: this.$t('label.email'),
-            inputButton: this.$t('label.use_phone_instead')
         }
     },
     computed: {
@@ -139,20 +121,6 @@ export default {
         phoneNumber(e) {
             return appService.phoneNumber(e);
         },
-        handleField: function () {
-            this.toggleValue = !this.toggleValue
-
-            if (this.toggleValue) {
-                this.form.email = "";
-                this.inputLabel = this.$t('label.phone');
-                this.inputButton = this.$t('label.use_email_instead');
-            }
-            else {
-                this.form.phone = "";
-                this.inputLabel = this.$t('label.email');
-                this.inputButton = this.$t('label.use_phone_instead');
-            }
-        },
         countryCodeChange: function (e) {
             this.flag = e.flag_emoji;
             this.form.country_code = e.calling_code;
@@ -163,9 +131,7 @@ export default {
 
                 this.loading.isActive = true;
                 this.$store.dispatch("frontendSignup/signupValidation", this.form).then((res) => {
-                    // form is valid
-                    if (this.setting.site_phone_verification === askEnum.YES && this.form.phone !== "" && (this.demo !== 'true' || this.demo !== 'TRUE' || this.demo !== 'True' || this.demo !== '1' || this.demo !== 1)) {
-                        // otp to phone
+                    if (this.setting.site_phone_verification === askEnum.YES && (this.demo !== 'true' || this.demo !== 'TRUE' || this.demo !== 'True' || this.demo !== '1' || this.demo !== 1)) {
                         this.$store.dispatch("frontendSignup/otpPhone", this.form).then((res) => {
                             this.loading.isActive = false;
                             alertService.success(res.data.message, 'bottom-center');
@@ -174,18 +140,7 @@ export default {
                             this.loading.isActive = false;
                             alertService.error(err.response.data.message);
                         });
-                    } else if (this.setting.site_email_verification === askEnum.YES && this.form.email !== "" && (this.demo !== 'true' || this.demo !== 'TRUE' || this.demo !== 'True' || this.demo !== '1' || this.demo !== 1)) {
-                        //otp to email
-                        this.$store.dispatch("frontendSignup/otpEmail", this.form).then((res) => {
-                            this.loading.isActive = false;
-                            alertService.success(res.data.message, 'bottom-center');
-                            this.$router.push({ name: "auth.signupVerify" });
-                        }).catch((err) => {
-                            this.loading.isActive = false;
-                            alertService.error(err.response.data.message);
-                        });
                     } else {
-                        // save user
                         this.$store.dispatch("frontendSignup/signup", this.form).then((res) => {
                             this.loading.isActive = false;
                             this.$store.dispatch("signupLoginVerify", this.form).then((res) => {
@@ -202,9 +157,8 @@ export default {
                             this.$router.push({ name: "frontend.home" });
                             this.form = {
                                 name: "",
-                                email: "",
                                 phone: "",
-                                code: "",
+                                country_code: "",
                                 password: ""
                             };
                             this.errors = {};
