@@ -46,30 +46,30 @@ return new class extends Migration
         }
 
         if (!$this->indexExists('users', 'users_country_code_phone_index')) {
-            Schema::table('users', function (Blueprint $table) {
-                $table->index(['country_code', 'phone'], 'users_country_code_phone_index');
-            });
+            DB::statement(
+                'CREATE INDEX users_country_code_phone_index ON users (country_code(16), phone(32))'
+            );
         }
 
         if (!$this->indexExists('users', 'users_distribution_route_index')) {
-            Schema::table('users', function (Blueprint $table) {
-                $table->index('distribution_route', 'users_distribution_route_index');
-            });
+            DB::statement(
+                'CREATE INDEX users_distribution_route_index ON users (distribution_route(100))'
+            );
         }
 
         if (!Schema::hasTable('starcom_intelligence')) {
             Schema::create('starcom_intelligence', function (Blueprint $table) {
                 $table->id();
                 $table->string('user_name');
-                $table->string('phone_number')->index();
-                $table->string('country_code')->nullable()->index();
-                $table->string('phone')->nullable()->index();
+                $table->string('phone_number', 32)->index();
+                $table->string('country_code', 20)->nullable()->index();
+                $table->string('phone', 32)->nullable()->index();
                 $table->text('address')->nullable();
-                $table->string('city')->nullable();
-                $table->string('area')->nullable();
-                $table->string('latitude')->nullable();
-                $table->string('longitude')->nullable();
-                $table->string('distribution_route')->nullable()->index();
+                $table->string('city', 120)->nullable();
+                $table->string('area', 120)->nullable();
+                $table->string('latitude', 50)->nullable();
+                $table->string('longitude', 50)->nullable();
+                $table->string('distribution_route', 120)->nullable()->index();
                 $table->decimal('invoice_amount', 19, 6)->default(0);
                 $table->decimal('cartona_credit_amount', 19, 6)->default(0);
                 $table->timestamps();
