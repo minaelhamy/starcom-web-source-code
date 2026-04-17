@@ -1,8 +1,8 @@
 <template>
     <aside class="db-sidebar">
         <div class="db-sidebar-header">
-            <router-link class="w-24" :to="backendHomeRoute">
-                <img :src="resolvedThemeLogo" alt="logo" class="object-contain" @error="applyLogoFallback">
+            <router-link class="w-24 h-12 flex items-center" :to="backendHomeRoute">
+                <img :src="resolvedThemeLogo" alt="logo" class="w-full h-full object-cover object-center" @error="applyLogoFallback">
             </router-link>
             <button @click="closeSidebar" class="fa-solid fa-xmark xmark-btn close-db-menu"></button>
         </div>

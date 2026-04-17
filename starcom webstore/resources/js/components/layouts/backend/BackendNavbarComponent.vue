@@ -1,8 +1,8 @@
 <template>
     <div class="backdrop"></div>
     <header class="db-header">
-        <router-link class="w-32 flex-shrink-0" :to="backendHomeRoute">
-            <img class="w-full object-contain" :src="resolvedThemeLogo" alt="logo" @error="applyLogoFallback">
+        <router-link class="w-32 h-12 flex-shrink-0 flex items-center" :to="backendHomeRoute">
+            <img class="w-full h-full object-cover object-center" :src="resolvedThemeLogo" alt="logo" @error="applyLogoFallback">
         </router-link>
         <div class="flex items-center justify-end w-full gap-4">
             <div
