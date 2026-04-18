@@ -50,11 +50,11 @@ class CreditApplicationService
             ]);
 
             if ($request->hasFile('national_id_front_document')) {
-                $application->addMediaFromRequest('national_id_front_document')->toMediaCollection('national_id_front_document');
+                $application->addMedia($request->file('national_id_front_document'))->toMediaCollection('national_id_front_document');
             }
 
             if ($request->hasFile('national_id_back_document')) {
-                $application->addMediaFromRequest('national_id_back_document')->toMediaCollection('national_id_back_document');
+                $application->addMedia($request->file('national_id_back_document'))->toMediaCollection('national_id_back_document');
             }
 
             foreach ($request->file('commercial_register_documents', []) as $commercialRegisterDocument) {
@@ -62,7 +62,7 @@ class CreditApplicationService
             }
 
             if ($request->hasFile('tax_card_document')) {
-                $application->addMediaFromRequest('tax_card_document')->toMediaCollection('tax_card_document');
+                $application->addMedia($request->file('tax_card_document'))->toMediaCollection('tax_card_document');
             }
 
             User::role(EnumRole::FINANCIAL_INSTITUTION)->get()->each(function (User $institutionUser) use ($application) {
