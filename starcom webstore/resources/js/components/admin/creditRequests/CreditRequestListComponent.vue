@@ -44,6 +44,7 @@
                                     <div class="flex gap-2">
                                         <button class="db-btn py-2 text-white bg-primary" @click="approve(item.id)">اعتماد</button>
                                         <button class="db-btn py-2 text-white bg-red-500" @click="decline(item.id)">رفض</button>
+                                        <button v-if="isAdmin" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication(item.id)">حذف</button>
                                     </div>
                                 </div>
                             </td>
@@ -63,6 +64,8 @@
 <script>
 import LoadingComponent from "../components/LoadingComponent.vue";
 import alertService from "../../../services/alertService";
+import appService from "../../../services/appService";
+import roleEnum from "../../../enums/modules/roleEnum";
 
 export default {
     name: "CreditRequestListComponent",
@@ -78,6 +81,12 @@ export default {
     computed: {
         lists: function () {
             return this.$store.getters["creditApplicationReview/lists"];
+        },
+        authInfo: function () {
+            return this.$store.getters.authInfo || {};
+        },
+        isAdmin: function () {
+            return this.authInfo.role_id === roleEnum.ADMIN;
         },
     },
     mounted() {
@@ -129,6 +138,20 @@ export default {
             }).catch((err) => {
                 this.loading.isActive = false;
                 alertService.error(err.response?.data?.message || "تعذر رفض الطلب.");
+            });
+        },
+        destroyApplication: function (id) {
+            appService.destroyConfirmation().then(() => {
+                this.loading.isActive = true;
+                this.$store.dispatch("creditApplicationReview/destroy", id).then((res) => {
+                    alertService.success(res.data.message || "تم حذف الطلب بنجاح.");
+                    this.list();
+                }).catch((err) => {
+                    this.loading.isActive = false;
+                    alertService.error(err.response?.data?.message || "تعذر حذف الطلب.");
+                });
+            }).catch(() => {
+                this.loading.isActive = false;
             });
         },
         statusText: function (status) {

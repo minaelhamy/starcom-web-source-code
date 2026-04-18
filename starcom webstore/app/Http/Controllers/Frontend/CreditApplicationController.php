@@ -43,6 +43,20 @@ class CreditApplicationController extends Controller
         }
     }
 
+    public function destroy(\App\Models\CreditApplication $creditApplication)
+    {
+        try {
+            $this->creditApplicationService->customerDestroy($creditApplication);
+
+            return response([
+                'status'  => true,
+                'message' => 'تم حذف الطلب بنجاح.',
+            ]);
+        } catch (\Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
     public function walletTransactions(PaginateRequest $request)
     {
         try {

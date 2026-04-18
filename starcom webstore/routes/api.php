@@ -590,6 +590,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
     Route::prefix('credit-application')->name('credit-application.')->group(function () {
         Route::get('/', [CreditApplicationController::class, 'index']);
         Route::get('/show/{creditApplication}', [CreditApplicationController::class, 'show']);
+        Route::delete('/{creditApplication}', [CreditApplicationController::class, 'destroy']);
         Route::post('/approve/{creditApplication}', [CreditApplicationController::class, 'approve']);
         Route::post('/decline/{creditApplication}', [CreditApplicationController::class, 'decline']);
         Route::post('/portfolio/reset/{creditFacility}', [CreditApplicationController::class, 'resetApproval']);
@@ -894,6 +895,7 @@ Route::prefix('frontend')->name('frontend.')->middleware(['apiKey', 'localizatio
     Route::prefix('pay-later')->name('pay-later.')->middleware(['auth:sanctum'])->group(function () {
         Route::get('/applications', [FrontendCreditApplicationController::class, 'index']);
         Route::post('/applications', [FrontendCreditApplicationController::class, 'store']);
+        Route::delete('/applications/{creditApplication}', [FrontendCreditApplicationController::class, 'destroy']);
         Route::get('/summary', [FrontendCreditApplicationController::class, 'summary']);
         Route::get('/wallet-transactions', [FrontendCreditApplicationController::class, 'walletTransactions']);
     });

@@ -86,6 +86,15 @@ export const creditApplicationReview = {
                 });
             });
         },
+        destroy: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.delete(`admin/credit-application/${payload}`).then((res) => {
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
         portfolio: function (context, payload) {
             return new Promise((resolve, reject) => {
                 let url = "admin/credit-application/portfolio";

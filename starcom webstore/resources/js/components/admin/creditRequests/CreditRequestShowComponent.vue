@@ -101,6 +101,7 @@
                         <div class="flex gap-2 flex-wrap">
                             <button class="db-btn py-2 text-white bg-primary" @click="approve">اعتماد الطلب</button>
                             <button class="db-btn py-2 text-white bg-red-500" @click="decline">رفض الطلب</button>
+                            <button v-if="isAdmin" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication">حذف الطلب</button>
                             <router-link :to="{ name: 'admin.creditRequests.list' }" class="db-btn py-2 text-white bg-gray-600">العودة للطلبات</router-link>
                         </div>
                     </div>
@@ -113,6 +114,8 @@
 <script>
 import LoadingComponent from "../components/LoadingComponent.vue";
 import alertService from "../../../services/alertService";
+import appService from "../../../services/appService";
+import roleEnum from "../../../enums/modules/roleEnum";
 
 export default {
     name: "CreditRequestShowComponent",
@@ -143,6 +146,12 @@ export default {
                 { label: "متوسط المبيعات الشهرية", value: intelligence.average_monthly_sales_currency || "--" },
                 { label: "إجمالي المشتريات الشهرية", value: intelligence.total_monthly_purchase_currency || "--" },
             ];
+        },
+        authInfo: function () {
+            return this.$store.getters.authInfo || {};
+        },
+        isAdmin: function () {
+            return this.authInfo.role_id === roleEnum.ADMIN;
         },
     },
     mounted() {
@@ -183,6 +192,20 @@ export default {
             }).catch((err) => {
                 this.loading.isActive = false;
                 alertService.error(err.response?.data?.message || "تعذر رفض الطلب.");
+            });
+        },
+        destroyApplication: function () {
+            appService.destroyConfirmation().then(() => {
+                this.loading.isActive = true;
+                this.$store.dispatch("creditApplicationReview/destroy", this.application.id).then((res) => {
+                    alertService.success(res.data.message || "تم حذف الطلب بنجاح.");
+                    this.$router.push({ name: "admin.creditRequests.list" });
+                }).catch((err) => {
+                    this.loading.isActive = false;
+                    alertService.error(err.response?.data?.message || "تعذر حذف الطلب.");
+                });
+            }).catch(() => {
+                this.loading.isActive = false;
             });
         },
         statusText: function (status) {

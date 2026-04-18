@@ -76,6 +76,17 @@ class CreditApplicationService
         }
     }
 
+    public function customerDestroy(CreditApplication $creditApplication): void
+    {
+        $actor = Auth::user();
+
+        if ((int)$creditApplication->user_id !== (int)$actor->id) {
+            throw new Exception(trans('all.message.permission_denied'), 422);
+        }
+
+        $this->destroyApplication($creditApplication, false);
+    }
+
     public function queueList(PaginateRequest $request)
     {
         $actor = Auth::user();
@@ -217,6 +228,16 @@ class CreditApplicationService
         }
     }
 
+    public function adminDestroy(CreditApplication $creditApplication): void
+    {
+        $actor = Auth::user();
+        if (!$actor->hasRole(EnumRole::ADMIN)) {
+            throw new Exception(trans('all.message.permission_denied'), 422);
+        }
+
+        $this->destroyApplication($creditApplication, true);
+    }
+
     public function approve(CreditApplication $creditApplication, CreditApplicationDecisionRequest $request): CreditFacility
     {
         try {
@@ -328,6 +349,48 @@ class CreditApplicationService
         }
 
         $creditApplication->save();
+    }
+
+    protected function destroyApplication(CreditApplication $creditApplication, bool $isAdmin): void
+    {
+        try {
+            $creditApplication->loadMissing(['facilities.orderAllocations']);
+
+            if ($creditApplication->facilities->where('status', CreditFacilityStatus::APPROVED)->count() > 0) {
+                throw new Exception(
+                    $isAdmin
+                        ? 'لا يمكن حذف طلب تمت الموافقة عليه. قم أولاً بإلغاء الاعتماد ثم احذف الطلب.'
+                        : 'لا يمكن حذف الطلب بعد الموافقة عليه من جهة تمويل.',
+                    422
+                );
+            }
+
+            if ($creditApplication->facilities->contains(function (CreditFacility $facility) {
+                return (float)$facility->utilized_amount > 0 || $facility->orderAllocations->isNotEmpty();
+            })) {
+                throw new Exception('لا يمكن حذف هذا الطلب بعد ارتباطه بطلبات شراء.', 422);
+            }
+
+            DB::transaction(function () use ($creditApplication) {
+                $application = CreditApplication::with(['facilities.orderAllocations'])->lockForUpdate()->findOrFail($creditApplication->id);
+
+                foreach ($application->facilities as $facility) {
+                    $facility->orderAllocations()->delete();
+                    WalletTransaction::where('credit_facility_id', $facility->id)->delete();
+                    $facility->delete();
+                }
+
+                WalletTransaction::where('credit_application_id', $application->id)->delete();
+                $application->clearMediaCollection('national_id_front_document');
+                $application->clearMediaCollection('national_id_back_document');
+                $application->clearMediaCollection('commercial_register_documents');
+                $application->clearMediaCollection('tax_card_document');
+                $application->delete();
+            });
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
     }
 
     protected function safeNotify(User $user, object $notification): void

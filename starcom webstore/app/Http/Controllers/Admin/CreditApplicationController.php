@@ -25,7 +25,7 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
     public static function middleware(): array
     {
         return [
-            new Middleware('permission:credit-requests', only: ['index']),
+            new Middleware('permission:credit-requests', only: ['index', 'destroy']),
             new Middleware('permission:credit-requests_show', only: ['show']),
             new Middleware('permission:credit-requests_review', only: ['approve', 'decline', 'resetApproval']),
             new Middleware('permission:lending-portfolio', only: ['portfolio']),
@@ -94,6 +94,20 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
                 'status'  => true,
                 'message' => 'تم إلغاء الاعتماد وإعادة الطلب إلى قائمة المراجعة.',
                 'data'    => new CreditApplicationResource($this->creditApplicationService->resetApproval($creditFacility)),
+            ]);
+        } catch (\Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function destroy(CreditApplication $creditApplication): Response|Application|ResponseFactory
+    {
+        try {
+            $this->creditApplicationService->adminDestroy($creditApplication);
+
+            return response([
+                'status'  => true,
+                'message' => 'تم حذف الطلب بنجاح.',
             ]);
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);

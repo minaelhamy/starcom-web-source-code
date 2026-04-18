@@ -88,6 +88,11 @@
                                 صفحة السجل {{ index + 1 }}
                             </a>
                         </div>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <button class="db-btn py-2 text-white bg-red-500" @click="destroyApplication(application.id)">
+                                حذف الطلب
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div v-else class="text-text">لا يوجد طلبات حتى الآن.</div>
@@ -130,6 +135,7 @@
 <script>
 import LoadingComponent from "../../components/LoadingComponent.vue";
 import alertService from "../../../../services/alertService";
+import appService from "../../../../services/appService";
 
 export default {
     name: "PayLaterComponent",
@@ -214,6 +220,20 @@ export default {
                 if (err.response?.data?.message) {
                     alertService.error(err.response.data.message);
                 }
+            });
+        },
+        destroyApplication: function (id) {
+            appService.destroyConfirmation().then(() => {
+                this.loading.isActive = true;
+                this.$store.dispatch("frontendPayLater/destroy", id).then((res) => {
+                    alertService.success(res.data.message || "تم حذف الطلب بنجاح.");
+                    this.fetchData();
+                }).catch((err) => {
+                    this.loading.isActive = false;
+                    alertService.error(err.response?.data?.message || "تعذر حذف الطلب.");
+                });
+            }).catch(() => {
+                this.loading.isActive = false;
             });
         },
         currency: function (amount) {

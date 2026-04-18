@@ -99,6 +99,15 @@ export const frontendPayLater = {
                 });
             });
         },
+        destroy: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.delete(`frontend/pay-later/applications/${payload}`).then((res) => {
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
     },
     mutations: {
         summary: function (state, payload) {
