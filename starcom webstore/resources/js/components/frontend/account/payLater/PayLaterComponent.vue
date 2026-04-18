@@ -29,17 +29,17 @@
                 <form @submit.prevent="save">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="db-field-title required">البطاقة الشخصية - الوجه الأمامي</label>
+                            <label class="db-field-title">البطاقة الشخصية - الوجه الأمامي</label>
                             <input class="db-field-control" type="file" accept=".jpg,.jpeg,.png,.pdf" @change="setFile($event, 'national_id_front_document')" />
                             <small class="db-field-alert" v-if="errors.national_id_front_document">{{ errors.national_id_front_document[0] }}</small>
                         </div>
                         <div>
-                            <label class="db-field-title required">البطاقة الشخصية - الوجه الخلفي</label>
+                            <label class="db-field-title">البطاقة الشخصية - الوجه الخلفي</label>
                             <input class="db-field-control" type="file" accept=".jpg,.jpeg,.png,.pdf" @change="setFile($event, 'national_id_back_document')" />
                             <small class="db-field-alert" v-if="errors.national_id_back_document">{{ errors.national_id_back_document[0] }}</small>
                         </div>
                         <div class="md:col-span-2">
-                            <label class="db-field-title required">السجل التجاري - حتى 4 صفحات</label>
+                            <label class="db-field-title">السجل التجاري - حتى 4 صفحات</label>
                             <input class="db-field-control" type="file" multiple accept=".jpg,.jpeg,.png,.pdf" @change="setFiles($event, 'commercial_register_documents')" />
                             <small class="db-field-alert" v-if="errors.commercial_register_documents">{{ errors.commercial_register_documents[0] }}</small>
                             <small class="db-field-alert" v-if="errors['commercial_register_documents.0']">{{ errors['commercial_register_documents.0'][0] }}</small>

@@ -15,10 +15,10 @@ class CreditApplicationStoreRequest extends FormRequest
     {
         return [
             'notes'                           => ['nullable', 'string'],
-            'national_id_front_document'      => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'national_id_back_document'       => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'commercial_register_documents'   => ['required', 'array', 'min:1', 'max:4'],
-            'commercial_register_documents.*' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'national_id_front_document'      => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'national_id_back_document'       => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'commercial_register_documents'   => ['nullable', 'array', 'max:4'],
+            'commercial_register_documents.*' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'tax_card_document'               => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ];
     }
