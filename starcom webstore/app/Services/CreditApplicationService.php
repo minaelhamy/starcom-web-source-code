@@ -93,20 +93,21 @@ class CreditApplicationService
         $method = $request->get('paginate', 0) == 1 ? 'paginate' : 'get';
         $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
 
-        return CreditApplication::with(['user', 'facilities.institution.financialInstitutionProfile'])
-            ->where('status', CreditApplicationStatus::PENDING)
-            ->whereDoesntHave('facilities', function ($facilityQuery) {
-                $facilityQuery->where('status', CreditFacilityStatus::APPROVED);
-            })
-            ->where(function ($query) use ($actor) {
-                if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
-                    $query->whereDoesntHave('facilities', function ($facilityQuery) use ($actor) {
-                        $facilityQuery->where('financial_institution_user_id', $actor->id);
-                    });
-                }
-            })
-            ->latest()
-            ->$method($methodValue);
+        $query = CreditApplication::with(['user', 'facilities.institution.financialInstitutionProfile']);
+
+        if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
+            $query->where('status', CreditApplicationStatus::PENDING)
+                ->whereDoesntHave('facilities', function ($facilityQuery) {
+                    $facilityQuery->where('status', CreditFacilityStatus::APPROVED);
+                })
+                ->whereDoesntHave('facilities', function ($facilityQuery) use ($actor) {
+                    $facilityQuery->where('financial_institution_user_id', $actor->id);
+                });
+        } else {
+            $query->where('status', '!=', CreditApplicationStatus::APPROVED);
+        }
+
+        return $query->latest()->$method($methodValue);
     }
 
     public function portfolioList(PaginateRequest $request)

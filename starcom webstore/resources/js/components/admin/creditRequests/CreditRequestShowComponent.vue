@@ -81,10 +81,7 @@
                 <h3 class="db-card-title">قرار الجهة التمويلية</h3>
             </div>
             <div class="p-4">
-                <div v-if="application.reviewed_by_me" class="text-sm text-text">
-                    تم اتخاذ القرار من حسابك بالفعل على هذا الطلب.
-                </div>
-                <div v-else class="row">
+                <div v-if="canReview" class="row">
                     <div class="col-12 md:col-4">
                         <label class="db-field-title required">المبلغ المعتمد</label>
                         <input v-model="form.approved_amount" type="number" min="1" step="0.01" class="db-field-control" />
@@ -104,6 +101,16 @@
                             <button v-if="isAdmin" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication">حذف الطلب</button>
                             <router-link :to="{ name: 'admin.creditRequests.list' }" class="db-btn py-2 text-white bg-gray-600">العودة للطلبات</router-link>
                         </div>
+                    </div>
+                </div>
+                <div v-else-if="application.reviewed_by_me" class="text-sm text-text">
+                    تم اتخاذ القرار من حسابك بالفعل على هذا الطلب.
+                </div>
+                <div v-else class="space-y-3">
+                    <div class="text-sm text-text">هذا الطلب لم يعد متاحاً للمراجعة.</div>
+                    <div class="flex gap-2 flex-wrap">
+                        <button v-if="isAdmin" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication">حذف الطلب</button>
+                        <router-link :to="{ name: 'admin.creditRequests.list' }" class="db-btn py-2 text-white bg-gray-600">العودة للطلبات</router-link>
                     </div>
                 </div>
             </div>
@@ -152,6 +159,9 @@ export default {
         },
         isAdmin: function () {
             return this.authInfo.role_id === roleEnum.ADMIN;
+        },
+        canReview: function () {
+            return this.application.status === "pending" && !this.application.reviewed_by_me;
         },
     },
     mounted() {

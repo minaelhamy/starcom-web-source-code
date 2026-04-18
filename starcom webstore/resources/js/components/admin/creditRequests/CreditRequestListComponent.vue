@@ -36,8 +36,7 @@
                                 </div>
                             </td>
                             <td class="db-table-body-td">
-                                <div v-if="item.reviewed_by_me" class="text-text text-sm">تم اتخاذ القرار من حسابك.</div>
-                                <div v-else class="space-y-2 min-w-[240px]">
+                                <div v-if="canReview(item)" class="space-y-2 min-w-[240px]">
                                     <input v-model="reviewForms[item.id].approved_amount" type="number" min="1" step="0.01" class="db-field-control" placeholder="المبلغ المعتمد" />
                                     <input v-model="reviewForms[item.id].duration_days" type="number" min="30" class="db-field-control" placeholder="المدة بالأيام" />
                                     <textarea v-model="reviewForms[item.id].notes" class="db-field-control h-20" placeholder="ملاحظات"></textarea>
@@ -45,6 +44,14 @@
                                         <button class="db-btn py-2 text-white bg-primary" @click="approve(item.id)">اعتماد</button>
                                         <button class="db-btn py-2 text-white bg-red-500" @click="decline(item.id)">رفض</button>
                                         <button v-if="isAdmin" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication(item.id)">حذف</button>
+                                    </div>
+                                </div>
+                                <div v-else class="space-y-2 min-w-[240px]">
+                                    <div class="text-text text-sm">
+                                        {{ item.reviewed_by_me ? "تم اتخاذ القرار من حسابك." : "هذا الطلب لم يعد متاحاً للمراجعة." }}
+                                    </div>
+                                    <div v-if="isAdmin" class="flex gap-2">
+                                        <button class="db-btn py-2 text-white bg-red-700" @click="destroyApplication(item.id)">حذف</button>
                                     </div>
                                 </div>
                             </td>
@@ -153,6 +160,9 @@ export default {
             }).catch(() => {
                 this.loading.isActive = false;
             });
+        },
+        canReview: function (item) {
+            return item.status === "pending" && !item.reviewed_by_me;
         },
         statusText: function (status) {
             if (status === "approved") {
