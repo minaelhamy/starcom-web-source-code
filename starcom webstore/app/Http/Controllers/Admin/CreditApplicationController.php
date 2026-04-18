@@ -27,7 +27,7 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
         return [
             new Middleware('permission:credit-requests', only: ['index']),
             new Middleware('permission:credit-requests_show', only: ['show']),
-            new Middleware('permission:credit-requests_review', only: ['approve', 'decline']),
+            new Middleware('permission:credit-requests_review', only: ['approve', 'decline', 'resetApproval']),
             new Middleware('permission:lending-portfolio', only: ['portfolio']),
             new Middleware('permission:lending-portfolio_show', only: ['showFacility']),
         ];
@@ -82,6 +82,19 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
     {
         try {
             return new CreditFacilityResource($this->creditApplicationService->decline($creditApplication, $request));
+        } catch (\Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function resetApproval(CreditFacility $creditFacility): CreditApplicationResource|Response|Application|ResponseFactory
+    {
+        try {
+            return response([
+                'status'  => true,
+                'message' => 'تم إلغاء الاعتماد وإعادة الطلب إلى قائمة المراجعة.',
+                'data'    => new CreditApplicationResource($this->creditApplicationService->resetApproval($creditFacility)),
+            ]);
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

@@ -17,9 +17,11 @@ use App\Notifications\CreditApplicationApprovedNotification;
 use App\Notifications\CreditApplicationDeclinedNotification;
 use App\Notifications\NewCreditApplicationSubmittedNotification;
 use Exception;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Throwable;
+use App\Models\WalletTransaction;
 
 class CreditApplicationService
 {
@@ -47,11 +49,18 @@ class CreditApplicationService
                 'notes'   => $request->notes,
             ]);
 
-            $application->addMediaFromRequest('national_id_front_document')->toMediaCollection('national_id_front_document');
-            $application->addMediaFromRequest('national_id_back_document')->toMediaCollection('national_id_back_document');
+            if ($request->hasFile('national_id_front_document')) {
+                $application->addMediaFromRequest('national_id_front_document')->toMediaCollection('national_id_front_document');
+            }
+
+            if ($request->hasFile('national_id_back_document')) {
+                $application->addMediaFromRequest('national_id_back_document')->toMediaCollection('national_id_back_document');
+            }
+
             foreach ($request->file('commercial_register_documents', []) as $commercialRegisterDocument) {
                 $application->addMedia($commercialRegisterDocument)->toMediaCollection('commercial_register_documents');
             }
+
             if ($request->hasFile('tax_card_document')) {
                 $application->addMediaFromRequest('tax_card_document')->toMediaCollection('tax_card_document');
             }
@@ -74,6 +83,10 @@ class CreditApplicationService
         $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
 
         return CreditApplication::with(['user', 'facilities.institution.financialInstitutionProfile'])
+            ->where('status', CreditApplicationStatus::PENDING)
+            ->whereDoesntHave('facilities', function ($facilityQuery) {
+                $facilityQuery->where('status', CreditFacilityStatus::APPROVED);
+            })
             ->where(function ($query) use ($actor) {
                 if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
                     $query->whereDoesntHave('facilities', function ($facilityQuery) use ($actor) {
@@ -106,11 +119,18 @@ class CreditApplicationService
         $actor = Auth::user();
 
         if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
+            if (
+                $creditApplication->status !== CreditApplicationStatus::PENDING ||
+                $creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
             $hasReviewed = $creditApplication->facilities()
                 ->where('financial_institution_user_id', $actor->id)
                 ->exists();
 
-            if ($hasReviewed && $creditApplication->status !== CreditApplicationStatus::PENDING) {
+            if ($hasReviewed) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
         }
@@ -137,12 +157,79 @@ class CreditApplicationService
         ]);
     }
 
+    public function resetApproval(CreditFacility $creditFacility): CreditApplication
+    {
+        try {
+            $actor = Auth::user();
+            if (!$actor->hasRole(EnumRole::ADMIN)) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if ($creditFacility->status !== CreditFacilityStatus::APPROVED) {
+                throw new Exception('يمكن للإدارة إلغاء الاعتماد فقط بعد موافقة جهة تمويل.', 422);
+            }
+
+            if ((float)$creditFacility->utilized_amount > 0 || $creditFacility->orderAllocations()->exists()) {
+                throw new Exception('لا يمكن إلغاء هذا الاعتماد بعد استخدامه في طلبات شراء.', 422);
+            }
+
+            DB::transaction(function () use ($creditFacility) {
+                $facility = CreditFacility::with(['application', 'user'])->lockForUpdate()->findOrFail($creditFacility->id);
+                $user = User::lockForUpdate()->findOrFail($facility->user_id);
+                $reversalAmount = (float)$facility->available_amount;
+
+                if ($reversalAmount <= 0) {
+                    throw new Exception('لا يوجد رصيد متاح لإرجاعه من هذا الاعتماد.', 422);
+                }
+
+                if ((float)$user->balance < $reversalAmount) {
+                    throw new Exception('لا يمكن إلغاء الاعتماد حالياً لأن رصيد المحفظة أقل من الرصيد المعتمد.', 422);
+                }
+
+                $before = (float)$user->balance;
+                $user->balance = $before - $reversalAmount;
+                $user->save();
+
+                WalletTransaction::create([
+                    'user_id'                       => $user->id,
+                    'financial_institution_user_id' => $facility->financial_institution_user_id,
+                    'credit_application_id'         => $facility->credit_application_id,
+                    'credit_facility_id'            => $facility->id,
+                    'type'                          => 'facility_reset',
+                    'direction'                     => 'debit',
+                    'amount'                        => $reversalAmount,
+                    'balance_before'                => $before,
+                    'balance_after'                 => (float)$user->balance,
+                    'description'                   => 'تم إلغاء اعتماد الجهة التمويلية وإعادة الطلب إلى قائمة المراجعة',
+                    'meta'                          => ['reset_by_admin' => true],
+                ]);
+
+                $application = $facility->application;
+                $facility->delete();
+                $this->refreshApplicationStatus($application);
+            });
+
+            return CreditApplication::with(['user', 'facilities.institution.financialInstitutionProfile'])
+                ->findOrFail($creditFacility->credit_application_id);
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
     public function approve(CreditApplication $creditApplication, CreditApplicationDecisionRequest $request): CreditFacility
     {
         try {
             $actor = Auth::user();
             if (!$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) && !$actor->hasRole(EnumRole::ADMIN)) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if (
+                $creditApplication->status !== CreditApplicationStatus::PENDING ||
+                $creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()
+            ) {
+                throw new Exception('تمت مراجعة هذا الطلب بالفعل من جهة تمويل أخرى.', 422);
             }
 
             if ($creditApplication->facilities()->where('financial_institution_user_id', $actor->id)->exists()) {
@@ -177,6 +264,13 @@ class CreditApplicationService
             $actor = Auth::user();
             if (!$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) && !$actor->hasRole(EnumRole::ADMIN)) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if (
+                $creditApplication->status !== CreditApplicationStatus::PENDING ||
+                $creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()
+            ) {
+                throw new Exception('تمت مراجعة هذا الطلب بالفعل من جهة تمويل أخرى.', 422);
             }
 
             if ($creditApplication->facilities()->where('financial_institution_user_id', $actor->id)->exists()) {

@@ -85,13 +85,25 @@
         </div>
 
         <div class="col-12">
-            <router-link :to="{ name: 'admin.lendingPortfolio.list' }" class="db-btn py-2 text-white bg-gray-600">العودة للمحفظة التمويلية</router-link>
+            <div class="flex gap-2 flex-wrap">
+                <button
+                    v-if="canResetApproval"
+                    class="db-btn py-2 text-white bg-red-500"
+                    @click="resetApproval"
+                >
+                    إلغاء الاعتماد وإعادة الطلب للمراجعة
+                </button>
+                <router-link :to="{ name: 'admin.lendingPortfolio.list' }" class="db-btn py-2 text-white bg-gray-600">العودة للمحفظة التمويلية</router-link>
+            </div>
         </div>
     </div>
 </template>
 
 <script>
 import LoadingComponent from "../components/LoadingComponent.vue";
+import alertService from "../../../services/alertService";
+import appService from "../../../services/appService";
+import roleEnum from "../../../enums/modules/roleEnum";
 
 export default {
     name: "LendingPortfolioShowComponent",
@@ -117,6 +129,14 @@ export default {
                 { label: "إجمالي المشتريات الشهرية", value: intelligence.total_monthly_purchase_currency || "--" },
             ];
         },
+        authInfo: function () {
+            return this.$store.getters.authInfo || {};
+        },
+        canResetApproval: function () {
+            return this.authInfo.role_id === roleEnum.ADMIN &&
+                this.facility.status === "approved" &&
+                Number(this.facility.utilized_amount || 0) === 0;
+        },
     },
     mounted() {
         this.loading.isActive = true;
@@ -136,6 +156,21 @@ export default {
                 return "منتهي";
             }
             return status || "--";
+        },
+        resetApproval: function () {
+            appService.submitConfirmation().then(() => {
+                this.loading.isActive = true;
+                this.$store.dispatch("creditApplicationReview/resetApproval", this.facility.id).then((res) => {
+                    alertService.success(res.data.message || "تم إلغاء الاعتماد وإعادة الطلب إلى قائمة المراجعة.");
+                    this.$router.push({ name: "admin.creditRequests.list" });
+                }).catch((err) => {
+                    alertService.error(err.response?.data?.message || "تعذر إلغاء الاعتماد.");
+                }).finally(() => {
+                    this.loading.isActive = false;
+                });
+            }).catch(() => {
+                this.loading.isActive = false;
+            });
         },
     },
 };
