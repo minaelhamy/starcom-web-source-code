@@ -60,19 +60,24 @@ class StarcomIntelligenceCalculator
 
     private static function empty(string $note): array
     {
+        $averageDailySales = 15000;
+        $averageWeeklyPurchase = 7000;
+        $averageMonthlySales = $averageDailySales * 28;
+        $totalMonthlyPurchase = $averageWeeklyPurchase * 4;
+
         return [
-            'is_placeholder'                   => false,
+            'is_placeholder'                   => true,
             'invoices_count'                   => 0,
             'total_invoice_amount'             => 0,
             'total_invoice_amount_currency'    => AppLibrary::currencyAmountFormat(0),
-            'average_weekly_purchase'          => 0,
-            'average_weekly_purchase_currency' => AppLibrary::currencyAmountFormat(0),
-            'average_daily_sales'              => 0,
-            'average_daily_sales_currency'     => AppLibrary::currencyAmountFormat(0),
-            'average_monthly_sales'            => 0,
-            'average_monthly_sales_currency'   => AppLibrary::currencyAmountFormat(0),
-            'total_monthly_purchase'           => 0,
-            'total_monthly_purchase_currency'  => AppLibrary::currencyAmountFormat(0),
+            'average_weekly_purchase'          => $averageWeeklyPurchase,
+            'average_weekly_purchase_currency' => AppLibrary::currencyAmountFormat($averageWeeklyPurchase),
+            'average_daily_sales'              => $averageDailySales,
+            'average_daily_sales_currency'     => AppLibrary::currencyAmountFormat($averageDailySales),
+            'average_monthly_sales'            => $averageMonthlySales,
+            'average_monthly_sales_currency'   => AppLibrary::currencyAmountFormat($averageMonthlySales),
+            'total_monthly_purchase'           => $totalMonthlyPurchase,
+            'total_monthly_purchase_currency'  => AppLibrary::currencyAmountFormat($totalMonthlyPurchase),
             'label'                            => 'Starcom Intelligence',
             'note'                             => $note,
         ];
