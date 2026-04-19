@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Enums\Role;
 use App\Libraries\AppLibrary;
+use App\Support\StarcomIntelligenceCalculator;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Auth;
 
@@ -34,7 +35,7 @@ class CreditFacilityResource extends JsonResource
             'due_at'            => $this->due_at ? $this->due_at->toDateString() : null,
             'reviewed_at'       => $this->reviewed_at ? $this->reviewed_at->toDateTimeString() : null,
             'notes'             => $this->notes,
-            'starcom_intelligence' => $this->starcomIntelligence($this->user),
+            'starcom_intelligence' => StarcomIntelligenceCalculator::forUser($this->user),
             'institution'       => $showInstitution && $this->institution ? [
                 'id'           => $this->institution->id,
                 'name'         => $this->institution->name,
@@ -54,26 +55,4 @@ class CreditFacilityResource extends JsonResource
         ];
     }
 
-    private function starcomIntelligence($user): array
-    {
-        $seed = (int)($user?->id ?? 1);
-        $weeklyPurchase = 12000 + ($seed % 5) * 1750;
-        $dailySales = 3200 + ($seed % 4) * 450;
-        $monthlySales = $dailySales * 26;
-        $monthlyPurchase = $weeklyPurchase * 4;
-
-        return [
-            'is_placeholder'                    => true,
-            'average_weekly_purchase'           => $weeklyPurchase,
-            'average_weekly_purchase_currency'  => AppLibrary::currencyAmountFormat($weeklyPurchase),
-            'average_daily_sales'               => $dailySales,
-            'average_daily_sales_currency'      => AppLibrary::currencyAmountFormat($dailySales),
-            'average_monthly_sales'             => $monthlySales,
-            'average_monthly_sales_currency'    => AppLibrary::currencyAmountFormat($monthlySales),
-            'total_monthly_purchase'            => $monthlyPurchase,
-            'total_monthly_purchase_currency'   => AppLibrary::currencyAmountFormat($monthlyPurchase),
-            'label'                             => 'Starcom Intelligence',
-            'note'                              => 'قيم مبدئية للعرض فقط حتى يتم اعتماد طريقة الحساب النهائية.',
-        ];
-    }
 }
