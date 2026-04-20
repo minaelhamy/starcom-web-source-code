@@ -152,6 +152,7 @@ export default {
                 { label: "متوسط المبيعات اليومية", value: intelligence.average_daily_sales_currency || "--" },
                 { label: "متوسط المبيعات الشهرية", value: intelligence.average_monthly_sales_currency || "--" },
                 { label: "إجمالي المشتريات الشهرية", value: intelligence.total_monthly_purchase_currency || "--" },
+                { label: "المبلغ الائتماني المقترح", value: intelligence.credit_proposed_amount_currency || "--" },
             ];
         },
         authInfo: function () {

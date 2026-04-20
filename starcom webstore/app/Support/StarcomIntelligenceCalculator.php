@@ -36,9 +36,10 @@ class StarcomIntelligenceCalculator
         }
 
         $averageDailySales = $totalInvoiceAmount / $invoicesCount;
-        $averageWeeklyPurchase = $averageDailySales * 7;
-        $averageMonthlySales = $averageDailySales * 28;
+        $averageWeeklyPurchase = $averageDailySales * 0.9;
+        $averageMonthlySales = $averageDailySales * 26;
         $totalMonthlyPurchase = $averageWeeklyPurchase * 4;
+        $creditProposedAmount = $averageWeeklyPurchase;
 
         return [
             'is_placeholder'                   => false,
@@ -53,6 +54,8 @@ class StarcomIntelligenceCalculator
             'average_monthly_sales_currency'   => AppLibrary::currencyAmountFormat($averageMonthlySales),
             'total_monthly_purchase'           => $totalMonthlyPurchase,
             'total_monthly_purchase_currency'  => AppLibrary::currencyAmountFormat($totalMonthlyPurchase),
+            'credit_proposed_amount'           => $creditProposedAmount,
+            'credit_proposed_amount_currency'  => AppLibrary::currencyAmountFormat($creditProposedAmount),
             'label'                            => 'Starcom Intelligence',
             'note'                             => 'تم احتساب المؤشرات اعتماداً على تاريخ مشتريات العميل من ستاركوم.',
         ];
@@ -61,9 +64,10 @@ class StarcomIntelligenceCalculator
     private static function empty(string $note): array
     {
         $averageDailySales = 15000;
-        $averageWeeklyPurchase = 7000;
-        $averageMonthlySales = $averageDailySales * 28;
+        $averageWeeklyPurchase = $averageDailySales * 0.9;
+        $averageMonthlySales = $averageDailySales * 26;
         $totalMonthlyPurchase = $averageWeeklyPurchase * 4;
+        $creditProposedAmount = $averageWeeklyPurchase;
 
         return [
             'is_placeholder'                   => true,
@@ -78,6 +82,8 @@ class StarcomIntelligenceCalculator
             'average_monthly_sales_currency'   => AppLibrary::currencyAmountFormat($averageMonthlySales),
             'total_monthly_purchase'           => $totalMonthlyPurchase,
             'total_monthly_purchase_currency'  => AppLibrary::currencyAmountFormat($totalMonthlyPurchase),
+            'credit_proposed_amount'           => $creditProposedAmount,
+            'credit_proposed_amount_currency'  => AppLibrary::currencyAmountFormat($creditProposedAmount),
             'label'                            => 'Starcom Intelligence',
             'note'                             => $note,
         ];
