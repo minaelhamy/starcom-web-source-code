@@ -120,6 +120,7 @@ return [
         'product_attribute_invalid'        => 'This product attribute id provide invalid.',
         'product_attribute_option_invalid' => 'This product attribute option id provide invalid.',
         'sku_exist'                        => 'The sku has already been taken.',
+        'numeric_barcode_sku_only'         => 'SKU must contain numbers only when using EAN-13 or UPC-A barcode.',
         'resource_already_used'            => 'Cannot remove this resource permanently. It is related with another resource.',
         'variation_sku_required'           => 'The sku field is required.',
         'email_or_phone_required'          => 'The email or phone field is required.',

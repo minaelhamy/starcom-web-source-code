@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\BarcodeType;
 use App\Models\ProductVariation;
 use App\Rules\IniAmount;
 use Illuminate\Foundation\Http\FormRequest;
@@ -35,12 +36,12 @@ class ProductRequest extends FormRequest
             ],
             'sku'                        => [
                 'required',
-                'numeric',
-                'max_digits:7',
+                'string',
+                'max:190',
                 Rule::unique("products", "sku")->whereNull('deleted_at')->ignore($this->route('product.id'))
             ],
             'product_category_id'        => ['required', 'numeric', 'not_in:0'],
-            'barcode_id'                 => ['required', 'numeric', 'not_in:0'],
+            'barcode_id'                 => ['nullable', 'numeric', 'not_in:0'],
             'buying_price'               => ['required', new IniAmount()],
             'selling_price'              => ['required', new IniAmount()],
             'tax_id[]'                   => ['nullable', 'numeric', 'max_digits:10'],
@@ -76,6 +77,13 @@ class ProductRequest extends FormRequest
             $sku = ProductVariation::where('sku', $this->sku)->first();
             if ($sku) {
                 $validator->getMessageBag()->add('sku', trans('all.message.sku_exist'));
+            }
+
+            if (
+                in_array((int) $this->barcode_id, [BarcodeType::EAN_13, BarcodeType::UPC_A], true) &&
+                !preg_match('/^\d+$/', (string) $this->sku)
+            ) {
+                $validator->getMessageBag()->add('sku', trans('all.message.numeric_barcode_sku_only'));
             }
         });
     }

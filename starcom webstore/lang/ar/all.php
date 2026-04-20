@@ -120,6 +120,7 @@ return [
         'product_attribute_invalid'        => '.معرف سمة المنتج غير صالح',
         'product_attribute_option_invalid' => '.معرف خيار سمة المنتج غير صالح',
         'sku_exist'                        => '.SKU موجود بالفعل',
+        'numeric_barcode_sku_only'         => '.عند اختيار باركود EAN-13 أو UPC-A يجب أن يحتوي SKU على أرقام فقط',
         'resource_already_used'            => '.المورد تم استخدامه بالفعل ولا يمكن حذفه. إنه مرتبط بمورد آخر',
         'variation_sku_required'           => '.مطلوب SKU لهذه الاختلافات',
         'email_or_phone_required'          => '.البريد الإلكتروني أو الهاتف مطلوب',

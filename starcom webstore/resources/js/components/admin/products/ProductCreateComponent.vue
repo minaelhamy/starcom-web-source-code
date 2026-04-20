@@ -22,7 +22,7 @@
                     <div class="form-col-12 sm:form-col-6">
                         <label for="sku" class="db-field-title required">{{ $t("label.sku") }}</label>
                         <div class="db-group-field">
-                            <input v-on:keypress="onlyNumber($event)" v-model="props.form.sku"
+                            <input v-model="props.form.sku"
                                 v-bind:class="errors.sku ? 'invalid' : ''" type="text" id="sku">
                             <button type="button" @click="getSku" class="lab lab-fill-shuffle"></button>
                         </div>
@@ -44,7 +44,7 @@
                     </div>
 
                     <div class="form-col-12 sm:form-col-6">
-                        <label for="barcode_id" class="db-field-title required">{{ $t("label.barcode") }}</label>
+                        <label for="barcode_id" class="db-field-title">{{ $t("label.barcode") }}</label>
                         <vue-select class="db-field-control f-b-custom-select" id="barcode_id"
                             v-bind:class="errors.barcode_id ? 'invalid' : ''" v-model="props.form.barcode_id"
                             :options="barcodes" label-by="name" value-by="id" :closeOnSelect="true" :searchable="true"
