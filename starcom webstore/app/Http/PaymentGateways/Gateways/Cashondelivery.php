@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Stock;
 use App\Enums\Activity;
 use App\Models\PaymentGateway;
+use App\Services\OrderStockService;
 use App\Services\PaymentService;
 use App\Services\PaymentAbstract;
 use Illuminate\Support\Facades\DB;
@@ -79,9 +80,9 @@ class Cashondelivery extends PaymentAbstract
                     $token                      = $capturePaymentNotification->first();
 
                     if (!blank($token) && $order->id == $token->order_id) {
+                        app(OrderStockService::class)->activateOrderStocks($order);
                         $order->active = Ask::YES;
                         $order->save();
-                        Stock::where(['model_id' => $order->id, 'model_type' => Order::class, 'status' => Status::INACTIVE])?->update(['status' => Status::ACTIVE]);
                         $capturePaymentNotification->delete();
                         $this->response = true;
                     }

@@ -125,6 +125,8 @@ class FrontendOrderService
 
                 $products = json_decode($request->products);
                 if (!blank($products)) {
+                    app(OrderStockService::class)->assertProductsAvailable($products, true);
+
                     foreach ($products as $product) {
                         $stockId = Stock::create([
                             'product_id'      => $product->product_id,

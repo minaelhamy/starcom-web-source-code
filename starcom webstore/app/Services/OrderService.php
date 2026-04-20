@@ -195,6 +195,8 @@ class OrderService
 
                 $products = json_decode($request->products);
                 if (!blank($products)) {
+                    app(OrderStockService::class)->assertProductsAvailable($products, true);
+
                     foreach ($products as $product) {
                         $stockId = Stock::create([
                             'product_id'      => $product->product_id,
@@ -303,6 +305,8 @@ class OrderService
                                 rand(111111111111111, 99999999999999)
                             );
                         }
+
+                        app(OrderStockService::class)->releaseOrderStocks($order);
                     }
                     SendOrderMail::dispatch(['order_id' => $order->id, 'status' => $request->status]);
                     SendOrderSms::dispatch(['order_id' => $order->id, 'status' => $request->status]);
@@ -327,6 +331,8 @@ class OrderService
                             rand(111111111111111, 99999999999999)
                         );
                     }
+
+                    app(OrderStockService::class)->releaseOrderStocks($order);
                 }
                 SendOrderMail::dispatch(['order_id' => $order->id, 'status' => $request->status]);
                 SendOrderSms::dispatch(['order_id' => $order->id, 'status' => $request->status]);

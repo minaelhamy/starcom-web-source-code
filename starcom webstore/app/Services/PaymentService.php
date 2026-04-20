@@ -48,7 +48,7 @@ class PaymentService
                 $order->active         = Ask::YES;
                 $order->payment_status = PaymentStatus::PAID;
                 $order->save();
-                Stock::where(['model_id' => $order->id, 'model_type' => Order::class, 'status' => Status::INACTIVE])?->update(['status' => Status::ACTIVE]);
+                app(OrderStockService::class)->activateOrderStocks($order);
 
                 SendOrderMail::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
                 SendOrderSms::dispatch(['order_id' => $order->id, 'status' => OrderStatus::PENDING]);
