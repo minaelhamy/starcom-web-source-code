@@ -9,7 +9,7 @@
                 <div class="col-12 lg:col-6">
                     <div class="space-y-2 text-sm">
                         <div><span class="font-semibold">العميل:</span> {{ application.user?.name || "--" }}</div>
-                        <div><span class="font-semibold">البريد:</span> {{ application.user?.email || "--" }}</div>
+                        <div><span class="font-semibold">العنوان:</span> {{ application.user?.address || "--" }}</div>
                         <div><span class="font-semibold">الهاتف:</span> {{ application.user?.phone || "--" }}</div>
                         <div><span class="font-semibold">المحفظة الحالية:</span> {{ application.user?.wallet_balance || "--" }}</div>
                         <div><span class="font-semibold">حالة الطلب:</span> {{ statusText(application.status) }}</div>

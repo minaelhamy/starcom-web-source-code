@@ -9,7 +9,7 @@
                 <div class="col-12 lg:col-6">
                     <div class="space-y-2 text-sm">
                         <div><span class="font-semibold">العميل:</span> {{ facility.user?.name || "--" }}</div>
-                        <div><span class="font-semibold">البريد:</span> {{ facility.user?.email || "--" }}</div>
+                        <div><span class="font-semibold">العنوان:</span> {{ facility.user?.address || "--" }}</div>
                         <div><span class="font-semibold">الهاتف:</span> {{ facility.user?.phone || "--" }}</div>
                         <div><span class="font-semibold">المبلغ المعتمد:</span> {{ facility.approved_currency || "--" }}</div>
                         <div><span class="font-semibold">المتاح:</span> {{ facility.available_currency || "--" }}</div>

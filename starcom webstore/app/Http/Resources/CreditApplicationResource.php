@@ -34,6 +34,7 @@ class CreditApplicationResource extends JsonResource
                 'name'            => $this->user->name,
                 'email'           => $this->user->email,
                 'phone'           => trim(($this->user->country_code ?: '') . ' ' . ($this->user->phone ?: '')),
+                'address'         => $this->user->address,
                 'balance'         => (float)$this->user->balance,
                 'wallet_balance'  => AppLibrary::currencyAmountFormat($this->user->balance),
             ] : null,

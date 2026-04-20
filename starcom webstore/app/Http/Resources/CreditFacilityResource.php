@@ -26,6 +26,7 @@ class CreditFacilityResource extends JsonResource
                 'name'  => $this->user->name,
                 'email' => $this->user->email,
                 'phone' => trim(($this->user->country_code ?: '') . ' ' . ($this->user->phone ?: '')),
+                'address' => $this->user->address,
             ] : null,
             'approved_currency' => AppLibrary::currencyAmountFormat($this->approved_amount),
             'available_currency'=> AppLibrary::currencyAmountFormat($this->available_amount),

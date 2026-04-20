@@ -38,7 +38,7 @@ class StarcomIntelligenceCalculator
         $averageDailySales = $totalInvoiceAmount / $invoicesCount;
         $averageWeeklyPurchase = $averageDailySales * 0.9;
         $averageMonthlySales = $averageDailySales * 26;
-        $totalMonthlyPurchase = $averageWeeklyPurchase * 4;
+        $totalMonthlyPurchase = $averageMonthlySales * 0.95;
         $creditProposedAmount = $averageWeeklyPurchase;
 
         return [
@@ -66,7 +66,7 @@ class StarcomIntelligenceCalculator
         $averageDailySales = 15000;
         $averageWeeklyPurchase = $averageDailySales * 0.9;
         $averageMonthlySales = $averageDailySales * 26;
-        $totalMonthlyPurchase = $averageWeeklyPurchase * 4;
+        $totalMonthlyPurchase = $averageMonthlySales * 0.95;
         $creditProposedAmount = $averageWeeklyPurchase;
 
         return [
