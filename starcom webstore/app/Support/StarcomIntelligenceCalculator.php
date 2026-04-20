@@ -39,7 +39,7 @@ class StarcomIntelligenceCalculator
         $averageWeeklyPurchase = $averageDailySales * 0.9;
         $averageMonthlySales = $averageDailySales * 26;
         $totalMonthlyPurchase = $averageMonthlySales * 0.95;
-        $creditProposedAmount = $averageWeeklyPurchase;
+        $creditProposedAmount = $totalMonthlyPurchase * 0.25;
 
         return [
             'is_placeholder'                   => false,
@@ -67,7 +67,7 @@ class StarcomIntelligenceCalculator
         $averageWeeklyPurchase = $averageDailySales * 0.9;
         $averageMonthlySales = $averageDailySales * 26;
         $totalMonthlyPurchase = $averageMonthlySales * 0.95;
-        $creditProposedAmount = $averageWeeklyPurchase;
+        $creditProposedAmount = $totalMonthlyPurchase * 0.25;
 
         return [
             'is_placeholder'                   => true,
