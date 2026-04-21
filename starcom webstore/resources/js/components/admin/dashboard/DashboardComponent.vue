@@ -10,38 +10,43 @@
         <h3 class="capitalize font-bold text-2xl text-primary mb-1.5">{{ visitorMessage() }}</h3>
         <h4 class="capitalize font-medium text-xl text-secondary">{{ authInfo.name }}</h4>
     </div>
-    <!--========OVERVIEW START=============-->
-    <OverviewComponent />
-    <!--========OVERVIEW END=============-->
+    <LenderDashboardComponent v-if="isLender" />
+    <template v-else>
+        <!--========OVERVIEW START=============-->
+        <OverviewComponent />
+        <!--========OVERVIEW END=============-->
 
-    <!--========ORDER STATISTIC START=============-->
-    <OrderStatisticsComponent />
-    <!--========ORDER STATISTIC END=============-->
-    <div class="row">
-        <!--========SALES SUMMARY START=============-->
-        <SalesSummaryComponent />
-        <!--========SALES SUMMARY END=============-->
+        <!--========ORDER STATISTIC START=============-->
+        <OrderStatisticsComponent />
+        <!--========ORDER STATISTIC END=============-->
+        <div class="row">
+            <!--========SALES SUMMARY START=============-->
+            <SalesSummaryComponent />
+            <!--========SALES SUMMARY END=============-->
 
-        <!--========ORDERS SUMMARY START=============-->
-        <OrderSummaryComponent />
-        <!--========ORDERS SUMMARY END=============-->
+            <!--========ORDERS SUMMARY START=============-->
+            <OrderSummaryComponent />
+            <!--========ORDERS SUMMARY END=============-->
 
-        <!--========CUSTOMER STATS START=============-->
-        <CustomerStatsComponent />
-        <!--========CUSTOMER STATS END=============-->
+            <!--========CUSTOMER STATS START=============-->
+            <CustomerStatsComponent />
+            <!--========CUSTOMER STATS END=============-->
 
-        <!--========TOP CUSTOMERS START=============-->
-        <TopCustomersComponent />
-        <!--========TOP CUSTOMERS END=============-->
+            <!--========TOP CUSTOMERS START=============-->
+            <TopCustomersComponent />
+            <!--========TOP CUSTOMERS END=============-->
 
-        <!--========MOST POPULAR ITEMS START=============-->
-        <TopProductsComponent />
-        <!--========MOST POPULAR ITEMS END=============-->
-    </div>
+            <!--========MOST POPULAR ITEMS START=============-->
+            <TopProductsComponent />
+            <!--========MOST POPULAR ITEMS END=============-->
+        </div>
+    </template>
 </template>
 
 <script>
 import LoadingComponent from "../components/LoadingComponent";
+import roleEnum from "../../../enums/modules/roleEnum";
+import LenderDashboardComponent from "./LenderDashboardComponent.vue";
 import OverviewComponent from "./OverviewComponent";
 import OrderStatisticsComponent from "./OrderStatisticsComponent";
 import SalesSummaryComponent from "./SalesSummaryComponent";
@@ -55,6 +60,7 @@ export default {
     name: "DashboardComponent",
     components: {
         LoadingComponent,
+        LenderDashboardComponent,
         OverviewComponent,
         OrderStatisticsComponent,
         SalesSummaryComponent,
@@ -74,6 +80,9 @@ export default {
     computed: {
         authInfo: function () {
             return this.$store.getters.authInfo;
+        },
+        isLender: function () {
+            return this.authInfo?.role_id === roleEnum.FINANCIAL_INSTITUTION;
         }
     },
     methods: {

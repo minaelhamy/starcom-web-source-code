@@ -8,6 +8,7 @@ export const dashboard = {
         totalOrders: [],
         totalCustomers: [],
         totalProducts: [],
+        lenderSummary: {},
         orderStatistics: [],
         orderSummary: [],
         salesSummary: [],
@@ -29,6 +30,9 @@ export const dashboard = {
         },
         totalProducts: function (state) {
             return state.totalProducts;
+        },
+        lenderSummary: function (state) {
+            return state.lenderSummary;
         },
         orderStatistics: function (state) {
             return state.orderStatistics;
@@ -99,6 +103,19 @@ export const dashboard = {
                     .get("admin/dashboard/total-products")
                     .then((res) => {
                         context.commit("totalProducts", res.data.data);
+                        resolve(res);
+                    })
+                    .catch((err) => {
+                        reject(err);
+                    });
+            });
+        },
+        lenderSummary: function (context) {
+            return new Promise((resolve, reject) => {
+                axios
+                    .get("admin/dashboard/lender-summary")
+                    .then((res) => {
+                        context.commit("lenderSummary", res.data.data);
                         resolve(res);
                     })
                     .catch((err) => {
@@ -206,6 +223,9 @@ export const dashboard = {
         },
         totalProducts: function (state, payload) {
             state.totalProducts = payload;
+        },
+        lenderSummary: function (state, payload) {
+            state.lenderSummary = payload;
         },
         orderStatistics: function (state, payload) {
             state.orderStatistics = payload;

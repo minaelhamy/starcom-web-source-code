@@ -55,7 +55,10 @@ export default {
             const defaultMenu = this.$store.getters.authDefaultMenu || {};
 
             if (authInfo.role_id && authInfo.role_id !== roleEnum.CUSTOMER) {
-                router.push({ path: `/admin/${defaultMenu.url || "dashboard"}` });
+                const targetPath = authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION
+                    ? "/admin/dashboard"
+                    : `/admin/${defaultMenu.url || "dashboard"}`;
+                router.push({ path: targetPath });
                 return;
             }
 

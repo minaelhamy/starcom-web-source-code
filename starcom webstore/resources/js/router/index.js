@@ -116,8 +116,7 @@ const router = createRouter({
 });
 
 const lenderLandingPath = function () {
-    const defaultUrl = store.getters.authDefaultMenu?.url || "credit-requests";
-    return `/admin/${defaultUrl}`;
+    return "/admin/dashboard";
 };
 
 router.beforeEach((to, from, next) => {
