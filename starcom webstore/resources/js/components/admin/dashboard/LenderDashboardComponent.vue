@@ -11,7 +11,7 @@
                     </div>
                     <div>
                         <h3 class="font-medium tracking-wide text-white">{{ card.title }}</h3>
-                        <h4 class="font-semibold text-[22px] leading-[34px] text-white">{{ card.value }}</h4>
+                        <h4 class="font-semibold text-[22px] leading-[34px] text-white">{{ card.displayValue }}</h4>
                         <p class="text-white/80 text-xs">{{ card.note }}</p>
                     </div>
                 </div>
@@ -35,15 +35,15 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
                     <div class="rounded-lg border border-[#E8E8F3] p-4">
                         <p class="text-sm text-secondary mb-1">إجمالي قيمة المحافظ</p>
-                        <h5 class="text-xl font-semibold text-heading">{{ summary.wallet_value_currency || currency(0) }}</h5>
+                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.wallet_value_currency, summary.wallet_value) }}</h5>
                     </div>
                     <div class="rounded-lg border border-[#E8E8F3] p-4">
                         <p class="text-sm text-secondary mb-1">الرصيد المتاح</p>
-                        <h5 class="text-xl font-semibold text-heading">{{ summary.available_wallet_value_currency || currency(0) }}</h5>
+                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.available_wallet_value_currency, summary.available_wallet_value) }}</h5>
                     </div>
                     <div class="rounded-lg border border-[#E8E8F3] p-4">
                         <p class="text-sm text-secondary mb-1">الرصيد المستخدم</p>
-                        <h5 class="text-xl font-semibold text-heading">{{ summary.utilized_wallet_value_currency || currency(0) }}</h5>
+                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.utilized_wallet_value_currency, summary.utilized_wallet_value) }}</h5>
                     </div>
                 </div>
 
@@ -163,32 +163,35 @@ export default {
         };
     },
     computed: {
+        setting: function () {
+            return this.$store.getters["frontendSetting/lists"] || {};
+        },
         cards: function () {
             return [
                 {
                     title: "فرص التمويل",
-                    value: this.summary.opportunities_count ?? 0,
+                    displayValue: this.summary.opportunities_count ?? 0,
                     note: "عدد الطلبات المتاحة الآن للمراجعة",
                     className: "bg-admin-orange",
                     icon: "lab-fill-document text-admin-orange text-2xl lab-font-size-24",
                 },
                 {
                     title: "العملاء الممولون",
-                    value: this.summary.active_customers_count ?? 0,
+                    displayValue: this.summary.active_customers_count ?? 0,
                     note: "عملاء لديهم محافظ معتمدة من جهتك",
                     className: "bg-admin-purple",
                     icon: "lab-fill-users text-admin-purple text-2xl lab-font-size-24",
                 },
                 {
                     title: "قيمة المحافظ",
-                    value: this.summary.wallet_value_currency || this.currency(0),
+                    displayValue: this.displayCurrency(this.summary.wallet_value_currency, this.summary.wallet_value),
                     note: "إجمالي حدود التمويل المعتمدة",
                     className: "bg-admin-pink",
                     icon: "lab-fill-wallet text-admin-pink text-2xl lab-font-size-24",
                 },
                 {
                     title: "طلبات تمت مراجعتها",
-                    value: this.summary.reviewed_requests_count ?? 0,
+                    displayValue: this.summary.reviewed_requests_count ?? 0,
                     note: `تم رفض ${this.summary.declined_requests_count ?? 0} طلب حتى الآن`,
                     className: "bg-admin-blue",
                     icon: "lab-fill-box text-admin-blue text-2xl lab-font-size-24",
@@ -222,8 +225,22 @@ export default {
                 this.loading.isActive = false;
             });
         },
-        currency: function (amount) {
-            return appService.currencyFormat(amount);
+        displayCurrency: function (formattedValue, rawAmount = 0) {
+            if (formattedValue !== null && formattedValue !== undefined && formattedValue !== "") {
+                return formattedValue;
+            }
+
+            const decimal = Number.isFinite(Number(this.setting.site_digit_after_decimal_point))
+                ? Number(this.setting.site_digit_after_decimal_point)
+                : 2;
+            const symbol = this.setting.site_default_currency_symbol || "";
+            const position = this.setting.site_currency_position;
+
+            if (symbol && position !== undefined && position !== null && position !== "") {
+                return appService.currencyFormat(rawAmount || 0, decimal, symbol, position);
+            }
+
+            return Number(rawAmount || 0).toFixed(decimal);
         },
     },
 };
