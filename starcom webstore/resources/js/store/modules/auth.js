@@ -1,4 +1,57 @@
 import axios from "axios";
+import roleEnum from "../../enums/modules/roleEnum";
+
+const lenderDashboardPermission = {
+    id: "lender-dashboard",
+    title: "Dashboard",
+    name: "dashboard",
+    url: "dashboard",
+    access: true,
+};
+
+const lenderDashboardMenu = {
+    id: "lender-dashboard",
+    name: "Dashboard",
+    language: "dashboard",
+    url: "dashboard",
+    icon: "lab lab-line-dashboard",
+    status: 1,
+    parent: null,
+    type: null,
+    priority: 0,
+};
+
+const augmentLenderDashboardAccess = function (state) {
+    if (state.authInfo?.role_id !== roleEnum.FINANCIAL_INSTITUTION) {
+        return;
+    }
+
+    const permissions = Array.isArray(state.authPermission) ? [...state.authPermission] : [];
+    if (!permissions.some((permission) => permission?.url === "dashboard")) {
+        permissions.unshift({ ...lenderDashboardPermission });
+    } else {
+        state.authPermission = permissions.map((permission) => {
+            if (permission?.url === "dashboard") {
+                return { ...permission, access: true, title: permission.title || "Dashboard", name: permission.name || "dashboard" };
+            }
+            return permission;
+        });
+    }
+
+    if (!Array.isArray(state.authPermission) || !state.authPermission.some((permission) => permission?.url === "dashboard")) {
+        state.authPermission = permissions;
+    }
+
+    const menus = Array.isArray(state.authMenu) ? [...state.authMenu] : [];
+    if (!menus.some((menu) => menu?.url === "dashboard")) {
+        menus.unshift({ ...lenderDashboardMenu });
+    }
+    state.authMenu = menus;
+
+    if (!state.authDefaultMenu?.url || state.authDefaultMenu?.url === "credit-requests") {
+        state.authDefaultMenu = { ...lenderDashboardMenu };
+    }
+};
 
 export const auth = {
     state: {
@@ -271,6 +324,7 @@ export const auth = {
             state.authPermission = payload.permission;
             state.authDefaultPermission = payload.defaultPermission;
             state.authDefaultMenu = payload.defaultMenu;
+            augmentLenderDashboardAccess(state);
         },
         authLogout: function (state) {
             state.authStatus = false;

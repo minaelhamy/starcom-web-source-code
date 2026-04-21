@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use App\Libraries\AppLibrary;
 use App\Models\CreditApplication;
 use App\Models\CreditFacility;
+use App\Services\CreditApplicationService;
 use App\Services\ProductService;
 use App\Services\DashboardService;
 use App\Http\Resources\UserResource;
@@ -27,12 +28,14 @@ class DashboardController extends AdminController implements HasMiddleware
 {
     private DashboardService $dashboardService;
     private ProductService $productService;
+    private CreditApplicationService $creditApplicationService;
 
-    public function __construct(DashboardService $dashboardService, ProductService $productService)
+    public function __construct(DashboardService $dashboardService, ProductService $productService, CreditApplicationService $creditApplicationService)
     {
         parent::__construct();
         $this->dashboardService = $dashboardService;
-        $this->productService      = $productService;
+        $this->productService = $productService;
+        $this->creditApplicationService = $creditApplicationService;
     }
 
     public static function middleware(): array
@@ -48,7 +51,6 @@ class DashboardController extends AdminController implements HasMiddleware
             new Middleware('permission:dashboard', only: ['totalOrders']),
             new Middleware('permission:dashboard', only: ['totalCustomers']),
             new Middleware('permission:dashboard', only: ['totalProducts']),
-            new Middleware('permission:dashboard', only: ['lenderSummary']),
         ];
     }
 
@@ -155,14 +157,7 @@ class DashboardController extends AdminController implements HasMiddleware
                 return response(['status' => false, 'message' => trans('all.message.permission_denied')], 403);
             }
 
-            $opportunitiesQuery = CreditApplication::with('user')
-                ->where('status', CreditApplicationStatus::PENDING)
-                ->whereDoesntHave('facilities', function ($facilityQuery) {
-                    $facilityQuery->where('status', CreditFacilityStatus::APPROVED);
-                })
-                ->whereDoesntHave('facilities', function ($facilityQuery) use ($actor) {
-                    $facilityQuery->where('financial_institution_user_id', $actor->id);
-                });
+            $opportunitiesQuery = $this->creditApplicationService->lenderOpportunitiesQuery($actor);
 
             $approvedFacilitiesQuery = CreditFacility::with('user')
                 ->where('financial_institution_user_id', $actor->id)

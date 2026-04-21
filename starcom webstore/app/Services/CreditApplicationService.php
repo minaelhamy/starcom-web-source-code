@@ -25,6 +25,18 @@ use App\Models\WalletTransaction;
 
 class CreditApplicationService
 {
+    public function lenderOpportunitiesQuery(User $actor)
+    {
+        return CreditApplication::with(['user', 'facilities.institution.financialInstitutionProfile'])
+            ->where('status', CreditApplicationStatus::PENDING)
+            ->whereDoesntHave('facilities', function ($facilityQuery) {
+                $facilityQuery->where('status', CreditFacilityStatus::APPROVED);
+            })
+            ->whereDoesntHave('facilities', function ($facilityQuery) use ($actor) {
+                $facilityQuery->where('financial_institution_user_id', $actor->id);
+            });
+    }
+
     public function customerList(PaginateRequest $request)
     {
         $method = $request->get('paginate', 0) == 1 ? 'paginate' : 'get';
@@ -96,13 +108,7 @@ class CreditApplicationService
         $query = CreditApplication::with(['user', 'facilities.institution.financialInstitutionProfile']);
 
         if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
-            $query->where('status', CreditApplicationStatus::PENDING)
-                ->whereDoesntHave('facilities', function ($facilityQuery) {
-                    $facilityQuery->where('status', CreditFacilityStatus::APPROVED);
-                })
-                ->whereDoesntHave('facilities', function ($facilityQuery) use ($actor) {
-                    $facilityQuery->where('financial_institution_user_id', $actor->id);
-                });
+            $query = $this->lenderOpportunitiesQuery($actor);
         } else {
             $query->where('status', '!=', CreditApplicationStatus::APPROVED);
         }
