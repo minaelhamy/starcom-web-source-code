@@ -45,6 +45,9 @@ export default {
         }
     },
     computed: {
+        authInfo: function () {
+            return this.$store.getters.authInfo || {};
+        },
         setting: function () {
             return this.$store.getters['frontendSetting/lists'];
         },
@@ -52,17 +55,31 @@ export default {
             return this.setting.theme_logo || this.defaultThemeLogo;
         },
         backendHomeRoute: function () {
-            const authInfo = this.$store.getters.authInfo || {};
             const defaultMenu = this.$store.getters.authDefaultMenu || {};
 
-            if (authInfo.role_id && authInfo.role_id !== roleEnum.CUSTOMER) {
+            if (this.authInfo.role_id && this.authInfo.role_id !== roleEnum.CUSTOMER) {
                 return `/admin/${defaultMenu.url || "dashboard"}`;
             }
 
             return { name: "frontend.home" };
         },
         menus: function () {
-            return this.$store.getters.authMenu;
+            const menus = Array.isArray(this.$store.getters.authMenu) ? [...this.$store.getters.authMenu] : [];
+
+            if (this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) {
+                const hasDashboardMenu = menus.some((menu) => menu?.url === "dashboard");
+
+                if (!hasDashboardMenu) {
+                    menus.unshift({
+                        name: "Dashboard",
+                        language: "dashboard",
+                        url: "dashboard",
+                        icon: "lab lab-line-dashboard",
+                    });
+                }
+            }
+
+            return menus;
         }
     },
 
