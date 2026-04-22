@@ -1,8 +1,11 @@
 <?php
 
 use App\Services\CartonaCustomerOnboardingService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -48,3 +51,170 @@ Artisan::command('cartona:sync-customers {--file=} {--pull}', function (CartonaC
 
     return self::SUCCESS;
 })->purpose('Sync Cartona customers, orders, and Starcom Intelligence customer profiles');
+
+Artisan::command('starcom:backfill-invoice-timeline {--year=2025} {--dry-run}', function () {
+    $year = (int)$this->option('year');
+    $dryRun = (bool)$this->option('dry-run');
+
+    if ($year < 2000 || $year > 2100) {
+        $this->error('Please provide a valid year, for example --year=2025');
+        return self::FAILURE;
+    }
+
+    if (!Schema::hasTable('starcom_intelligence') || !Schema::hasColumn('starcom_intelligence', 'invoice_date')) {
+        $this->error('The starcom_intelligence invoice timeline columns are missing. Run migrations first.');
+        return self::FAILURE;
+    }
+
+    $groups = DB::table('starcom_intelligence')
+        ->select([
+            'phone',
+            'country_code',
+            DB::raw('MIN(user_name) as user_name'),
+            DB::raw('MIN(phone_number) as phone_number'),
+            DB::raw('MIN(address) as address'),
+            DB::raw('MIN(city) as city'),
+            DB::raw('MIN(area) as area'),
+            DB::raw('MIN(latitude) as latitude'),
+            DB::raw('MIN(longitude) as longitude'),
+            DB::raw('MIN(distribution_route) as distribution_route'),
+            DB::raw('COUNT(*) as rows_count'),
+            DB::raw('AVG(invoice_amount) as average_invoice_amount'),
+            DB::raw('AVG(cartona_credit_amount) as average_credit_amount'),
+        ])
+        ->whereNotNull('phone')
+        ->where('phone', '!=', '')
+        ->where(function ($query) {
+            $query->whereNull('generated_from_backfill')
+                ->orWhere('generated_from_backfill', false);
+        })
+        ->groupBy('phone', 'country_code')
+        ->get();
+
+    $summary = [
+        'users_processed' => 0,
+        'existing_rows_updated' => 0,
+        'generated_rows_created' => 0,
+    ];
+
+    $operation = function () use ($groups, $year, &$summary) {
+        DB::table('starcom_intelligence')
+            ->where('generated_from_backfill', true)
+            ->delete();
+
+        foreach ($groups as $group) {
+            $summary['users_processed']++;
+
+            $existingRows = DB::table('starcom_intelligence')
+                ->where('phone', $group->phone)
+                ->where(function ($query) use ($group) {
+                    if (blank($group->country_code)) {
+                        $query->whereNull('country_code')->orWhere('country_code', '');
+                    } else {
+                        $query->where('country_code', $group->country_code);
+                    }
+                })
+                ->where(function ($query) {
+                    $query->whereNull('generated_from_backfill')
+                        ->orWhere('generated_from_backfill', false);
+                })
+                ->orderBy('id')
+                ->get();
+
+            $firstMonth = random_int(1, 3);
+            $monthDates = collect(range($firstMonth, 12))->map(function ($month) use ($year) {
+                return Carbon::create($year, $month, 1)->startOfMonth();
+            })->values();
+
+            if ($monthDates->isEmpty()) {
+                $monthDates = collect([Carbon::create($year, 1, 1)->startOfMonth()]);
+            }
+
+            $rowsToAssign = $existingRows->count();
+            $targetDates = [];
+
+            foreach ($monthDates as $monthDate) {
+                if (count($targetDates) >= $rowsToAssign) {
+                    break;
+                }
+                $targetDates[] = $monthDate->copy()->day(random_int(1, 28))->toDateString();
+            }
+
+            while (count($targetDates) < $rowsToAssign) {
+                $monthDate = $monthDates->random();
+                $targetDates[] = $monthDate->copy()->day(random_int(1, 28))->toDateString();
+            }
+
+            sort($targetDates);
+
+            foreach ($existingRows as $index => $row) {
+                DB::table('starcom_intelligence')
+                    ->where('id', $row->id)
+                    ->update([
+                        'invoice_date' => $targetDates[$index] ?? $targetDates[array_key_last($targetDates)],
+                        'updated_at'   => now(),
+                    ]);
+                $summary['existing_rows_updated']++;
+            }
+
+            $missingMonths = $monthDates->filter(function (Carbon $monthDate) use ($targetDates) {
+                $monthKey = $monthDate->format('Y-m');
+                foreach ($targetDates as $assignedDate) {
+                    if (str_starts_with($assignedDate, $monthKey)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            $averageInvoiceAmount = max(1000, (float)($group->average_invoice_amount ?: 15000));
+            $averageCreditAmount = max(0, (float)($group->average_credit_amount ?: 0));
+
+            foreach ($missingMonths as $monthDate) {
+                $invoiceAmount = round($averageInvoiceAmount * (random_int(80, 125) / 100), 2);
+                $creditAmount = round(min($invoiceAmount, $averageCreditAmount * (random_int(70, 130) / 100)), 2);
+
+                DB::table('starcom_intelligence')->insert([
+                    'user_name'               => $group->user_name,
+                    'phone_number'            => $group->phone_number ?: trim((($group->country_code ?: '') . ' ' . ($group->phone ?: ''))),
+                    'country_code'            => $group->country_code,
+                    'phone'                   => $group->phone,
+                    'address'                 => $group->address,
+                    'city'                    => $group->city,
+                    'area'                    => $group->area,
+                    'latitude'                => $group->latitude,
+                    'longitude'               => $group->longitude,
+                    'distribution_route'      => $group->distribution_route,
+                    'invoice_date'            => $monthDate->copy()->day(random_int(1, 28))->toDateString(),
+                    'generated_from_backfill' => true,
+                    'invoice_amount'          => $invoiceAmount,
+                    'cartona_credit_amount'   => $creditAmount,
+                    'created_at'              => now(),
+                    'updated_at'              => now(),
+                ]);
+                $summary['generated_rows_created']++;
+            }
+        }
+    };
+
+    if ($dryRun) {
+        $this->table(['Users to Process'], [[count($groups)]]);
+        $this->warn('Dry run only. No data was changed.');
+        return self::SUCCESS;
+    }
+
+    DB::transaction($operation);
+
+    $this->table(
+        ['Users Processed', 'Existing Rows Updated', 'Generated Rows Created'],
+        [[
+            $summary['users_processed'],
+            $summary['existing_rows_updated'],
+            $summary['generated_rows_created'],
+        ]]
+    );
+
+    $this->info("Starcom invoice timeline backfill completed for {$year}.");
+
+    return self::SUCCESS;
+})->purpose('Backfill Starcom Intelligence invoice dates across 2025 and generate missing monthly history');
