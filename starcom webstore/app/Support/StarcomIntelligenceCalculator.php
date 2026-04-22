@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 
 class StarcomIntelligenceCalculator
 {
+    private const HISTORY_MONTHS = 12;
+
     public static function forUser(?User $user): array
     {
         if (!$user || blank($user->phone)) {
@@ -102,13 +104,27 @@ class StarcomIntelligenceCalculator
 
     private static function timelineForUser(User $user): array
     {
+        $windowStart = now()->startOfMonth()->subMonths(self::HISTORY_MONTHS);
+        $windowEnd = now()->startOfMonth();
+
         $intelligenceInvoices = self::intelligenceInvoices($user);
         $systemInvoices = self::systemInvoices($user);
 
-        $monthlyPurchases = $intelligenceInvoices
+        $allInvoices = $intelligenceInvoices
             ->merge($systemInvoices)
-            ->filter(fn (array $invoice) => !blank($invoice['invoice_date']))
+            ->filter(function (array $invoice) use ($windowStart, $windowEnd) {
+                if (blank($invoice['invoice_date'])) {
+                    return false;
+                }
+
+                $invoiceDate = Carbon::parse($invoice['invoice_date'])->startOfDay();
+
+                return $invoiceDate->betweenIncluded($windowStart->copy()->startOfMonth(), $windowEnd->copy()->endOfMonth());
+            })
             ->sortBy('invoice_date')
+            ->values();
+
+        $monthlyPurchases = $allInvoices
             ->groupBy(fn (array $invoice) => Carbon::parse($invoice['invoice_date'])->format('Y-m'))
             ->map(function (Collection $group, string $monthKey) {
                 $amount = (float)$group->sum('invoice_amount');
@@ -124,50 +140,34 @@ class StarcomIntelligenceCalculator
             })
             ->values();
 
-        $firstInvoiceDate = $monthlyPurchases->isNotEmpty()
-            ? Carbon::parse($monthlyPurchases->first()['month_key'] . '-01')->startOfMonth()
+        $firstInvoiceDate = $allInvoices->isNotEmpty()
+            ? Carbon::parse($allInvoices->first()['invoice_date'])
             : null;
+        $filledMonthlyPurchases = collect();
+        $cursor = $windowStart->copy();
+        $monthlyMap = $monthlyPurchases->keyBy('month_key');
 
-        $firstExactInvoice = $intelligenceInvoices
-            ->merge($systemInvoices)
-            ->filter(fn (array $invoice) => !blank($invoice['invoice_date']))
-            ->sortBy('invoice_date')
-            ->first();
-
-        if ($firstExactInvoice) {
-            $firstInvoiceDate = Carbon::parse($firstExactInvoice['invoice_date']);
-        }
-
-        if ($monthlyPurchases->isNotEmpty()) {
-            $filledMonthlyPurchases = collect();
-            $cursor = Carbon::createFromFormat('Y-m', $monthlyPurchases->first()['month_key'])->startOfMonth();
-            $lastMonth = Carbon::createFromFormat('Y-m', $monthlyPurchases->last()['month_key'])->startOfMonth();
-            $monthlyMap = $monthlyPurchases->keyBy('month_key');
-
-            while ($cursor->lessThanOrEqualTo($lastMonth)) {
-                $monthKey = $cursor->format('Y-m');
-                if ($monthlyMap->has($monthKey)) {
-                    $filledMonthlyPurchases->push($monthlyMap->get($monthKey));
-                } else {
-                    $filledMonthlyPurchases->push([
-                        'month_key'       => $monthKey,
-                        'month_label'     => $cursor->copy()->locale('ar')->translatedFormat('F Y'),
-                        'invoice_count'   => 0,
-                        'amount'          => 0,
-                        'amount_currency' => AppLibrary::currencyAmountFormat(0),
-                    ]);
-                }
-
-                $cursor->addMonth();
+        while ($cursor->lessThanOrEqualTo($windowEnd)) {
+            $monthKey = $cursor->format('Y-m');
+            if ($monthlyMap->has($monthKey)) {
+                $filledMonthlyPurchases->push($monthlyMap->get($monthKey));
+            } else {
+                $filledMonthlyPurchases->push([
+                    'month_key'       => $monthKey,
+                    'month_label'     => $cursor->copy()->locale('ar')->translatedFormat('F Y'),
+                    'invoice_count'   => 0,
+                    'amount'          => 0,
+                    'amount_currency' => AppLibrary::currencyAmountFormat(0),
+                ]);
             }
 
-            $monthlyPurchases = $filledMonthlyPurchases;
+            $cursor->addMonth();
         }
 
         return [
             'first_invoice_date'       => $firstInvoiceDate?->toDateString(),
             'first_invoice_date_label' => $firstInvoiceDate ? AppLibrary::date($firstInvoiceDate) : '--',
-            'monthly_purchases'        => $monthlyPurchases->all(),
+            'monthly_purchases'        => $filledMonthlyPurchases->all(),
         ];
     }
 

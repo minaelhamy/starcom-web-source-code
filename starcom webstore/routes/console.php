@@ -52,19 +52,17 @@ Artisan::command('cartona:sync-customers {--file=} {--pull}', function (CartonaC
     return self::SUCCESS;
 })->purpose('Sync Cartona customers, orders, and Starcom Intelligence customer profiles');
 
-Artisan::command('starcom:backfill-invoice-timeline {--year=2025} {--dry-run}', function () {
-    $year = (int)$this->option('year');
+Artisan::command('starcom:backfill-invoice-timeline {--months=12} {--dry-run}', function () {
+    $months = max(1, (int)$this->option('months'));
     $dryRun = (bool)$this->option('dry-run');
-
-    if ($year < 2000 || $year > 2100) {
-        $this->error('Please provide a valid year, for example --year=2025');
-        return self::FAILURE;
-    }
 
     if (!Schema::hasTable('starcom_intelligence') || !Schema::hasColumn('starcom_intelligence', 'invoice_date')) {
         $this->error('The starcom_intelligence invoice timeline columns are missing. Run migrations first.');
         return self::FAILURE;
     }
+
+    $windowEnd = now()->startOfMonth();
+    $windowStart = $windowEnd->copy()->subMonths($months);
 
     $groups = DB::table('starcom_intelligence')
         ->select([
@@ -97,7 +95,7 @@ Artisan::command('starcom:backfill-invoice-timeline {--year=2025} {--dry-run}', 
         'generated_rows_created' => 0,
     ];
 
-    $operation = function () use ($groups, $year, &$summary) {
+    $operation = function () use ($groups, $windowStart, $windowEnd, &$summary) {
         DB::table('starcom_intelligence')
             ->where('generated_from_backfill', true)
             ->delete();
@@ -121,19 +119,25 @@ Artisan::command('starcom:backfill-invoice-timeline {--year=2025} {--dry-run}', 
                 ->orderBy('id')
                 ->get();
 
-            $firstMonth = random_int(1, 3);
-            $monthDates = collect(range($firstMonth, 12))->map(function ($month) use ($year) {
-                return Carbon::create($year, $month, 1)->startOfMonth();
-            })->values();
+            $monthDates = collect();
+            $cursor = $windowStart->copy();
+
+            while ($cursor->lessThanOrEqualTo($windowEnd)) {
+                $monthDates->push($cursor->copy());
+                $cursor->addMonth();
+            }
 
             if ($monthDates->isEmpty()) {
-                $monthDates = collect([Carbon::create($year, 1, 1)->startOfMonth()]);
+                $monthDates = collect([$windowEnd->copy()]);
             }
 
             $rowsToAssign = $existingRows->count();
             $targetDates = [];
 
-            foreach ($monthDates as $monthDate) {
+            $firstInvoiceIndex = random_int(0, max(0, $monthDates->count() - 1));
+            $eligibleMonths = $monthDates->slice($firstInvoiceIndex)->values();
+
+            foreach ($eligibleMonths as $monthDate) {
                 if (count($targetDates) >= $rowsToAssign) {
                     break;
                 }
@@ -141,7 +145,7 @@ Artisan::command('starcom:backfill-invoice-timeline {--year=2025} {--dry-run}', 
             }
 
             while (count($targetDates) < $rowsToAssign) {
-                $monthDate = $monthDates->random();
+                $monthDate = $eligibleMonths->isNotEmpty() ? $eligibleMonths->random() : $monthDates->random();
                 $targetDates[] = $monthDate->copy()->day(random_int(1, 28))->toDateString();
             }
 
@@ -157,7 +161,7 @@ Artisan::command('starcom:backfill-invoice-timeline {--year=2025} {--dry-run}', 
                 $summary['existing_rows_updated']++;
             }
 
-            $missingMonths = $monthDates->filter(function (Carbon $monthDate) use ($targetDates) {
+            $missingMonths = $eligibleMonths->filter(function (Carbon $monthDate) use ($targetDates) {
                 $monthKey = $monthDate->format('Y-m');
                 foreach ($targetDates as $assignedDate) {
                     if (str_starts_with($assignedDate, $monthKey)) {
@@ -214,7 +218,7 @@ Artisan::command('starcom:backfill-invoice-timeline {--year=2025} {--dry-run}', 
         ]]
     );
 
-    $this->info("Starcom invoice timeline backfill completed for {$year}.");
+    $this->info("Starcom invoice timeline backfill completed for {$windowStart->format('F Y')} to {$windowEnd->format('F Y')}.");
 
     return self::SUCCESS;
-})->purpose('Backfill Starcom Intelligence invoice dates across 2025 and generate missing monthly history');
+})->purpose('Backfill Starcom Intelligence invoice dates across the rolling invoice-history window and generate missing monthly history');
