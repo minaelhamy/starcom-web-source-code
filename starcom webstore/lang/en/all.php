@@ -73,6 +73,10 @@ return [
         "rating"                     => "Rating",
         "review"                     => "Review",
         "product"                    => "Product",
+        "purchase_value"             => "Purchase Value",
+        "sales_value"                => "Sales Value",
+        "total_purchase_value"       => "Total Purchase Value",
+        "total_sales_value"          => "Total Sales Value",
     ],
     'message' => [
         'validation_error'                 => 'Validation Error.',

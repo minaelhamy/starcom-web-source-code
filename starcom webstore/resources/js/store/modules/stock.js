@@ -8,6 +8,7 @@ export const stock = {
         lists: [],
         page: {},
         pagination: [],
+        totals: {},
         show: {},
         temp: {
             temp_id: null,
@@ -21,6 +22,9 @@ export const stock = {
 
         pagination: function (state) {
             return state.pagination
+        },
+        totals: function (state) {
+            return state.totals;
         },
         page: function(state) {
             return state.page;
@@ -44,6 +48,7 @@ export const stock = {
                         context.commit('lists', res.data.data);
                         context.commit('page', res.data.meta);
                         context.commit('pagination', res.data);
+                        context.commit('totals', res.data.totals);
                     }
 
                     resolve(res);
@@ -73,6 +78,9 @@ export const stock = {
         pagination: function (state, payload) {
             state.pagination = payload;
         },
+        totals: function (state, payload) {
+            state.totals = payload || {};
+        },
         page: function (state, payload) {
             if(typeof payload !== "undefined" && payload !== null) {
                 state.page = {
@@ -92,6 +100,7 @@ export const stock = {
         reset: function(state) {
             state.temp.temp_id = null;
             state.temp.isEditing = false;
+            state.totals = {};
         }
     },
 }

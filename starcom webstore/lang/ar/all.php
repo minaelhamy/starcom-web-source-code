@@ -73,6 +73,10 @@ return [
         "rating"                     => "التقييم",
         "review"                     => "المراجعات",
         "product"                    => "المنتج",
+        "purchase_value"             => "قيمة الشراء",
+        "sales_value"                => "قيمة البيع",
+        "total_purchase_value"       => "إجمالي قيمة الشراء",
+        "total_sales_value"          => "إجمالي قيمة البيع",
     ],
     'message' => [
         'validation_error'                 => '.خطأ في التحقق من القيم',

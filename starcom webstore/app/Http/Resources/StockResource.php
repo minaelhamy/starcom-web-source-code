@@ -19,11 +19,15 @@ class StockResource extends JsonResource
     {
         return [
 
-            'product_id'         => $this['product_id'],
-            'product_name'       => $this['product_name'],
-            'variation_names'    => $this['variation_names'],
-            'status'             => $this['status'],
-            'stock'              => $this['stock']
+            'product_id'               => $this['product_id'],
+            'product_name'             => $this['product_name'],
+            'variation_names'          => $this['variation_names'],
+            'status'                   => $this['status'],
+            'stock'                    => $this['stock'],
+            'purchase_value'           => $this['purchase_value'],
+            'purchase_value_currency'  => $this['purchase_value_currency'],
+            'sales_value'              => $this['sales_value'],
+            'sales_value_currency'     => $this['sales_value_currency']
 
         ];
     }

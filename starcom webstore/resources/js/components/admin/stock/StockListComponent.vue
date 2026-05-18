@@ -66,6 +66,12 @@
                                 {{ $t('label.quantity') }}
                             </th>
                             <th class="db-table-head-th">
+                                {{ $t('label.purchase_value') }}
+                            </th>
+                            <th class="db-table-head-th">
+                                {{ $t('label.sales_value') }}
+                            </th>
+                            <th class="db-table-head-th">
                                 {{ $t('label.status') }}
                             </th>
                         </tr>
@@ -78,6 +84,8 @@
                                 }} )</span>
                             </td>
                             <td class="db-table-body-td">{{ stock.stock }}</td>
+                            <td class="db-table-body-td">{{ stock.purchase_value_currency }}</td>
+                            <td class="db-table-body-td">{{ stock.sales_value_currency }}</td>
                             <td class="db-table-body-td">
                                 <span :class="statusClass(stock.status)">
                                     {{ enums.statusEnumArray[stock.status] }}
@@ -87,7 +95,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="3">
+                            <td class="db-table-body-td text-center" colspan="5">
                                 <div class="p-4">
                                     <div class="max-w-[300px] mx-auto mt-2">
                                         <img class="w-full h-full" :src="ENV.API_URL+'/images/default/not-found/not_found.png'" alt="Not Found">
@@ -98,6 +106,17 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 border-t border-gray-200 bg-gray-50 px-4 py-4 sm:grid-cols-2" v-if="stocks.length > 0">
+                <div class="rounded-lg border border-gray-200 bg-white px-4 py-3">
+                    <div class="text-xs font-medium text-gray-500">{{ $t("label.total_purchase_value") }}</div>
+                    <div class="mt-1 text-lg font-semibold">{{ totals.purchase_value_currency || "0.00" }}</div>
+                </div>
+                <div class="rounded-lg border border-gray-200 bg-white px-4 py-3">
+                    <div class="text-xs font-medium text-gray-500">{{ $t("label.total_sales_value") }}</div>
+                    <div class="mt-1 text-lg font-semibold">{{ totals.sales_value_currency || "0.00" }}</div>
+                </div>
             </div>
 
             <div class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-6" v-if="stocks.length > 0">
@@ -182,6 +201,9 @@ export default {
         },
         pagination: function () {
             return this.$store.getters['stock/pagination'];
+        },
+        totals: function () {
+            return this.$store.getters['stock/totals'];
         },
         paginationPage: function () {
             return this.$store.getters['stock/page'];

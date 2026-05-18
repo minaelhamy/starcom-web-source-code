@@ -32,7 +32,9 @@ class StockController extends AdminController implements HasMiddleware
     public function index(PaginateRequest $request): \Illuminate\Foundation\Application|\Illuminate\Http\Response|\Illuminate\Http\Resources\Json\AnonymousResourceCollection|\Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory
     {
         try {
-            return  StockResource::collection($this->stockService->list($request));
+            return StockResource::collection($this->stockService->list($request))->additional([
+                'totals' => $this->stockService->formattedTotals(),
+            ]);
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

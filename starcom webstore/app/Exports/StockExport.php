@@ -31,6 +31,8 @@ class StockExport implements FromCollection, WithHeadings
             $stockArray[] = [
                 strlen($stock['variation_names']) > 0 ?  $stock['product_name'] . '(' . $stock['variation_names'] . ')' : $stock['product_name'],
                 $stock['stock'],
+                $stock['purchase_value_currency'],
+                $stock['sales_value_currency'],
                 trans('statuse.' . $stock['status'])
             ];
         }
@@ -41,6 +43,8 @@ class StockExport implements FromCollection, WithHeadings
         return [
             trans('all.label.product_name'),
             trans('all.label.stock'),
+            trans('all.label.purchase_value'),
+            trans('all.label.sales_value'),
             trans('all.label.status'),
         ];
     }

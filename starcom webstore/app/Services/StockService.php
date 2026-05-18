@@ -6,6 +6,8 @@ use App\Enums\Ask;
 use Exception;
 use App\Models\Stock;
 use App\Enums\Status;
+use App\Models\ProductVariation;
+use App\Libraries\AppLibrary;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
@@ -16,8 +18,12 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class StockService
 {
-    public $items;
+    public $items = [];
     public $links;
+    public array $totals = [
+        'purchase_value' => 0,
+        'sales_value'    => 0,
+    ];
     protected $stockFilter = [
         'product_name',
         'status',
@@ -29,13 +35,19 @@ class StockService
     public function list(PaginateRequest $request)
     {
         try {
+            $this->items = [];
+            $this->totals = [
+                'purchase_value' => 0,
+                'sales_value'    => 0,
+            ];
+
             $requests    = $request->all();
             $method      = $request->get('paginate', 0) == 1 ? 'paginate' : 'get';
             $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
             $orderColumn = $request->get('order_column') ?? 'id';
             $orderType   = $request->get('order_type') ?? 'desc';
 
-            $stocks =  Stock::with('product')->where('status', Status::ACTIVE)->where(function ($query) use ($requests) {
+            $stocks =  Stock::with('product', 'item')->where('status', Status::ACTIVE)->where(function ($query) use ($requests) {
                 foreach ($requests as $key => $request) {
                     if (in_array($key, $this->stockFilter)) {
                         if ($key == "product_name") {
@@ -52,13 +64,27 @@ class StockService
             if (!blank($stocks)) {
                 $stocks->groupBy('product_id')?->map(function ($product) {
                     $product->groupBy('item_id')?->map(function ($item) {
-                        $this->items[] = [
-                            'product_id'         => $item->first()['product_id'],
-                            'product_name'       => $item->first()['product']['name'],
-                            'variation_names'    => $item->first()['variation_names'],
-                            'status'             => $item->first()['product']['status'],
-                            'stock'              => $item->first()['product']['can_purchasable'] === Ask::NO ? "N/C" : max(0, (int) $item->sum('quantity')),
+                        $firstStock = $item->first();
+                        $productModel = $firstStock['product'];
+                        $stockQuantity = max(0, (int) $item->sum('quantity'));
+                        $buyingPrice = (float) ($productModel['buying_price'] ?? 0);
+                        $sellingPrice = $this->resolveSellingPrice($firstStock);
+                        $purchaseValue = $stockQuantity * $buyingPrice;
+                        $salesValue = $stockQuantity * $sellingPrice;
 
+                        $this->totals['purchase_value'] += $purchaseValue;
+                        $this->totals['sales_value'] += $salesValue;
+
+                        $this->items[] = [
+                            'product_id'               => $firstStock['product_id'],
+                            'product_name'             => $productModel['name'],
+                            'variation_names'          => $firstStock['variation_names'],
+                            'status'                   => $productModel['status'],
+                            'stock'                    => $productModel['can_purchasable'] === Ask::NO ? "N/C" : $stockQuantity,
+                            'purchase_value'           => $purchaseValue,
+                            'purchase_value_currency'  => AppLibrary::currencyAmountFormat($purchaseValue),
+                            'sales_value'              => $salesValue,
+                            'sales_value_currency'     => AppLibrary::currencyAmountFormat($salesValue),
                         ];
                     });
                 });
@@ -75,6 +101,25 @@ class StockService
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
         }
+    }
+
+    public function formattedTotals(): array
+    {
+        return [
+            'purchase_value'          => $this->totals['purchase_value'],
+            'purchase_value_currency' => AppLibrary::currencyAmountFormat($this->totals['purchase_value']),
+            'sales_value'             => $this->totals['sales_value'],
+            'sales_value_currency'    => AppLibrary::currencyAmountFormat($this->totals['sales_value']),
+        ];
+    }
+
+    private function resolveSellingPrice(Stock $stock): float
+    {
+        if ($stock->item_type === ProductVariation::class && $stock->item) {
+            return (float) ($stock->item->price ?? 0);
+        }
+
+        return (float) ($stock->product?->selling_price ?? 0);
     }
 
     public function paginate(
