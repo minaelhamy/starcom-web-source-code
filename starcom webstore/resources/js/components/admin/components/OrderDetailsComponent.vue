@@ -131,6 +131,18 @@
                                 {{ order.payment_method_name }}
                             </span>
                         </li>
+                        <li class="flex items-center gap-2" v-if="Number(order.wallet_paid_amount) > 0">
+                            <span class="capitalize text-sm leading-6">{{ $t("label.wallet_paid") }}:</span>
+                            <span class="capitalize text-sm leading-6">
+                                {{ order.wallet_paid_amount_currency }}
+                            </span>
+                        </li>
+                        <li class="flex items-center gap-2" v-if="Number(order.cash_on_delivery_amount) > 0">
+                            <span class="capitalize text-sm leading-6">{{ $t("label.remaining_cod") }}:</span>
+                            <span class="capitalize text-sm leading-6">
+                                {{ order.cash_on_delivery_amount_currency }}
+                            </span>
+                        </li>
                         <li class="flex items-center gap-2">
                             <span class="capitalize text-sm leading-6">{{ $t("label.status") }}:</span>
                             <span class="capitalize text-sm leading-6"
@@ -192,6 +204,18 @@
                                 <span class="text-sm leading-6 capitalize">{{ $t("label.discount") }}</span>
                                 <span class="text-sm leading-6 capitalize">
                                     {{ order.discount_currency_price }}
+                                </span>
+                            </li>
+                            <li class="flex items-center justify-between" v-if="Number(order.wallet_paid_amount) > 0">
+                                <span class="text-sm leading-6 capitalize">{{ $t("label.wallet_paid") }}</span>
+                                <span class="text-sm leading-6 capitalize">
+                                    {{ order.wallet_paid_amount_currency }}
+                                </span>
+                            </li>
+                            <li class="flex items-center justify-between" v-if="Number(order.cash_on_delivery_amount) > 0">
+                                <span class="text-sm leading-6 capitalize">{{ $t("label.remaining_cod") }}</span>
+                                <span class="text-sm leading-6 capitalize">
+                                    {{ order.cash_on_delivery_amount_currency }}
                                 </span>
                             </li>
 

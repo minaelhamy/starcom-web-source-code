@@ -77,6 +77,9 @@ return [
         "sales_value"                => "قيمة البيع",
         "total_purchase_value"       => "إجمالي قيمة الشراء",
         "total_sales_value"          => "إجمالي قيمة البيع",
+        "pay_later_plus_cod"         => "اشتري بالآجل + كاش عند الاستلام",
+        "wallet_paid"                => "المدفوع من المحفظة",
+        "remaining_cod"              => "المتبقي كاش عند الاستلام",
     ],
     'message' => [
         'validation_error'                 => '.خطأ في التحقق من القيم',

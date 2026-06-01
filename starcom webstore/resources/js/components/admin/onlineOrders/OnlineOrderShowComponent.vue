@@ -31,6 +31,18 @@
                                 {{ order.payment_method_name }}
                             </span>
                         </li>
+                        <li class="text-xs" v-if="Number(order.wallet_paid_amount) > 0">
+                            {{ $t('label.wallet_paid') }}:
+                            <span class="text-heading">
+                                {{ order.wallet_paid_amount_currency }}
+                            </span>
+                        </li>
+                        <li class="text-xs" v-if="Number(order.cash_on_delivery_amount) > 0">
+                            {{ $t('label.remaining_cod') }}:
+                            <span class="text-heading">
+                                {{ order.cash_on_delivery_amount_currency }}
+                            </span>
+                        </li>
                         <li class="text-xs">
                             {{ $t('label.order_type') }}:
                             <span class="text-heading">
@@ -163,6 +175,14 @@
                             <span class="text-sm leading-6 capitalize font-semibold text-[#1AB759]">
                                 {{ order.shipping_charge_currency_price }}
                             </span>
+                        </li>
+                        <li v-if="Number(order.wallet_paid_amount) > 0" class="flex items-center justify-between text-heading">
+                            <span class="text-sm leading-6 capitalize">{{ $t('label.wallet_paid') }}</span>
+                            <span class="text-sm leading-6 capitalize">{{ order.wallet_paid_amount_currency }}</span>
+                        </li>
+                        <li v-if="Number(order.cash_on_delivery_amount) > 0" class="flex items-center justify-between text-heading">
+                            <span class="text-sm leading-6 capitalize">{{ $t('label.remaining_cod') }}</span>
+                            <span class="text-sm leading-6 capitalize">{{ order.cash_on_delivery_amount_currency }}</span>
                         </li>
                     </ul>
                     <div class="flex items-center justify-between p-3">

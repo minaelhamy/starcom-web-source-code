@@ -105,6 +105,22 @@
                                 {{ order.payment_method_name }}
                             </span>
                         </li>
+                        <li v-if="Number(order.wallet_paid_amount) > 0" class="flex flex-wrap sm:flex-nowrap gap-2">
+                            <span class="text-sm font-semibold capitalize w-28 flex-shrink-0">{{
+                                $t('label.wallet_paid')
+                            }}:</span>
+                            <span class="text-sm font-normal capitalize">
+                                {{ order.wallet_paid_amount_currency }}
+                            </span>
+                        </li>
+                        <li v-if="Number(order.cash_on_delivery_amount) > 0" class="flex flex-wrap sm:flex-nowrap gap-2">
+                            <span class="text-sm font-semibold capitalize w-28 flex-shrink-0">{{
+                                $t('label.remaining_cod')
+                            }}:</span>
+                            <span class="text-sm font-normal capitalize">
+                                {{ order.cash_on_delivery_amount_currency }}
+                            </span>
+                        </li>
                         <li v-if="order.status === enums.orderStatusEnum.REJECTED" class="flex flex-wrap sm:flex-nowrap gap-2">
                             <span class="text-sm font-semibold capitalize w-28 flex-shrink-0">{{
                                 $t('label.reason')

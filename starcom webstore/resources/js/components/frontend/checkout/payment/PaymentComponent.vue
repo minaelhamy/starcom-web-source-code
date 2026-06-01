@@ -22,6 +22,9 @@
                         <img class="h-6" :src="credit.image" alt="payment" />
                         <span class="text-xs font-medium text-center">اشتري بالآجل</span>
                         <span class="text-[11px] text-text text-center">رصيد المحفظة: {{ profile.balance }}</span>
+                        <span v-if="walletWillBeUsed > 0 && cashRemaining > 0" class="text-[11px] text-center text-primary px-2">
+                            سيتم خصم {{ walletWillBeUsedFormatted }} من المحفظة والباقي {{ cashRemainingFormatted }} كاش عند الاستلام
+                        </span>
                     </div>
 
                     <div v-if="setting.site_online_payment_gateway === ActivityEnum.ENABLE"
@@ -136,6 +139,18 @@ export default {
         totalTax: function () {
             return this.$store.getters['frontendCart/totalTax'];
         },
+        walletWillBeUsed: function () {
+            return Math.min(Number(this.profile?.balance || 0), Number(this.total || 0));
+        },
+        cashRemaining: function () {
+            return Math.max(Number(this.total || 0) - this.walletWillBeUsed, 0);
+        },
+        walletWillBeUsedFormatted: function () {
+            return Number(this.walletWillBeUsed).toFixed(2);
+        },
+        cashRemainingFormatted: function () {
+            return Number(this.cashRemaining).toFixed(2);
+        }
     },
     mounted() {
         this.loading.isActive = true;
@@ -177,8 +192,8 @@ export default {
                 return;
             }
 
-            if (this.paymentMethod.slug === "credit" && Number(this.profile.balance) < Number(this.total)) {
-                alertService.info("رصيد المحفظة الحالي غير كافٍ. قدم طلب اشتري بالآجل لإضافة رصيد إلى محفظتك.");
+            if (this.paymentMethod.slug === "credit" && Number(this.profile.balance) <= 0) {
+                alertService.info("لا يوجد رصيد متاح في المحفظة حالياً. قدم طلب اشتري بالآجل لإضافة رصيد إلى محفظتك.");
                 if (e?.target) {
                     e.target.disabled = false;
                 }

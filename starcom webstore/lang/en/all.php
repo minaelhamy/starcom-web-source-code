@@ -77,6 +77,9 @@ return [
         "sales_value"                => "Sales Value",
         "total_purchase_value"       => "Total Purchase Value",
         "total_sales_value"          => "Total Sales Value",
+        "pay_later_plus_cod"         => "Pay Later + Cash On Delivery",
+        "wallet_paid"                => "Paid From Wallet",
+        "remaining_cod"              => "Remaining Cash On Delivery",
     ],
     'message' => [
         'validation_error'                 => 'Validation Error.',

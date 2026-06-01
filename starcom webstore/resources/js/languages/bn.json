@@ -546,6 +546,8 @@
         "total_completed": "মোট সম্পন্ন",
         "total_returned": "মোট ফেরৎ পেয়েছে",
         "wallet_balance": "ওয়ালেট ব্যালেন্স",
+        "wallet_paid": "Paid From Wallet",
+        "remaining_cod": "Remaining Cash On Delivery",
         "show_full_history": "সম্পূর্ণ ইতিহাস দেখুন",
         "order_type": "অর্ডার টাইপ",
         "payment_type": "পেমেন্ট টাইপ",

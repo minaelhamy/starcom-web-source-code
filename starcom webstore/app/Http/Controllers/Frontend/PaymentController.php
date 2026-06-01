@@ -42,7 +42,7 @@ class PaymentController extends Controller
         $logo            = ThemeSetting::where(['key' => 'theme_logo'])->first();
         $faviconLogo     = ThemeSetting::where(['key' => 'theme_favicon_logo'])->first();
         $currency        = Currency::findOrFail(Settings::group('site')->get('site_default_currency'));
-        if ($order?->user?->balance >= $order->total) {
+        if ((float)$order?->user?->balance > 0) {
             $credit = true;
         }
 

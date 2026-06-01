@@ -29,16 +29,16 @@ class PaymentService
     /**
      * @throws Exception
      */
-    public function payment($order, $gatewaySlug, $transactionNo): object
+    public function payment($order, $gatewaySlug, $transactionNo, ?float $amount = null, ?int $paymentStatus = null): object
     {
         try {
-            DB::transaction(function () use ($order, $gatewaySlug, $transactionNo) {
+            DB::transaction(function () use ($order, $gatewaySlug, $transactionNo, $amount, $paymentStatus) {
                 $transaction = Transaction::where(['order_id' => $order->id])->first();
                 if (!$transaction) {
                     $transaction = Transaction::create([
                         'order_id'       => $order->id,
                         'transaction_no' => $transactionNo,
-                        'amount'         => $order->total,
+                        'amount'         => $amount ?? $order->total,
                         'payment_method' => $gatewaySlug,
                         'sign'           => '+',
                         'type'           => 'payment'
@@ -46,7 +46,7 @@ class PaymentService
                 }
                 $this->transaction     = $transaction;
                 $order->active         = Ask::YES;
-                $order->payment_status = PaymentStatus::PAID;
+                $order->payment_status = $paymentStatus ?? PaymentStatus::PAID;
                 $order->save();
                 app(OrderStockService::class)->activateOrderStocks($order);
 
@@ -70,20 +70,36 @@ class PaymentService
     {
         $transaction = Transaction::where(['order_id' => $order->id])->first();
         if ($transaction) {
-            $transaction = Transaction::create([
-                'order_id'       => $order->id,
-                'transaction_no' => $transactionNo,
-                'amount'         => $order->total,
-                'payment_method' => $gatewaySlug,
-                'sign'           => '-',
-                'type'           => 'cash_back'
-            ]);
-
             $user = User::find($order->user_id);
             if ($user) {
                 if ($gatewaySlug === 'credit') {
+                    $refundAmount = (float)$order->wallet_paid_amount;
+                    if ($refundAmount <= 0) {
+                        $refundAmount = app(WalletService::class)->getDebitedAmountForOrder($order);
+                    }
+
+                    if ($refundAmount > 0) {
+                        $transaction = Transaction::create([
+                            'order_id'       => $order->id,
+                            'transaction_no' => $transactionNo,
+                            'amount'         => $refundAmount,
+                            'payment_method' => $gatewaySlug,
+                            'sign'           => '-',
+                            'type'           => 'cash_back'
+                        ]);
+                    }
+
                     app(WalletService::class)->refundOrder($order, 'Refund for order #' . $order->order_serial_no);
                 } else {
+                    $transaction = Transaction::create([
+                        'order_id'       => $order->id,
+                        'transaction_no' => $transactionNo,
+                        'amount'         => $order->total,
+                        'payment_method' => $gatewaySlug,
+                        'sign'           => '-',
+                        'type'           => 'cash_back'
+                    ]);
+
                     $user->balance = ($user->balance + $order->total);
                     $user->save();
                 }

@@ -14,6 +14,16 @@ use Illuminate\Support\Facades\DB;
 
 class WalletService
 {
+    public function getDebitedAmountForOrder(Order $order): float
+    {
+        $facilityAmount = (float)CreditFacilityOrderAllocation::where('order_id', $order->id)->sum('amount');
+        $walletAdjustmentAmount = (float)WalletTransaction::where('order_id', $order->id)
+            ->where('type', 'wallet_adjustment_purchase')
+            ->sum('amount');
+
+        return $facilityAmount + $walletAdjustmentAmount;
+    }
+
     public function creditByFacility(User $user, CreditApplication $application, User $institution, float $amount, string $description, array $facilityData = []): CreditFacility
     {
         return DB::transaction(function () use ($user, $application, $institution, $amount, $description, $facilityData) {
@@ -55,15 +65,30 @@ class WalletService
 
     public function debitForOrder(Order $order): void
     {
-        DB::transaction(function () use ($order) {
+        $userBalance = (float)User::findOrFail($order->user_id)->balance;
+        if ($userBalance + 0.000001 < (float)$order->total) {
+            throw new Exception(trans('all.message.insufficient_wallet_balance'), 422);
+        }
+
+        $this->debitUpToForOrder($order, (float)$order->total);
+    }
+
+    public function debitUpToForOrder(Order $order, ?float $requestedAmount = null): float
+    {
+        return DB::transaction(function () use ($order, $requestedAmount) {
             $user = User::lockForUpdate()->findOrFail($order->user_id);
             $orderTotal = (float)$order->total;
+            $amountToDebit = min(
+                (float)$user->balance,
+                $requestedAmount ?? $orderTotal,
+                $orderTotal
+            );
 
-            if ((float)$user->balance < $orderTotal) {
+            if ($amountToDebit <= 0) {
                 throw new Exception(trans('all.message.insufficient_wallet_balance'), 422);
             }
 
-            $remaining = $orderTotal;
+            $remaining = $amountToDebit;
             $runningBalance = (float)$user->balance;
 
             $facilities = CreditFacility::where('user_id', $user->id)
@@ -129,6 +154,8 @@ class WalletService
 
             $user->balance = $runningBalance;
             $user->save();
+
+            return (float)$amountToDebit;
         });
     }
 
@@ -170,23 +197,29 @@ class WalletService
                 $refunded += (float)$allocation->amount;
             }
 
-            if ($refunded <= 0) {
-                $refunded = (float)$order->total;
+            $walletAdjustmentPurchaseAmount = (float)WalletTransaction::where('order_id', $order->id)
+                ->where('type', 'wallet_adjustment_purchase')
+                ->sum('amount');
+
+            if ($walletAdjustmentPurchaseAmount > 0) {
                 WalletTransaction::create([
                     'user_id'        => $user->id,
                     'order_id'       => $order->id,
                     'type'           => 'wallet_refund',
                     'direction'      => 'credit',
-                    'amount'         => $refunded,
+                    'amount'         => $walletAdjustmentPurchaseAmount,
                     'balance_before' => $runningBalance,
-                    'balance_after'  => $runningBalance + $refunded,
+                    'balance_after'  => $runningBalance + $walletAdjustmentPurchaseAmount,
                     'description'    => $description,
                 ]);
-                $runningBalance += $refunded;
+                $runningBalance += $walletAdjustmentPurchaseAmount;
+                $refunded += $walletAdjustmentPurchaseAmount;
             }
 
-            $user->balance = $runningBalance;
-            $user->save();
+            if ($refunded > 0) {
+                $user->balance = $runningBalance;
+                $user->save();
+            }
         });
     }
 }

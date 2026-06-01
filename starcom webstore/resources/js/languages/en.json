@@ -552,6 +552,8 @@
         "total_completed": "Total Completed",
         "total_returned": "Total Returned",
         "wallet_balance": "Wallet Balance",
+        "wallet_paid": "Paid From Wallet",
+        "remaining_cod": "Remaining Cash On Delivery",
         "show_full_history": "Show Full History",
         "order_type": "Order Type",
         "payment_type": "Payment Type",

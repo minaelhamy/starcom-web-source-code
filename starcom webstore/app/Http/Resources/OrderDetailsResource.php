@@ -16,6 +16,10 @@ class OrderDetailsResource extends JsonResource
      */
     public function toArray($request): array
     {
+        $walletPaidAmount = (float)$this->wallet_paid_amount;
+        $cashOnDeliveryAmount = (float)$this->cash_on_delivery_amount;
+        $isSplitPayment = $walletPaidAmount > 0 && $cashOnDeliveryAmount > 0;
+
         return [
             'id'                             => $this->id,
             'order_serial_no'                => $this->order_serial_no,
@@ -31,8 +35,15 @@ class OrderDetailsResource extends JsonResource
             'order_time'                     => AppLibrary::time($this->order_datetime),
             'order_datetime'                 => AppLibrary::datetime($this->order_datetime),
             'payment_method'                 => $this->payment_method,
-            'payment_method_name'            => $this->paymentMethod?->name,
+            'payment_method_name'            => $isSplitPayment ? trans('all.label.pay_later_plus_cod') : $this->paymentMethod?->name,
             'payment_status'                 => $this->payment_status,
+            'wallet_paid_amount'             => $walletPaidAmount,
+            'wallet_paid_amount_price'       => AppLibrary::flatAmountFormat($walletPaidAmount),
+            'wallet_paid_amount_currency'    => AppLibrary::currencyAmountFormat($walletPaidAmount),
+            'cash_on_delivery_amount'        => $cashOnDeliveryAmount,
+            'cash_on_delivery_amount_price'  => AppLibrary::flatAmountFormat($cashOnDeliveryAmount),
+            'cash_on_delivery_amount_currency' => AppLibrary::currencyAmountFormat($cashOnDeliveryAmount),
+            'is_split_payment'               => $isSplitPayment,
             'status'                         => $this->status,
             'reason'                         => $this->reason,
             'source'                         => $this->source,

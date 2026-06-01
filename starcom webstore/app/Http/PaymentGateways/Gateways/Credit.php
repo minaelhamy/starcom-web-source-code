@@ -6,6 +6,7 @@ use App\Enums\Activity;
 use App\Models\CapturePaymentNotification;
 use App\Models\PaymentGateway;
 use App\Models\User;
+use App\Enums\PaymentStatus;
 use App\Services\PaymentAbstract;
 use App\Services\PaymentService;
 use App\Services\WalletService;
@@ -26,7 +27,7 @@ class Credit extends PaymentAbstract
     public function payment($order, $request) : \Illuminate\Http\RedirectResponse
     {
         try {
-            if ($order?->user?->balance >= $order->total) {
+            if ((float)$order?->user?->balance > 0) {
                 $capturePaymentNotification = DB::table('capture_payment_notifications')->where([
                     ['order_id', $order->id]
                 ]);
@@ -77,8 +78,20 @@ class Credit extends PaymentAbstract
                     if (!blank($token) && $order->id == $token->order_id) {
                         $user = User::find($order->user_id);
                         if ($user) {
-                            app(WalletService::class)->debitForOrder($order);
-                            $this->paymentService->payment($order, 'credit', $token->token);
+                            $walletUsed = app(WalletService::class)->debitUpToForOrder($order);
+                            $cashOnDeliveryAmount = max(0, (float)$order->total - $walletUsed);
+
+                            $order->wallet_paid_amount = $walletUsed;
+                            $order->cash_on_delivery_amount = $cashOnDeliveryAmount;
+                            $order->save();
+
+                            $this->paymentService->payment(
+                                $order,
+                                'credit',
+                                $token->token,
+                                $walletUsed,
+                                $cashOnDeliveryAmount > 0 ? PaymentStatus::UNPAID : PaymentStatus::PAID
+                            );
                             $capturePaymentNotification->delete();
                             $this->response = true;
                         }

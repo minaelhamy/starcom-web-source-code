@@ -551,6 +551,8 @@
         "total_completed": "الإجمالي المكتمل",
         "total_returned": "الإجمالي المُرجَع",
         "wallet_balance": "رصيد المحفظة",
+        "wallet_paid": "المدفوع من المحفظة",
+        "remaining_cod": "المتبقي كاش عند الاستلام",
         "show_full_history": "عرض السجل الكامل",
         "order_type": "نوع الطلب",
         "payment_type": "نوع الدفع",
