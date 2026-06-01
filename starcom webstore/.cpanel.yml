@@ -8,7 +8,7 @@ deployment:
     - /bin/mkdir -p $PUBLICPATH/build
     - /bin/chmod 775 $APPPATH/bootstrap/cache
     - /bin/chmod 775 $APPPATH/storage
-    - cd $APPPATH && composer install --no-dev --optimize-autoloader --no-interaction
+    - /bin/bash -lc 'if command -v composer >/dev/null 2>&1; then cd /home/shargtvh/starcom-web-source-code && composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist; elif [ -x /opt/cpanel/composer/bin/composer ]; then cd /home/shargtvh/starcom-web-source-code && /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist; else echo "Composer not found on PATH; keeping existing vendor directory."; fi'
     - cd $APPPATH && php artisan migrate --force
     - /bin/rm -rf $PUBLICPATH/build
     - /bin/cp -R $APPPATH/public/build $PUBLICPATH/build
