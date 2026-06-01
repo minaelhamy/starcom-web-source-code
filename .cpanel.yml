@@ -18,7 +18,7 @@ deployment:
     - /bin/rm -rf $PUBLICPATH/build
     - /bin/cp -R $APPPATH/public/build $PUBLICPATH/build
     - /bin/cp $APPPATH/public/.htaccess $PUBLICPATH/.htaccess
-    - /bin/cp $APPPATH/public/index.php $PUBLICPATH/index.php
+    - /bin/cp ./deploy/public_html.index.php $PUBLICPATH/index.php
     - /bin/rm -rf $PUBLICPATH/images
     - /bin/cp -R $APPPATH/public/images $PUBLICPATH/images
     - /bin/rm -rf $PUBLICPATH/themes
