@@ -1,0 +1,21 @@
+---
+deployment:
+  tasks:
+    - export APPPATH=/home/shargtvh/starcom-web-source-code
+    - export PUBLICPATH=/home/shargtvh/public_html
+    - /bin/mkdir -p $APPPATH/bootstrap/cache
+    - /bin/mkdir -p $PUBLICPATH
+    - /bin/mkdir -p $PUBLICPATH/build
+    - /bin/chmod 775 $APPPATH/bootstrap/cache
+    - /bin/chmod 775 $APPPATH/storage
+    - cd $APPPATH && composer install --no-dev --optimize-autoloader --no-interaction
+    - cd $APPPATH && php artisan migrate --force
+    - /bin/rm -rf $PUBLICPATH/build
+    - /bin/cp -R $APPPATH/public/build $PUBLICPATH/build
+    - /bin/cp $APPPATH/public/.htaccess $PUBLICPATH/.htaccess
+    - /bin/cp $APPPATH/public/index.php $PUBLICPATH/index.php
+    - /bin/cp -R $APPPATH/public/images $PUBLICPATH/images
+    - /bin/cp -R $APPPATH/public/themes $PUBLICPATH/themes
+    - cd $APPPATH && php artisan optimize:clear
+    - cd $APPPATH && php artisan config:cache
+    - cd $APPPATH && php artisan view:cache
