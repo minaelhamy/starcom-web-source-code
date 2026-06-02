@@ -79,6 +79,19 @@ export default {
                 }
             }
 
+            if (this.authInfo.role_id === roleEnum.ADMIN) {
+                const hasFinancialInstitutionEmployeeMenu = menus.some((menu) => menu?.url === "financial-institution-employees");
+
+                if (!hasFinancialInstitutionEmployeeMenu) {
+                    menus.push({
+                        name: "Financial Institution Employees",
+                        language: "financial_institution_employees",
+                        url: "financial-institution-employees",
+                        icon: "lab lab-line-users",
+                    });
+                }
+            }
+
             return menus;
         }
     },

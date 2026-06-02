@@ -28,6 +28,12 @@ class EmployeeResource extends JsonResource
             "role"         => optional($this->roles[0])->name,
             "image"        => $this->image,
             "country_code" => $this->country_code,
+            "financial_institution_owner_user_id" => $this->financial_institution_owner_user_id,
+            "financial_institution_owner" => $this->financialInstitutionOwner ? [
+                "id" => $this->financialInstitutionOwner->id,
+                "name" => $this->financialInstitutionOwner->name,
+                "company_name" => $this->financialInstitutionOwner->financialInstitutionProfile?->company_name,
+            ] : null,
         ];
     }
 }

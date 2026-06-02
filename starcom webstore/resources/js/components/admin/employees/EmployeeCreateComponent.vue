@@ -120,12 +120,41 @@
                             $t("label.role")
                         }}</label>
                         <vue-select class="db-field-control f-b-custom-select" id="role_id"
+                            v-if="!financialInstitutionEmployeeOnly"
                             v-bind:class="errors.role_id ? 'invalid' : ''" v-model="props.form.role_id" :options="roles"
                             label-by="name" value-by="id" :closeOnSelect="true" :searchable="true" :clearOnClose="true"
                             placeholder="--" search-placeholder="--" />
+                        <input
+                            v-else
+                            type="text"
+                            class="db-field-control"
+                            value="موظف جهة تمويل"
+                            disabled
+                        />
                         <small class="db-field-alert" v-if="errors.role_id">{{
                             errors.role_id[0]
                         }}</small>
+                    </div>
+
+                    <div v-if="showInstitutionField" class="form-col-12 sm:form-col-6">
+                        <label for="financial_institution_owner_user_id" class="db-field-title required">جهة التمويل</label>
+                        <vue-select
+                            class="db-field-control f-b-custom-select"
+                            id="financial_institution_owner_user_id"
+                            v-bind:class="errors.financial_institution_owner_user_id ? 'invalid' : ''"
+                            v-model="props.form.financial_institution_owner_user_id"
+                            :options="institutions"
+                            label-by="company_name"
+                            value-by="id"
+                            :closeOnSelect="true"
+                            :searchable="true"
+                            :clearOnClose="true"
+                            placeholder="--"
+                            search-placeholder="--"
+                        />
+                        <small class="db-field-alert" v-if="errors.financial_institution_owner_user_id">
+                            {{ errors.financial_institution_owner_user_id[0] }}
+                        </small>
                     </div>
 
                     <div class="form-col-12">
@@ -150,6 +179,7 @@
 import SmSidebarModalCreateComponent from "../components/buttons/SmSidebarModalCreateComponent";
 import LoadingComponent from "../components/LoadingComponent";
 import statusEnum from "../../../enums/modules/statusEnum";
+import roleEnum from "../../../enums/modules/roleEnum";
 import alertService from "../../../services/alertService";
 import appService from "../../../services/appService";
 import { useCanvas } from "../../../composables/canvas";
@@ -173,6 +203,7 @@ export default {
             errors: {},
             flag: "",
             calling_code: "",
+            roleEnum: roleEnum,
         };
     },
     computed: {
@@ -182,8 +213,17 @@ export default {
         roles: function () {
             return this.$store.getters["role/lists"];
         },
+        institutions: function () {
+            return this.$store.getters["financialInstitution/lists"] || [];
+        },
+        financialInstitutionEmployeeOnly: function () {
+            return !!this.props.financialInstitutionEmployeeOnly;
+        },
+        showInstitutionField: function () {
+            return this.financialInstitutionEmployeeOnly || Number(this.props.form.role_id) === this.roleEnum.FINANCIAL_INSTITUTION;
+        },
         addButton: function () {
-              return {title: this.$t("button.add_employee")}
+              return {title: this.financialInstitutionEmployeeOnly ? "إضافة موظف جهة تمويل" : this.$t("button.add_employee")}
         }
     },
     mounted() {
@@ -193,6 +233,7 @@ export default {
             order_type: "asc",
             excepts: "1|2",
         });
+        this.$store.dispatch("financialInstitution/lists", { paginate: 0 }).catch(() => {});
         this.$store.dispatch('countryCode/lists');
         this.$store.dispatch('company/lists').then(companyRes => {
             this.$store.dispatch('countryCode/show', companyRes.data.data.company_country_code).then(res => {
@@ -232,10 +273,11 @@ export default {
                 phone: "",
                 password: "",
                 password_confirmation: "",
-                status: statusEnum.ACTIVE,
-                role_id: null,
-                country_code: this.calling_code,
-            };
+                    status: statusEnum.ACTIVE,
+                    role_id: this.financialInstitutionEmployeeOnly ? this.roleEnum.FINANCIAL_INSTITUTION : null,
+                    country_code: this.calling_code,
+                    financial_institution_owner_user_id: this.financialInstitutionEmployeeOnly ? (this.props.defaultFinancialInstitutionOwnerId || null) : null,
+                };
 
             this.$props.props.form.country_code = this.calling_code;
             this.$props.props.flag = this.flag;
@@ -257,8 +299,9 @@ export default {
                             password: "",
                             password_confirmation: "",
                             status: statusEnum.ACTIVE,
-                            role_id: null,
+                            role_id: this.financialInstitutionEmployeeOnly ? this.roleEnum.FINANCIAL_INSTITUTION : null,
                             country_code: this.calling_code,
+                            financial_institution_owner_user_id: this.financialInstitutionEmployeeOnly ? (this.props.defaultFinancialInstitutionOwnerId || null) : null,
                         };
                         this.$props.props.flag = this.flag;
                         this.errors = {};

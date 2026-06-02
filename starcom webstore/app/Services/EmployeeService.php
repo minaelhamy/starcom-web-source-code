@@ -14,6 +14,7 @@ use App\Http\Requests\PaginateRequest;
 use App\Http\Requests\ChangeImageRequest;
 use App\Http\Requests\UserChangePasswordRequest;
 use App\Libraries\QueryExceptionLibrary;
+use App\Models\FinancialInstitutionProfile;
 
 
 class EmployeeService
@@ -21,7 +22,7 @@ class EmployeeService
     public $user;
     public $phoneFilter = ['phone'];
     public $roleFilter = ['role_id'];
-    public $userFilter = ['name', 'email', 'username', 'status', 'phone'];
+    public $userFilter = ['name', 'email', 'username', 'status', 'phone', 'financial_institution_owner_user_id'];
     public $blockRoles = [EnumRole::ADMIN, EnumRole::CUSTOMER];
 
 
@@ -37,12 +38,21 @@ class EmployeeService
             $orderColumn = $request->get('order_column') ?? 'id';
             $orderType   = $request->get('order_type') ?? 'desc';
 
-            return User::with('media', 'addresses', 'roles')->where(
+            return User::with('media', 'addresses', 'roles', 'financialInstitutionOwner.financialInstitutionProfile')->where(
                 function ($query) use ($requests) {
-                    $query->whereHas('roles', function ($query) {
-                        $query->where('id', '!=', EnumRole::ADMIN);
-                        $query->where('id', '!=', EnumRole::CUSTOMER);
-                    });
+                    $financialInstitutionEmployeesOnly = (int)($requests['financial_institution_employee_only'] ?? 0) === 1;
+
+                    if ($financialInstitutionEmployeesOnly) {
+                        $query->whereHas('roles', function ($roleQuery) {
+                            $roleQuery->where('id', EnumRole::FINANCIAL_INSTITUTION);
+                        })->whereNotNull('financial_institution_owner_user_id');
+                    } else {
+                        $query->whereHas('roles', function ($query) {
+                            $query->where('id', '!=', EnumRole::ADMIN);
+                            $query->where('id', '!=', EnumRole::CUSTOMER);
+                        });
+                    }
+
                     foreach ($requests as $key => $request) {
                         if (in_array($key, $this->roleFilter)) {
                             $query->whereHas('roles', function ($query) use ($request, $key) {
@@ -52,6 +62,8 @@ class EmployeeService
                         if (in_array($key, $this->userFilter)) {
                             if ($key == 'phone') {
                                 $query->whereRaw("CONCAT(country_code, phone) LIKE ?", ["%{$request}%"]);
+                            } elseif ($key === 'financial_institution_owner_user_id') {
+                                $query->where($key, '=', $request);
                             } else {
                                 $query->where($key, 'like', '%' . $request . '%');
                             }
@@ -81,6 +93,7 @@ class EmployeeService
                         'status'            => $request->status,
                         'email_verified_at' => now(),
                         'country_code'      => $request->country_code,
+                        'financial_institution_owner_user_id' => $this->resolveFinancialInstitutionOwnerId($request->role_id, $request->financial_institution_owner_user_id),
                         'is_guest'          => Ask::NO,
                     ]);
 
@@ -114,6 +127,7 @@ class EmployeeService
                     $this->user->phone        = $request->phone;
                     $this->user->status       = $request->status;
                     $this->user->country_code = $request->country_code;
+                    $this->user->financial_institution_owner_user_id = $this->resolveFinancialInstitutionOwnerId($request->role_id, $request->financial_institution_owner_user_id);
                     if ($request->password) {
                         $this->user->password = Hash::make($request->password);
                     }
@@ -178,6 +192,25 @@ class EmployeeService
     {
         $emails = explode('@', $email);
         return $emails[0] . mt_rand();
+    }
+
+    private function resolveFinancialInstitutionOwnerId(int $roleId, mixed $ownerId): ?int
+    {
+        if ($roleId !== EnumRole::FINANCIAL_INSTITUTION) {
+            return null;
+        }
+
+        $resolvedOwnerId = (int)$ownerId;
+        if ($resolvedOwnerId <= 0) {
+            throw new Exception('يرجى اختيار جهة التمويل التابع لها الموظف.', 422);
+        }
+
+        $owner = User::with('roles', 'financialInstitutionProfile')->find($resolvedOwnerId);
+        if (!$owner || !$owner->hasRole(EnumRole::FINANCIAL_INSTITUTION) || !$owner->financialInstitutionProfile instanceof FinancialInstitutionProfile) {
+            throw new Exception('يرجى اختيار جهة تمويل صحيحة.', 422);
+        }
+
+        return $owner->id;
     }
 
     /**

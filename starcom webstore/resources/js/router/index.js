@@ -15,6 +15,7 @@ import customerRoutes from "./modules/customerRoutes";
 import damageRoutes from "./modules/damageRoutes";
 import employeeRoutes from "./modules/employeeRoutes";
 import financialInstitutionRoutes from "./modules/financialInstitutionRoutes";
+import financialInstitutionEmployeeRoutes from "./modules/financialInstitutionEmployeeRoutes";
 import frontendRoutes from "./modules/frontendRoutes";
 import lendingPortfolioRoutes from "./modules/lendingPortfolioRoutes";
 import onlineOrderRoutes from "./modules/onlineOrderRoutes";
@@ -78,6 +79,7 @@ const routes = baseRoutes.concat(
     customerRoutes,
     employeeRoutes,
     financialInstitutionRoutes,
+    financialInstitutionEmployeeRoutes,
     transactionRoutes,
     salesReportRoutes,
     creditBalanceReportRoutes,

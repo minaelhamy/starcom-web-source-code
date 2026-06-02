@@ -108,6 +108,7 @@
         "pos-orders": "POS orders",
         "finance_operations": "Finance Operations",
         "financial_institutions": "Financial Institutions",
+        "financial_institution_employees": "Financial Institution Employees",
         "credit_requests": "Credit Requests",
         "lending_portfolio": "Lending Portfolio",
         "pay_later_wallet": "Pay Later Wallet"
