@@ -72,35 +72,12 @@
                 <h3 class="db-card-title">Starcom Intelligence</h3>
             </div>
             <div class="px-4 pb-4">
-                <p class="text-sm text-text mb-4">{{ facility.starcom_intelligence?.note }}</p>
-                <div class="row">
-                    <div class="col-12 md:col-6 xl:col-3" v-for="metric in intelligenceCards" :key="metric.label">
-                        <div class="db-card p-4 h-full">
-                            <div class="text-sm text-text mb-2">{{ metric.label }}</div>
-                            <div class="text-lg font-semibold">{{ metric.value }}</div>
-                        </div>
+                <p class="text-sm text-text mb-4">{{ facility.starcom_intelligence?.note || "—" }}</p>
+                <div class="db-card p-4">
+                    <div class="text-sm text-text mb-2">متوسط الشراء الشهري من ستاركوم في آخر ١٢ شهر</div>
+                    <div class="text-lg font-semibold">
+                        {{ facility.starcom_intelligence?.average_monthly_purchase_last_12_months_currency || "--" }}
                     </div>
-                </div>
-                <div class="db-card p-4 mt-4">
-                    <div class="text-sm text-text mb-2">تاريخ أول فاتورة</div>
-                    <div class="text-lg font-semibold">{{ facility.starcom_intelligence?.first_invoice_date_label || "--" }}</div>
-                </div>
-                <div class="db-card p-4 mt-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="text-sm text-text">المشتريات الشهرية منذ أول فاتورة</div>
-                        <div class="text-xs text-text">{{ monthlyPurchases.length }} شهر</div>
-                    </div>
-                    <div v-if="monthlyPurchases.length" class="space-y-2">
-                        <div
-                            v-for="month in monthlyPurchases"
-                            :key="month.month_key"
-                            class="flex items-center justify-between rounded-lg bg-[#F8F8FC] px-3 py-2"
-                        >
-                            <span class="text-sm text-heading">{{ month.month_label }}</span>
-                            <span class="font-semibold text-heading">{{ month.amount_currency }}</span>
-                        </div>
-                    </div>
-                    <div v-else class="text-sm text-text">لا توجد بيانات شهرية كافية حالياً.</div>
                 </div>
             </div>
         </div>
@@ -139,20 +116,6 @@ export default {
     computed: {
         facility: function () {
             return this.$store.getters["creditApplicationReview/portfolioShow"];
-        },
-        intelligenceCards: function () {
-            const intelligence = this.facility.starcom_intelligence || {};
-
-            return [
-                { label: "متوسط الشراء الأسبوعي من ستاركوم", value: intelligence.average_weekly_purchase_currency || "--" },
-                { label: "متوسط المبيعات اليومية", value: intelligence.average_daily_sales_currency || "--" },
-                { label: "متوسط المبيعات الشهرية", value: intelligence.average_monthly_sales_currency || "--" },
-                { label: "إجمالي المشتريات الشهرية", value: intelligence.total_monthly_purchase_currency || "--" },
-                { label: "المبلغ الائتماني المقترح", value: intelligence.credit_proposed_amount_currency || "--" },
-            ];
-        },
-        monthlyPurchases: function () {
-            return this.facility.starcom_intelligence?.monthly_purchases || [];
         },
         authInfo: function () {
             return this.$store.getters.authInfo || {};
