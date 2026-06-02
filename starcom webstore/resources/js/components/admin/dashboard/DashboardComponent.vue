@@ -11,6 +11,37 @@
         <h4 class="capitalize font-medium text-xl text-secondary">{{ authInfo.name }}</h4>
     </div>
     <LenderDashboardComponent v-if="isLender" />
+    <template v-else-if="isAdmin">
+        <AdminCreditFacilitiesDashboardComponent />
+        <!--========OVERVIEW START=============-->
+        <OverviewComponent />
+        <!--========OVERVIEW END=============-->
+
+        <!--========ORDER STATISTIC START=============-->
+        <OrderStatisticsComponent />
+        <!--========ORDER STATISTIC END=============-->
+        <div class="row">
+            <!--========SALES SUMMARY START=============-->
+            <SalesSummaryComponent />
+            <!--========SALES SUMMARY END=============-->
+
+            <!--========ORDERS SUMMARY START=============-->
+            <OrderSummaryComponent />
+            <!--========ORDERS SUMMARY END=============-->
+
+            <!--========CUSTOMER STATS START=============-->
+            <CustomerStatsComponent />
+            <!--========CUSTOMER STATS END=============-->
+
+            <!--========TOP CUSTOMERS START=============-->
+            <TopCustomersComponent />
+            <!--========TOP CUSTOMERS END=============-->
+
+            <!--========MOST POPULAR ITEMS START=============-->
+            <TopProductsComponent />
+            <!--========MOST POPULAR ITEMS END=============-->
+        </div>
+    </template>
     <template v-else>
         <!--========OVERVIEW START=============-->
         <OverviewComponent />
@@ -46,6 +77,7 @@
 <script>
 import LoadingComponent from "../components/LoadingComponent";
 import roleEnum from "../../../enums/modules/roleEnum";
+import AdminCreditFacilitiesDashboardComponent from "./AdminCreditFacilitiesDashboardComponent.vue";
 import LenderDashboardComponent from "./LenderDashboardComponent.vue";
 import OverviewComponent from "./OverviewComponent";
 import OrderStatisticsComponent from "./OrderStatisticsComponent";
@@ -60,6 +92,7 @@ export default {
     name: "DashboardComponent",
     components: {
         LoadingComponent,
+        AdminCreditFacilitiesDashboardComponent,
         LenderDashboardComponent,
         OverviewComponent,
         OrderStatisticsComponent,
@@ -83,6 +116,9 @@ export default {
         },
         isLender: function () {
             return this.authInfo?.role_id === roleEnum.FINANCIAL_INSTITUTION;
+        },
+        isAdmin: function () {
+            return this.authInfo?.role_id === roleEnum.ADMIN;
         }
     },
     methods: {

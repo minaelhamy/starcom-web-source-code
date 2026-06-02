@@ -9,6 +9,7 @@ export const dashboard = {
         totalCustomers: [],
         totalProducts: [],
         lenderSummary: {},
+        adminCreditFacilitiesSummary: {},
         orderStatistics: [],
         orderSummary: [],
         salesSummary: [],
@@ -33,6 +34,9 @@ export const dashboard = {
         },
         lenderSummary: function (state) {
             return state.lenderSummary;
+        },
+        adminCreditFacilitiesSummary: function (state) {
+            return state.adminCreditFacilitiesSummary;
         },
         orderStatistics: function (state) {
             return state.orderStatistics;
@@ -116,6 +120,19 @@ export const dashboard = {
                     .get("admin/dashboard/lender-summary")
                     .then((res) => {
                         context.commit("lenderSummary", res.data.data);
+                        resolve(res);
+                    })
+                    .catch((err) => {
+                        reject(err);
+                    });
+            });
+        },
+        adminCreditFacilitiesSummary: function (context) {
+            return new Promise((resolve, reject) => {
+                axios
+                    .get("admin/dashboard/admin-credit-facilities-summary")
+                    .then((res) => {
+                        context.commit("adminCreditFacilitiesSummary", res.data.data);
                         resolve(res);
                     })
                     .catch((err) => {
@@ -226,6 +243,9 @@ export const dashboard = {
         },
         lenderSummary: function (state, payload) {
             state.lenderSummary = payload;
+        },
+        adminCreditFacilitiesSummary: function (state, payload) {
+            state.adminCreditFacilitiesSummary = payload;
         },
         orderStatistics: function (state, payload) {
             state.orderStatistics = payload;

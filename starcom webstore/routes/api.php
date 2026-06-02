@@ -190,6 +190,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/total-customers', [DashboardController::class, 'totalCustomers']);
         Route::get('/total-products', [DashboardController::class, 'totalProducts']);
         Route::get('/lender-summary', [DashboardController::class, 'lenderSummary']);
+        Route::get('/admin-credit-facilities-summary', [DashboardController::class, 'adminCreditFacilitiesSummary']);
         Route::get('/order-statistics', [DashboardController::class, 'orderStatistics']);
         Route::get('/sales-summary', [DashboardController::class, 'salesSummary']);
         Route::get('/order-summary', [DashboardController::class, 'orderSummary']);
