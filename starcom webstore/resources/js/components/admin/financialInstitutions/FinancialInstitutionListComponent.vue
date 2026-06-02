@@ -67,6 +67,8 @@
                             <th class="db-table-head-th">المسؤول</th>
                             <th class="db-table-head-th">البريد</th>
                             <th class="db-table-head-th">الهاتف</th>
+                            <th class="db-table-head-th">الحالة</th>
+                            <th class="db-table-head-th">الموظفون المرتبطون</th>
                             <th class="db-table-head-th">الطلبات المعتمدة</th>
                             <th class="db-table-head-th">الرصيد النشط</th>
                             <th class="db-table-head-th">الإجراء</th>
@@ -78,16 +80,30 @@
                             <td class="db-table-body-td">{{ item.name }}</td>
                             <td class="db-table-body-td">{{ item.email }}</td>
                             <td class="db-table-body-td">{{ item.country_code }} {{ item.phone }}</td>
+                            <td class="db-table-body-td">
+                                <span :class="statusClass(item.status)">{{ statusLabel(item.status) }}</span>
+                            </td>
+                            <td class="db-table-body-td">{{ item.linked_employees }}</td>
                             <td class="db-table-body-td">{{ item.approved_facilities }}</td>
                             <td class="db-table-body-td">{{ item.active_wallet_funding }}</td>
                             <td class="db-table-body-td">
-                                <button class="db-btn py-1.5 px-3 text-white bg-primary" @click="edit(item)">تعديل</button>
+                                <div class="flex flex-wrap gap-2">
+                                    <button class="db-btn py-1.5 px-3 text-white bg-primary" @click="edit(item)">تعديل</button>
+                                    <button
+                                        class="db-btn py-1.5 px-3 text-white"
+                                        :class="item.status === statusEnum.ACTIVE ? 'bg-amber-500' : 'bg-emerald-600'"
+                                        @click="changeStatus(item)"
+                                    >
+                                        {{ item.status === statusEnum.ACTIVE ? "إلغاء التفعيل" : "تفعيل" }}
+                                    </button>
+                                    <button class="db-btn py-1.5 px-3 text-white bg-red-600" @click="destroy(item)">حذف</button>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="7">لا توجد جهات تمويلية مضافة بعد.</td>
+                            <td class="db-table-body-td text-center" colspan="9">لا توجد جهات تمويلية مضافة بعد.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -99,6 +115,7 @@
 <script>
 import LoadingComponent from "../components/LoadingComponent.vue";
 import alertService from "../../../services/alertService";
+import appService from "../../../services/appService";
 import statusEnum from "../../../enums/modules/statusEnum";
 
 export default {
@@ -182,6 +199,62 @@ export default {
             this.form = this.defaultForm();
             this.loading.isActive = false;
             this.$store.dispatch("financialInstitution/reset");
+        },
+        changeStatus: function (item) {
+            appService.submitConfirmation().then(() => {
+                this.loading.isActive = true;
+                const nextStatus = item.status === statusEnum.ACTIVE ? statusEnum.INACTIVE : statusEnum.ACTIVE;
+                this.$store.dispatch("financialInstitution/changeStatus", {
+                    id: item.id,
+                    status: nextStatus,
+                    search: { paginate: 0 },
+                }).then((res) => {
+                    alertService.success(
+                        nextStatus === statusEnum.ACTIVE
+                            ? "تم تفعيل جهة التمويل وموظفيها بنجاح."
+                            : "تم إلغاء تفعيل جهة التمويل وموظفيها بنجاح."
+                    );
+                    if (this.$store.getters["financialInstitution/temp"].temp_id === item.id) {
+                        this.form.status = nextStatus;
+                    }
+                    this.list();
+                }).catch((err) => {
+                    alertService.error(err.response?.data?.message || "تعذر تحديث حالة جهة التمويل.");
+                }).finally(() => {
+                    this.loading.isActive = false;
+                });
+            }).catch(() => {
+                this.loading.isActive = false;
+            });
+        },
+        destroy: function (item) {
+            this.loading.isActive = true;
+            appService.destroyConfirmation().then(() => {
+                this.$store.dispatch("financialInstitution/destroy", {
+                    id: item.id,
+                    search: { paginate: 0 },
+                }).then((res) => {
+                    alertService.success(res.data.message || "تم حذف جهة التمويل بنجاح.");
+                    if (this.$store.getters["financialInstitution/temp"].temp_id === item.id) {
+                        this.reset();
+                    }
+                    this.list();
+                }).catch((err) => {
+                    alertService.error(err.response?.data?.message || "تعذر حذف جهة التمويل.");
+                }).finally(() => {
+                    this.loading.isActive = false;
+                });
+            }).catch(() => {
+                this.loading.isActive = false;
+            });
+        },
+        statusLabel: function (status) {
+            return status === statusEnum.ACTIVE ? "نشط" : "غير نشط";
+        },
+        statusClass: function (status) {
+            return status === statusEnum.ACTIVE
+                ? "db-badge py-0.5 text-green-600 bg-green-100"
+                : "db-badge py-0.5 text-red-600 bg-red-100";
         },
     },
 };

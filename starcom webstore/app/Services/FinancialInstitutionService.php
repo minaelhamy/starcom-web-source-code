@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Enums\Ask;
 use App\Enums\Role as EnumRole;
+use App\Enums\Status;
 use App\Http\Requests\FinancialInstitutionRequest;
 use App\Http\Requests\PaginateRequest;
+use App\Http\Requests\UserStatusRequest;
 use App\Libraries\AppLibrary;
 use App\Libraries\QueryExceptionLibrary;
 use App\Models\FinancialInstitutionProfile;
@@ -28,6 +30,7 @@ class FinancialInstitutionService
 
             return User::with('financialInstitutionProfile')
                 ->withCount('institutionCreditFacilities')
+                ->withCount('financialInstitutionEmployees')
                 ->role(EnumRole::FINANCIAL_INSTITUTION)
                 ->where(function ($query) use ($requests) {
                     foreach ($requests as $key => $value) {
@@ -123,5 +126,57 @@ class FinancialInstitutionService
         }
 
         return $financialInstitution->load('financialInstitutionProfile');
+    }
+
+    public function destroy(User $financialInstitution): void
+    {
+        try {
+            if (!$financialInstitution->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            $financialInstitution->loadCount(['institutionCreditFacilities', 'financialInstitutionEmployees']);
+
+            if ((int)$financialInstitution->financial_institution_employees_count > 0) {
+                throw new Exception('لا يمكن حذف جهة التمويل قبل حذف أو نقل الموظفين المرتبطين بها.', 422);
+            }
+
+            if ((int)$financialInstitution->institution_credit_facilities_count > 0) {
+                throw new Exception('لا يمكن حذف جهة التمويل بعد ارتباطها بطلبات أو اعتمادات تمويلية.', 422);
+            }
+
+            DB::transaction(function () use ($financialInstitution) {
+                $financialInstitution->financialInstitutionProfile()?->delete();
+                $financialInstitution->delete();
+            });
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    public function changeStatus(User $financialInstitution, UserStatusRequest $request): User
+    {
+        try {
+            if (!$financialInstitution->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            return DB::transaction(function () use ($financialInstitution, $request) {
+                $status = (int) $request->status;
+
+                $financialInstitution->status = $status;
+                $financialInstitution->save();
+
+                $financialInstitution->financialInstitutionEmployees()
+                    ->withTrashed()
+                    ->update(['status' => $status]);
+
+                return $financialInstitution->fresh()->load('financialInstitutionProfile');
+            });
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
     }
 }

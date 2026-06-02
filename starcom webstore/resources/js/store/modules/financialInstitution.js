@@ -80,6 +80,28 @@ export const financialInstitution = {
                 });
             });
         },
+        destroy: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.delete(`admin/financial-institution/${payload.id}`).then((res) => {
+                    context.dispatch("lists", payload.search).then().catch();
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
+        changeStatus: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.patch(`admin/financial-institution/${payload.id}/status`, {
+                    status: payload.status,
+                }).then((res) => {
+                    context.dispatch("lists", payload.search).then().catch();
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
         reset: function (context) {
             context.commit("reset");
         },

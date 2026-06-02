@@ -587,6 +587,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::post('/', [FinancialInstitutionController::class, 'store']);
         Route::get('/show/{financialInstitution}', [FinancialInstitutionController::class, 'show']);
         Route::match(['put', 'patch'], '/{financialInstitution}', [FinancialInstitutionController::class, 'update']);
+        Route::patch('/{financialInstitution}/status', [FinancialInstitutionController::class, 'changeStatus']);
+        Route::delete('/{financialInstitution}', [FinancialInstitutionController::class, 'destroy']);
     });
 
     Route::prefix('credit-application')->name('credit-application.')->group(function () {

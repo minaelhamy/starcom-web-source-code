@@ -20,6 +20,7 @@ class FinancialInstitutionResource extends JsonResource
             'contact_phone'         => $this->financialInstitutionProfile?->contact_phone,
             'notes'                 => $this->financialInstitutionProfile?->notes,
             'approved_facilities'   => (int)($this->institution_credit_facilities_count ?? $this->institutionCreditFacilities()->where('status', 'approved')->count()),
+            'linked_employees'      => (int)($this->financial_institution_employees_count ?? $this->financialInstitutionEmployees()->count()),
             'active_wallet_funding' => (float)$this->institutionCreditFacilities()->where('status', 'approved')->sum('available_amount'),
         ];
     }

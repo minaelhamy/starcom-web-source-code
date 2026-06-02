@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Requests\FinancialInstitutionRequest;
 use App\Http\Requests\PaginateRequest;
+use App\Http\Requests\UserStatusRequest;
 use App\Http\Resources\FinancialInstitutionResource;
 use App\Models\User;
 use App\Services\FinancialInstitutionService;
@@ -26,7 +27,7 @@ class FinancialInstitutionController extends AdminController implements HasMiddl
             new Middleware('permission:financial-institutions', only: ['index']),
             new Middleware('permission:financial-institutions_show', only: ['show']),
             new Middleware('permission:financial-institutions_create', only: ['store']),
-            new Middleware('permission:financial-institutions_edit', only: ['update']),
+            new Middleware('permission:financial-institutions_edit', only: ['update', 'destroy', 'changeStatus']),
         ];
     }
 
@@ -61,6 +62,29 @@ class FinancialInstitutionController extends AdminController implements HasMiddl
     {
         try {
             return new FinancialInstitutionResource($this->financialInstitutionService->update($request, $financialInstitution));
+        } catch (\Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function destroy(User $financialInstitution): Response|Application|ResponseFactory
+    {
+        try {
+            $this->financialInstitutionService->destroy($financialInstitution);
+
+            return response([
+                'status' => true,
+                'message' => 'تم حذف جهة التمويل بنجاح.',
+            ]);
+        } catch (\Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function changeStatus(User $financialInstitution, UserStatusRequest $request): FinancialInstitutionResource|Response|Application|ResponseFactory
+    {
+        try {
+            return new FinancialInstitutionResource($this->financialInstitutionService->changeStatus($financialInstitution, $request));
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }
