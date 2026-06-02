@@ -12,6 +12,7 @@ class CreditFacility extends Model
         'credit_application_id',
         'user_id',
         'financial_institution_user_id',
+        'financial_institution_employee_user_id',
         'status',
         'approved_amount',
         'available_amount',
@@ -28,6 +29,7 @@ class CreditFacility extends Model
         'credit_application_id'         => 'integer',
         'user_id'                       => 'integer',
         'financial_institution_user_id' => 'integer',
+        'financial_institution_employee_user_id' => 'integer',
         'status'                        => 'string',
         'approved_amount'               => 'decimal:6',
         'available_amount'              => 'decimal:6',
@@ -52,6 +54,11 @@ class CreditFacility extends Model
     public function institution(): BelongsTo
     {
         return $this->belongsTo(User::class, 'financial_institution_user_id')->withTrashed();
+    }
+
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'financial_institution_employee_user_id')->withTrashed();
     }
 
     public function orderAllocations(): HasMany

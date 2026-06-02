@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -46,6 +47,7 @@ class User extends Authenticatable implements HasMedia
         'latitude',
         'longitude',
         'distribution_route',
+        'financial_institution_owner_user_id',
         'is_guest',
         'status',
         'email_verified_at'
@@ -81,6 +83,7 @@ class User extends Authenticatable implements HasMedia
         'latitude'          => 'string',
         'longitude'         => 'string',
         'distribution_route'=> 'string',
+        'financial_institution_owner_user_id' => 'integer',
         'is_guest'          => 'integer',
         'status'            => 'integer',
         'email_verified_at' => 'datetime',
@@ -136,6 +139,16 @@ class User extends Authenticatable implements HasMedia
         return $this->hasOne(FinancialInstitutionProfile::class);
     }
 
+    public function financialInstitutionOwner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'financial_institution_owner_user_id')->withTrashed();
+    }
+
+    public function financialInstitutionEmployees(): HasMany
+    {
+        return $this->hasMany(User::class, 'financial_institution_owner_user_id')->withTrashed();
+    }
+
     public function creditApplications(): HasMany
     {
         return $this->hasMany(CreditApplication::class);
@@ -149,6 +162,11 @@ class User extends Authenticatable implements HasMedia
     public function institutionCreditFacilities(): HasMany
     {
         return $this->hasMany(CreditFacility::class, 'financial_institution_user_id');
+    }
+
+    public function employeeCreditFacilities(): HasMany
+    {
+        return $this->hasMany(CreditFacility::class, 'financial_institution_employee_user_id');
     }
 
     public function walletTransactions(): HasMany
@@ -169,6 +187,15 @@ class User extends Authenticatable implements HasMedia
     public function intelligenceCustomers(): HasMany
     {
         return $this->hasMany(StarcomIntelligenceCustomer::class);
+    }
+
+    public function resolvedFinancialInstitutionUserId(): ?int
+    {
+        if (!$this->hasRole(\App\Enums\Role::FINANCIAL_INSTITUTION)) {
+            return null;
+        }
+
+        return $this->financial_institution_owner_user_id ?: $this->id;
     }
 
 

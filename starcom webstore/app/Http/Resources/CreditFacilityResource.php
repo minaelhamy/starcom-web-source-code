@@ -42,6 +42,12 @@ class CreditFacilityResource extends JsonResource
                 'name'         => $this->institution->name,
                 'company_name' => $this->institution->financialInstitutionProfile?->company_name,
             ] : null,
+            'employee'          => $showInstitution && $this->employee ? [
+                'id'    => $this->employee->id,
+                'name'  => $this->employee->name,
+                'email' => $this->employee->email,
+                'phone' => trim(($this->employee->country_code ?: '') . ' ' . ($this->employee->phone ?: '')),
+            ] : null,
             'application'       => $application ? [
                 'id'                            => $application->id,
                 'status'                        => $application->status,

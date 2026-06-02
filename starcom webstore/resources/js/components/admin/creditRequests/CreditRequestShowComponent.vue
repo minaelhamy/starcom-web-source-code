@@ -92,6 +92,24 @@
                         <label class="db-field-title">ملاحظات</label>
                         <input v-model="form.notes" type="text" class="db-field-control" />
                     </div>
+                    <div v-if="isAdmin" class="col-12 md:col-6">
+                        <label class="db-field-title required">جهة التمويل</label>
+                        <select v-model="form.financial_institution_user_id" class="db-field-control" @change="handleInstitutionChange">
+                            <option value="">اختر جهة التمويل</option>
+                            <option v-for="institution in institutions" :key="institution.id" :value="String(institution.id)">
+                                {{ institution.company_name || institution.name }}
+                            </option>
+                        </select>
+                    </div>
+                    <div v-if="isAdmin" class="col-12 md:col-6">
+                        <label class="db-field-title">الموظف المسؤول</label>
+                        <select v-model="form.financial_institution_employee_user_id" class="db-field-control">
+                            <option value="">نفس جهة التمويل</option>
+                            <option v-for="employee in filteredEmployees" :key="employee.id" :value="String(employee.id)">
+                                {{ employee.name }}
+                            </option>
+                        </select>
+                    </div>
                     <div class="col-12 mt-2">
                         <div class="flex gap-2 flex-wrap">
                             <button class="db-btn py-2 text-white bg-primary" @click="approve">اعتماد الطلب</button>
@@ -135,6 +153,8 @@ export default {
                 duration_days: 30,
                 notes: "",
                 decline_reason: "",
+                financial_institution_user_id: "",
+                financial_institution_employee_user_id: "",
             },
         };
     },
@@ -144,6 +164,18 @@ export default {
         },
         authInfo: function () {
             return this.$store.getters.authInfo || {};
+        },
+        assignmentOptions: function () {
+            return this.$store.getters["creditApplicationReview/assignmentOptions"] || { institutions: [], employees: [] };
+        },
+        institutions: function () {
+            return this.assignmentOptions.institutions || [];
+        },
+        filteredEmployees: function () {
+            const institutionId = Number(this.form.financial_institution_user_id || 0);
+            return (this.assignmentOptions.employees || []).filter((employee) => {
+                return !employee.institution_owner_user_id || Number(employee.institution_owner_user_id) === institutionId || Number(employee.id) === institutionId;
+            });
         },
         isAdmin: function () {
             return this.authInfo.role_id === roleEnum.ADMIN;
@@ -158,9 +190,21 @@ export default {
     methods: {
         fetch: function () {
             this.loading.isActive = true;
-            this.$store.dispatch("creditApplicationReview/show", this.$route.params.id).finally(() => {
+            Promise.all([
+                this.$store.dispatch("creditApplicationReview/show", this.$route.params.id),
+                this.isAdmin ? this.$store.dispatch("creditApplicationReview/assignmentOptions") : Promise.resolve(),
+            ]).finally(() => {
                 this.loading.isActive = false;
             });
+        },
+        handleInstitutionChange: function () {
+            const selectedEmployeeId = Number(this.form.financial_institution_employee_user_id || 0);
+            if (selectedEmployeeId > 0) {
+                const exists = this.filteredEmployees.some((employee) => Number(employee.id) === selectedEmployeeId);
+                if (!exists) {
+                    this.form.financial_institution_employee_user_id = "";
+                }
+            }
         },
         approve: function () {
             this.loading.isActive = true;

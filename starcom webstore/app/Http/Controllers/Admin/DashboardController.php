@@ -159,11 +159,10 @@ class DashboardController extends AdminController implements HasMiddleware
 
             $opportunitiesQuery = $this->creditApplicationService->lenderOpportunitiesQuery($actor);
 
-            $approvedFacilitiesQuery = CreditFacility::with('user')
-                ->where('financial_institution_user_id', $actor->id)
+            $approvedFacilitiesQuery = $this->creditApplicationService->portfolioQuery($actor)
                 ->where('status', CreditFacilityStatus::APPROVED);
 
-            $reviewedFacilitiesQuery = CreditFacility::where('financial_institution_user_id', $actor->id);
+            $reviewedFacilitiesQuery = $this->creditApplicationService->portfolioQuery($actor);
 
             $opportunitiesCount = (clone $opportunitiesQuery)->count();
             $approvedAmount = (float)(clone $approvedFacilitiesQuery)->sum('approved_amount');
@@ -195,10 +194,10 @@ class DashboardController extends AdminController implements HasMiddleware
                         'available_amount_currency'        => AppLibrary::currencyAmountFormat($facility->available_amount),
                         'utilized_amount'                  => (float)$facility->utilized_amount,
                         'utilized_amount_currency'         => AppLibrary::currencyAmountFormat($facility->utilized_amount),
-                        'total_monthly_purchase'           => (float)($intelligence['total_monthly_purchase'] ?? 0),
-                        'total_monthly_purchase_currency'  => $intelligence['total_monthly_purchase_currency'] ?? AppLibrary::currencyAmountFormat(0),
-                        'credit_proposed_amount'           => (float)($intelligence['credit_proposed_amount'] ?? 0),
-                        'credit_proposed_amount_currency'  => $intelligence['credit_proposed_amount_currency'] ?? AppLibrary::currencyAmountFormat(0),
+                        'total_monthly_purchase'           => (float)($intelligence['average_monthly_purchase_last_12_months'] ?? 0),
+                        'total_monthly_purchase_currency'  => $intelligence['average_monthly_purchase_last_12_months_currency'] ?? AppLibrary::currencyAmountFormat(0),
+                        'credit_proposed_amount'           => (float)($intelligence['average_monthly_purchase_last_12_months'] ?? 0),
+                        'credit_proposed_amount_currency'  => $intelligence['average_monthly_purchase_last_12_months_currency'] ?? AppLibrary::currencyAmountFormat(0),
                     ];
                 })
                 ->sortByDesc(function (array $customer) {
@@ -222,8 +221,8 @@ class DashboardController extends AdminController implements HasMiddleware
                         'customer_address'                 => $application->user?->address,
                         'created_at'                       => $application->created_at?->toDateTimeString(),
                         'created_date'                     => $application->created_at ? AppLibrary::date($application->created_at) : null,
-                        'credit_proposed_amount'           => (float)($intelligence['credit_proposed_amount'] ?? 0),
-                        'credit_proposed_amount_currency'  => $intelligence['credit_proposed_amount_currency'] ?? AppLibrary::currencyAmountFormat(0),
+                        'credit_proposed_amount'           => (float)($intelligence['average_monthly_purchase_last_12_months'] ?? 0),
+                        'credit_proposed_amount_currency'  => $intelligence['average_monthly_purchase_last_12_months_currency'] ?? AppLibrary::currencyAmountFormat(0),
                     ];
                 })
                 ->values();

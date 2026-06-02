@@ -13,7 +13,14 @@ class CreditApplicationResource extends JsonResource
     {
         $reviewedByMe = false;
         if (Auth::check()) {
-            $reviewedByMe = $this->facilities->contains('financial_institution_user_id', Auth::id());
+            $actor = Auth::user();
+            if ($actor->hasRole(\App\Enums\Role::FINANCIAL_INSTITUTION)) {
+                $institutionId = $actor->resolvedFinancialInstitutionUserId();
+                $reviewedByMe = $this->facilities->contains(function ($facility) use ($institutionId, $actor) {
+                    return (int)$facility->financial_institution_user_id === (int)$institutionId ||
+                        (int)$facility->financial_institution_employee_user_id === (int)$actor->id;
+                });
+            }
         }
 
         return [

@@ -8,6 +8,10 @@ export const creditApplicationReview = {
         page: {},
         pagination: [],
         show: {},
+        assignmentOptions: {
+            institutions: [],
+            employees: [],
+        },
         portfolio: [],
         portfolioPage: {},
         portfolioPagination: [],
@@ -25,6 +29,9 @@ export const creditApplicationReview = {
         },
         show: function (state) {
             return state.show;
+        },
+        assignmentOptions: function (state) {
+            return state.assignmentOptions;
         },
         portfolio: function (state) {
             return state.portfolio;
@@ -62,6 +69,16 @@ export const creditApplicationReview = {
             return new Promise((resolve, reject) => {
                 axios.get(`admin/credit-application/show/${payload}`).then((res) => {
                     context.commit("show", res.data.data);
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
+        assignmentOptions: function (context) {
+            return new Promise((resolve, reject) => {
+                axios.get("admin/credit-application/assignment-options").then((res) => {
+                    context.commit("assignmentOptions", res.data.data || { institutions: [], employees: [] });
                     resolve(res);
                 }).catch((err) => {
                     reject(err);
@@ -132,6 +149,16 @@ export const creditApplicationReview = {
                 });
             });
         },
+        assignFacility: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.post(`admin/credit-application/portfolio/assign/${payload.id}`, payload.form).then((res) => {
+                    context.commit("portfolioShow", res.data.data);
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
     },
     mutations: {
         lists: function (state, payload) {
@@ -151,6 +178,9 @@ export const creditApplicationReview = {
         },
         show: function (state, payload) {
             state.show = payload;
+        },
+        assignmentOptions: function (state, payload) {
+            state.assignmentOptions = payload;
         },
         portfolio: function (state, payload) {
             state.portfolio = payload;

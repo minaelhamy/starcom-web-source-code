@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CreditApplicationDecisionRequest extends FormRequest
@@ -18,6 +19,8 @@ class CreditApplicationDecisionRequest extends FormRequest
             'duration_days'   => ['required_without:decline_reason', 'nullable', 'integer', 'min:30'],
             'notes'           => ['nullable', 'string'],
             'decline_reason'  => ['required_without:approved_amount', 'nullable', 'string'],
+            'financial_institution_user_id' => ['nullable', 'integer', Rule::exists('users', 'id')->whereNull('deleted_at')],
+            'financial_institution_employee_user_id' => ['nullable', 'integer', Rule::exists('users', 'id')->whereNull('deleted_at')],
         ];
     }
 }

@@ -6,6 +6,7 @@ use App\Enums\CreditApplicationStatus;
 use App\Enums\CreditFacilityStatus;
 use App\Enums\Role as EnumRole;
 use App\Http\Requests\CreditApplicationDecisionRequest;
+use App\Http\Requests\CreditFacilityAssignmentRequest;
 use App\Http\Requests\CreditApplicationStoreRequest;
 use App\Http\Requests\PaginateRequest;
 use App\Libraries\AppLibrary;
@@ -27,13 +28,19 @@ class CreditApplicationService
 {
     public function lenderOpportunitiesQuery(User $actor)
     {
-        return CreditApplication::with(['user', 'facilities.institution.financialInstitutionProfile'])
+        $institutionId = $this->resolveInstitutionUserId($actor);
+
+        return CreditApplication::with([
+            'user',
+            'facilities.institution.financialInstitutionProfile',
+            'facilities.employee',
+        ])
             ->where('status', CreditApplicationStatus::PENDING)
             ->whereDoesntHave('facilities', function ($facilityQuery) {
                 $facilityQuery->where('status', CreditFacilityStatus::APPROVED);
             })
-            ->whereDoesntHave('facilities', function ($facilityQuery) use ($actor) {
-                $facilityQuery->where('financial_institution_user_id', $actor->id);
+            ->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
+                $facilityQuery->where('financial_institution_user_id', $institutionId);
             });
     }
 
@@ -42,7 +49,11 @@ class CreditApplicationService
         $method = $request->get('paginate', 0) == 1 ? 'paginate' : 'get';
         $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
 
-        return CreditApplication::with(['user', 'facilities.institution.financialInstitutionProfile'])
+        return CreditApplication::with([
+            'user',
+            'facilities.institution.financialInstitutionProfile',
+            'facilities.employee',
+        ])
             ->where('user_id', Auth::id())
             ->latest()
             ->$method($methodValue);
@@ -81,7 +92,11 @@ class CreditApplicationService
                 $this->safeNotify($institutionUser, new NewCreditApplicationSubmittedNotification($application));
             });
 
-            return $application->load(['user', 'facilities.institution.financialInstitutionProfile']);
+            return $application->load([
+                'user',
+                'facilities.institution.financialInstitutionProfile',
+                'facilities.employee',
+            ]);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
@@ -105,7 +120,11 @@ class CreditApplicationService
         $method = $request->get('paginate', 0) == 1 ? 'paginate' : 'get';
         $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
 
-        $query = CreditApplication::with(['user', 'facilities.institution.financialInstitutionProfile']);
+        $query = CreditApplication::with([
+            'user',
+            'facilities.institution.financialInstitutionProfile',
+            'facilities.employee',
+        ]);
 
         if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
             $query = $this->lenderOpportunitiesQuery($actor);
@@ -122,12 +141,7 @@ class CreditApplicationService
         $method = $request->get('paginate', 0) == 1 ? 'paginate' : 'get';
         $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
 
-        return CreditFacility::with(['user', 'institution.financialInstitutionProfile'])
-            ->where(function ($query) use ($actor) {
-                if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
-                    $query->where('financial_institution_user_id', $actor->id);
-                }
-            })
+        return $this->portfolioQuery($actor)
             ->latest()
             ->$method($methodValue);
     }
@@ -137,6 +151,7 @@ class CreditApplicationService
         $actor = Auth::user();
 
         if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
+            $institutionId = $this->resolveInstitutionUserId($actor);
             if (
                 $creditApplication->status !== CreditApplicationStatus::PENDING ||
                 $creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()
@@ -145,7 +160,7 @@ class CreditApplicationService
             }
 
             $hasReviewed = $creditApplication->facilities()
-                ->where('financial_institution_user_id', $actor->id)
+                ->where('financial_institution_user_id', $institutionId)
                 ->exists();
 
             if ($hasReviewed) {
@@ -153,7 +168,11 @@ class CreditApplicationService
             }
         }
 
-        return $creditApplication->load(['user', 'facilities.institution.financialInstitutionProfile']);
+        return $creditApplication->load([
+            'user',
+            'facilities.institution.financialInstitutionProfile',
+            'facilities.employee',
+        ]);
     }
 
     public function showFacility(CreditFacility $creditFacility): CreditFacility
@@ -162,7 +181,7 @@ class CreditApplicationService
 
         if (
             $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
-            (int)$creditFacility->financial_institution_user_id !== (int)$actor->id
+            (int)$creditFacility->financial_institution_user_id !== (int)$this->resolveInstitutionUserId($actor)
         ) {
             throw new Exception(trans('all.message.permission_denied'), 422);
         }
@@ -171,8 +190,83 @@ class CreditApplicationService
             'user',
             'application.user',
             'application.facilities.institution.financialInstitutionProfile',
+            'application.facilities.employee',
             'institution.financialInstitutionProfile',
+            'employee',
         ]);
+    }
+
+    public function assignmentOptions(): array
+    {
+        $institutions = User::with('financialInstitutionProfile')
+            ->role(EnumRole::FINANCIAL_INSTITUTION)
+            ->whereHas('financialInstitutionProfile')
+            ->orderBy('name')
+            ->get();
+
+        $employees = User::role(EnumRole::FINANCIAL_INSTITUTION)
+            ->with(['financialInstitutionOwner.financialInstitutionProfile'])
+            ->orderBy('name')
+            ->get();
+
+        return [
+            'institutions' => $institutions->map(function (User $institution) {
+                return [
+                    'id' => $institution->id,
+                    'name' => $institution->name,
+                    'company_name' => $institution->financialInstitutionProfile?->company_name ?: $institution->name,
+                ];
+            })->values(),
+            'employees' => $employees->map(function (User $employee) {
+                return [
+                    'id' => $employee->id,
+                    'name' => $employee->name,
+                    'email' => $employee->email,
+                    'institution_owner_user_id' => $employee->financial_institution_owner_user_id,
+                    'institution_company_name' => $employee->financialInstitutionOwner?->financialInstitutionProfile?->company_name,
+                ];
+            })->values(),
+        ];
+    }
+
+    public function assignFacility(CreditFacility $creditFacility, CreditFacilityAssignmentRequest $request): CreditFacility
+    {
+        try {
+            $actor = Auth::user();
+            if (!$actor->hasRole(EnumRole::ADMIN)) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            return DB::transaction(function () use ($creditFacility, $request) {
+                $facility = CreditFacility::with(['institution', 'employee'])->lockForUpdate()->findOrFail($creditFacility->id);
+                $institution = User::with('financialInstitutionProfile')->findOrFail((int)$request->financial_institution_user_id);
+                $employee = $request->filled('financial_institution_employee_user_id')
+                    ? User::findOrFail((int)$request->financial_institution_employee_user_id)
+                    : $institution;
+
+                $this->assertValidInstitutionAssignment($institution, $employee);
+
+                $facility->financial_institution_user_id = $institution->id;
+                $facility->financial_institution_employee_user_id = $employee->id;
+                $facility->save();
+
+                WalletTransaction::where('credit_facility_id', $facility->id)->update([
+                    'financial_institution_user_id' => $institution->id,
+                ]);
+
+                return $facility->load([
+                    'user',
+                    'application.user',
+                    'application.facilities.institution.financialInstitutionProfile',
+                    'application.facilities.employee',
+                    'institution.financialInstitutionProfile',
+                    'employee',
+                ]);
+            });
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
     }
 
     public function resetApproval(CreditFacility $creditFacility): CreditApplication
@@ -227,7 +321,11 @@ class CreditApplicationService
                 $this->refreshApplicationStatus($application);
             });
 
-            return CreditApplication::with(['user', 'facilities.institution.financialInstitutionProfile'])
+            return CreditApplication::with([
+                'user',
+                'facilities.institution.financialInstitutionProfile',
+                'facilities.employee',
+            ])
                 ->findOrFail($creditFacility->credit_application_id);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
@@ -253,6 +351,8 @@ class CreditApplicationService
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
 
+            [$institution, $employee] = $this->resolveAssignmentActors($actor, $request);
+
             if (
                 $creditApplication->status !== CreditApplicationStatus::PENDING ||
                 $creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()
@@ -260,26 +360,32 @@ class CreditApplicationService
                 throw new Exception('تمت مراجعة هذا الطلب بالفعل من جهة تمويل أخرى.', 422);
             }
 
-            if ($creditApplication->facilities()->where('financial_institution_user_id', $actor->id)->exists()) {
+            if ($creditApplication->facilities()->where('financial_institution_user_id', $institution->id)->exists()) {
                 throw new Exception(trans('all.message.credit_application_already_reviewed'), 422);
             }
 
             $facility = app(WalletService::class)->creditByFacility(
                 $creditApplication->user,
                 $creditApplication,
-                $actor,
+                $institution,
                 (float)$request->approved_amount,
                 'تمت إضافة رصيد إلى المحفظة',
                 [
                     'duration_days' => (int)$request->duration_days,
                     'notes'         => $request->notes,
+                    'financial_institution_employee_user_id' => $employee->id,
                 ]
             );
 
             $this->refreshApplicationStatus($creditApplication);
             $this->safeNotify($creditApplication->user, new CreditApplicationApprovedNotification($creditApplication, $facility));
 
-            return $facility->load(['user', 'institution.financialInstitutionProfile', 'application']);
+            return $facility->load([
+                'user',
+                'institution.financialInstitutionProfile',
+                'employee',
+                'application',
+            ]);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
@@ -294,6 +400,8 @@ class CreditApplicationService
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
 
+            [$institution, $employee] = $this->resolveAssignmentActors($actor, $request, false);
+
             if (
                 $creditApplication->status !== CreditApplicationStatus::PENDING ||
                 $creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()
@@ -301,14 +409,15 @@ class CreditApplicationService
                 throw new Exception('تمت مراجعة هذا الطلب بالفعل من جهة تمويل أخرى.', 422);
             }
 
-            if ($creditApplication->facilities()->where('financial_institution_user_id', $actor->id)->exists()) {
+            if ($creditApplication->facilities()->where('financial_institution_user_id', $institution->id)->exists()) {
                 throw new Exception(trans('all.message.credit_application_already_reviewed'), 422);
             }
 
             $facility = CreditFacility::create([
                 'credit_application_id'         => $creditApplication->id,
                 'user_id'                       => $creditApplication->user_id,
-                'financial_institution_user_id' => $actor->id,
+                'financial_institution_user_id' => $institution->id,
+                'financial_institution_employee_user_id' => $employee->id,
                 'status'                        => CreditFacilityStatus::DECLINED,
                 'approved_amount'               => 0,
                 'available_amount'              => 0,
@@ -321,11 +430,27 @@ class CreditApplicationService
             $this->refreshApplicationStatus($creditApplication);
             $this->safeNotify($creditApplication->user, new CreditApplicationDeclinedNotification($creditApplication, $facility));
 
-            return $facility->load(['user', 'institution.financialInstitutionProfile', 'application']);
+            return $facility->load([
+                'user',
+                'institution.financialInstitutionProfile',
+                'employee',
+                'application',
+            ]);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
         }
+    }
+
+    public function portfolioQuery(User $actor)
+    {
+        $query = CreditFacility::with(['user', 'institution.financialInstitutionProfile', 'employee']);
+
+        if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
+            $query->where('financial_institution_user_id', $this->resolveInstitutionUserId($actor));
+        }
+
+        return $query;
     }
 
     public function summaryForCustomer(User $user): array
@@ -409,6 +534,68 @@ class CreditApplicationService
                 'user_id' => $user->id,
                 'message' => $throwable->getMessage(),
             ]);
+        }
+    }
+
+    protected function resolveInstitutionUserId(User $actor): int
+    {
+        return (int)($actor->resolvedFinancialInstitutionUserId() ?: $actor->id);
+    }
+
+    protected function resolveAssignmentActors(User $actor, CreditApplicationDecisionRequest $request, bool $requireInstitutionForAdmin = true): array
+    {
+        if ($actor->hasRole(EnumRole::ADMIN)) {
+            if ($requireInstitutionForAdmin && !$request->filled('financial_institution_user_id')) {
+                throw new Exception('يرجى اختيار جهة التمويل قبل الاعتماد.', 422);
+            }
+
+            $institution = $request->filled('financial_institution_user_id')
+                ? User::with('financialInstitutionProfile')->findOrFail((int)$request->financial_institution_user_id)
+                : null;
+            $employee = $request->filled('financial_institution_employee_user_id')
+                ? User::findOrFail((int)$request->financial_institution_employee_user_id)
+                : $institution;
+
+            if (!$institution) {
+                throw new Exception('يرجى اختيار جهة التمويل.', 422);
+            }
+
+            $this->assertValidInstitutionAssignment($institution, $employee);
+
+            return [$institution, $employee ?: $institution];
+        }
+
+        $institution = $actor->financialInstitutionOwner ?: $actor;
+        $employee = $actor;
+
+        return [$institution, $employee];
+    }
+
+    protected function assertValidInstitutionAssignment(User $institution, ?User $employee): void
+    {
+        if (!$institution->hasRole(EnumRole::FINANCIAL_INSTITUTION) || !$institution->financialInstitutionProfile) {
+            throw new Exception('يرجى اختيار جهة تمويل صحيحة.', 422);
+        }
+
+        if (!$employee) {
+            return;
+        }
+
+        if (!$employee->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
+            throw new Exception('يرجى اختيار موظف تابع لجهة تمويل.', 422);
+        }
+
+        if ((int)$employee->id === (int)$institution->id) {
+            return;
+        }
+
+        if ($employee->financial_institution_owner_user_id && (int)$employee->financial_institution_owner_user_id !== (int)$institution->id) {
+            throw new Exception('هذا الموظف مرتبط بجهة تمويل أخرى.', 422);
+        }
+
+        if ((int)$employee->financial_institution_owner_user_id !== (int)$institution->id) {
+            $employee->financial_institution_owner_user_id = $institution->id;
+            $employee->save();
         }
     }
 }

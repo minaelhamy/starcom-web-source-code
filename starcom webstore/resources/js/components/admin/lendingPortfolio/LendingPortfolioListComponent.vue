@@ -14,6 +14,8 @@
                             <th class="db-table-head-th">المعتمد</th>
                             <th class="db-table-head-th">المتاح</th>
                             <th class="db-table-head-th">المستخدم</th>
+                            <th class="db-table-head-th">جهة التمويل</th>
+                            <th class="db-table-head-th">الموظف المسؤول</th>
                             <th class="db-table-head-th">بداية المدة</th>
                             <th class="db-table-head-th">تاريخ الاستحقاق</th>
                             <th class="db-table-head-th">الملف</th>
@@ -29,6 +31,8 @@
                             <td class="db-table-body-td">{{ item.approved_currency }}</td>
                             <td class="db-table-body-td">{{ item.available_currency }}</td>
                             <td class="db-table-body-td">{{ item.utilized_currency }}</td>
+                            <td class="db-table-body-td">{{ item.institution?.company_name || item.institution?.name || "--" }}</td>
+                            <td class="db-table-body-td">{{ item.employee?.name || "--" }}</td>
                             <td class="db-table-body-td">{{ item.starts_at || "--" }}</td>
                             <td class="db-table-body-td">{{ item.due_at || "--" }}</td>
                             <td class="db-table-body-td">
@@ -38,7 +42,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="8">لا توجد عمليات تمويل معتمدة حتى الآن.</td>
+                            <td class="db-table-body-td text-center" colspan="10">لا توجد عمليات تمويل معتمدة حتى الآن.</td>
                         </tr>
                     </tbody>
                 </table>

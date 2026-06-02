@@ -31,6 +31,7 @@ class WalletService
                 'credit_application_id'         => $application->id,
                 'user_id'                       => $user->id,
                 'financial_institution_user_id' => $institution->id,
+                'financial_institution_employee_user_id' => $facilityData['financial_institution_employee_user_id'] ?? $institution->id,
                 'status'                        => CreditFacilityStatus::APPROVED,
                 'approved_amount'               => $amount,
                 'available_amount'              => $amount,

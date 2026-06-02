@@ -19,6 +19,8 @@
                 <div class="col-12 lg:col-6">
                     <div class="space-y-2 text-sm">
                         <div><span class="font-semibold">الحالة:</span> {{ statusText(facility.status) }}</div>
+                        <div><span class="font-semibold">جهة التمويل:</span> {{ facility.institution?.company_name || facility.institution?.name || "--" }}</div>
+                        <div><span class="font-semibold">الموظف المسؤول:</span> {{ facility.employee?.name || "--" }}</div>
                         <div><span class="font-semibold">بداية المدة:</span> {{ facility.starts_at || "--" }}</div>
                         <div><span class="font-semibold">تاريخ الاستحقاق:</span> {{ facility.due_at || "--" }}</div>
                         <div><span class="font-semibold">تاريخ المراجعة:</span> {{ facility.reviewed_at || "--" }}</div>
@@ -82,6 +84,37 @@
             </div>
         </div>
 
+        <div v-if="isAdmin" class="db-card mb-4">
+            <div class="db-card-header border-none">
+                <h3 class="db-card-title">تعيين جهة التمويل والموظف</h3>
+            </div>
+            <div class="row p-4">
+                <div class="col-12 md:col-6">
+                    <label class="db-field-title required">جهة التمويل</label>
+                    <select v-model="assignmentForm.financial_institution_user_id" class="db-field-control" @change="handleInstitutionChange">
+                        <option value="">اختر جهة التمويل</option>
+                        <option v-for="institution in institutions" :key="institution.id" :value="String(institution.id)">
+                            {{ institution.company_name || institution.name }}
+                        </option>
+                    </select>
+                </div>
+                <div class="col-12 md:col-6">
+                    <label class="db-field-title">الموظف المسؤول</label>
+                    <select v-model="assignmentForm.financial_institution_employee_user_id" class="db-field-control">
+                        <option value="">نفس جهة التمويل</option>
+                        <option v-for="employee in filteredEmployees" :key="employee.id" :value="String(employee.id)">
+                            {{ employee.name }}
+                        </option>
+                    </select>
+                </div>
+                <div class="col-12 mt-3">
+                    <div class="flex gap-2 flex-wrap">
+                        <button class="db-btn py-2 text-white bg-primary" @click="assignFacility">حفظ التعيين</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="col-12">
             <div class="flex gap-2 flex-wrap">
                 <button
@@ -111,6 +144,10 @@ export default {
             loading: {
                 isActive: false,
             },
+            assignmentForm: {
+                financial_institution_user_id: "",
+                financial_institution_employee_user_id: "",
+            },
         };
     },
     computed: {
@@ -120,6 +157,21 @@ export default {
         authInfo: function () {
             return this.$store.getters.authInfo || {};
         },
+        assignmentOptions: function () {
+            return this.$store.getters["creditApplicationReview/assignmentOptions"] || { institutions: [], employees: [] };
+        },
+        institutions: function () {
+            return this.assignmentOptions.institutions || [];
+        },
+        filteredEmployees: function () {
+            const institutionId = Number(this.assignmentForm.financial_institution_user_id || 0);
+            return (this.assignmentOptions.employees || []).filter((employee) => {
+                return !employee.institution_owner_user_id || Number(employee.institution_owner_user_id) === institutionId || Number(employee.id) === institutionId;
+            });
+        },
+        isAdmin: function () {
+            return this.authInfo.role_id === roleEnum.ADMIN;
+        },
         canResetApproval: function () {
             return this.authInfo.role_id === roleEnum.ADMIN &&
                 this.facility.status === "approved" &&
@@ -128,11 +180,30 @@ export default {
     },
     mounted() {
         this.loading.isActive = true;
-        this.$store.dispatch("creditApplicationReview/showFacility", this.$route.params.id).finally(() => {
+        Promise.all([
+            this.$store.dispatch("creditApplicationReview/showFacility", this.$route.params.id),
+            this.isAdmin ? this.$store.dispatch("creditApplicationReview/assignmentOptions") : Promise.resolve(),
+        ]).finally(() => {
+            this.syncAssignmentForm();
             this.loading.isActive = false;
         });
     },
     methods: {
+        syncAssignmentForm: function () {
+            this.assignmentForm.financial_institution_user_id = this.facility.institution?.id ? String(this.facility.institution.id) : "";
+            this.assignmentForm.financial_institution_employee_user_id = this.facility.employee?.id && this.facility.employee?.id !== this.facility.institution?.id
+                ? String(this.facility.employee.id)
+                : "";
+        },
+        handleInstitutionChange: function () {
+            const selectedEmployeeId = Number(this.assignmentForm.financial_institution_employee_user_id || 0);
+            if (selectedEmployeeId > 0) {
+                const exists = this.filteredEmployees.some((employee) => Number(employee.id) === selectedEmployeeId);
+                if (!exists) {
+                    this.assignmentForm.financial_institution_employee_user_id = "";
+                }
+            }
+        },
         statusText: function (status) {
             if (status === "approved") {
                 return "معتمد";
@@ -144,6 +215,20 @@ export default {
                 return "منتهي";
             }
             return status || "--";
+        },
+        assignFacility: function () {
+            this.loading.isActive = true;
+            this.$store.dispatch("creditApplicationReview/assignFacility", {
+                id: this.facility.id,
+                form: this.assignmentForm,
+            }).then((res) => {
+                alertService.success(res.data.message || "تم تحديث التعيين بنجاح.");
+                this.syncAssignmentForm();
+            }).catch((err) => {
+                alertService.error(err.response?.data?.message || "تعذر تحديث التعيين.");
+            }).finally(() => {
+                this.loading.isActive = false;
+            });
         },
         resetApproval: function () {
             appService.submitConfirmation().then(() => {
