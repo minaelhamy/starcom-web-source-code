@@ -206,6 +206,7 @@ class CreditApplicationService
 
         $employees = User::role(EnumRole::FINANCIAL_INSTITUTION)
             ->with(['financialInstitutionOwner.financialInstitutionProfile'])
+            ->whereNotNull('financial_institution_owner_user_id')
             ->orderBy('name')
             ->get();
 
