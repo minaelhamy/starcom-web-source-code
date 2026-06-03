@@ -37,6 +37,7 @@ class CreditFacilityResource extends JsonResource
                 'id'    => $this->user->id,
                 'name'  => $this->user->name,
                 'email' => $this->user->email,
+                'country_code' => $this->user->country_code,
                 'phone' => trim(($this->user->country_code ?: '') . ' ' . ($this->user->phone ?: '')),
                 'address' => $this->user->address,
             ] : null,

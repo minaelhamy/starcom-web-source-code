@@ -20,6 +20,31 @@
     </div>
 
     <div class="row mb-6">
+        <div class="col-12">
+            <div class="db-card p-5 mb-6">
+                <div class="flex flex-col md:flex-row gap-3 items-start md:items-end">
+                    <div class="w-full md:flex-1">
+                        <label class="db-field-title after:hidden">البحث باسم العميل أو رقم الهاتف</label>
+                        <input
+                            v-model="searchForm.term"
+                            type="text"
+                            class="db-field-control"
+                            placeholder="ابحث داخل أحدث العملاء المعتمدين وأحدث فرص التمويل"
+                        />
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" class="db-btn py-2 text-white bg-primary" @click="submitSearch">
+                            <i class="lab lab-line-search lab-font-size-16"></i>
+                            <span>بحث</span>
+                        </button>
+                        <button type="button" class="db-btn py-2 text-white bg-gray-600" @click="clearSearch">
+                            <i class="lab lab-line-cross lab-font-size-22"></i>
+                            <span>مسح</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="col-12 xl:col-7">
             <div class="db-card p-5 mb-6">
                 <div class="flex items-center justify-between mb-4">
@@ -116,8 +141,8 @@
                     </router-link>
                 </div>
 
-                <div v-if="latestApprovedClients.length" class="space-y-3">
-                    <div v-for="client in latestApprovedClients" :key="client.facility_id" class="rounded-lg border border-[#E8E8F3] p-4">
+                <div v-if="filteredLatestApprovedClients.length" class="space-y-3">
+                    <div v-for="client in filteredLatestApprovedClients" :key="client.facility_id" class="rounded-lg border border-[#E8E8F3] p-4">
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <h5 class="font-semibold text-heading">{{ client.customer_name }}</h5>
@@ -161,8 +186,8 @@
                     </router-link>
                 </div>
 
-                <div v-if="recentOpportunities.length" class="space-y-3">
-                    <div v-for="opportunity in recentOpportunities" :key="opportunity.application_id" class="rounded-lg border border-[#E8E8F3] p-4">
+                <div v-if="filteredRecentOpportunities.length" class="space-y-3">
+                    <div v-for="opportunity in filteredRecentOpportunities" :key="opportunity.application_id" class="rounded-lg border border-[#E8E8F3] p-4">
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <h5 class="font-semibold text-heading">{{ opportunity.customer_name }}</h5>
@@ -204,6 +229,10 @@ export default {
                 isActive: false,
             },
             summary: {},
+            searchForm: {
+                term: "",
+            },
+            appliedTerm: "",
         };
     },
     computed: {
@@ -251,6 +280,34 @@ export default {
         recentOpportunities: function () {
             return this.summary.recent_opportunities || [];
         },
+        filteredLatestApprovedClients: function () {
+            const term = this.normalizeSearchValue(this.appliedTerm);
+            if (!term) {
+                return this.latestApprovedClients;
+            }
+
+            return this.latestApprovedClients.filter((client) => {
+                const name = this.normalizeSearchValue(client.customer_name || "");
+                const phone = this.normalizeSearchValue(client.customer_phone || "");
+                const localPhone = phone.startsWith("20") ? `0${phone.slice(2)}` : phone;
+
+                return name.includes(term) || phone.includes(term) || localPhone.includes(term);
+            });
+        },
+        filteredRecentOpportunities: function () {
+            const term = this.normalizeSearchValue(this.appliedTerm);
+            if (!term) {
+                return this.recentOpportunities;
+            }
+
+            return this.recentOpportunities.filter((opportunity) => {
+                const name = this.normalizeSearchValue(opportunity.customer_name || "");
+                const phone = this.normalizeSearchValue(opportunity.customer_phone || "");
+                const localPhone = phone.startsWith("20") ? `0${phone.slice(2)}` : phone;
+
+                return name.includes(term) || phone.includes(term) || localPhone.includes(term);
+            });
+        },
         safeUtilizationRate: function () {
             const value = Number(this.summary.utilization_rate || 0);
             return Math.max(0, Math.min(100, value));
@@ -283,6 +340,27 @@ export default {
             }
 
             return Number(rawAmount || 0).toFixed(decimal);
+        },
+        submitSearch: function () {
+            this.appliedTerm = this.searchForm.term.trim();
+        },
+        clearSearch: function () {
+            this.searchForm.term = "";
+            this.appliedTerm = "";
+        },
+        normalizeSearchValue: function (value) {
+            if (value === null || typeof value === "undefined") {
+                return "";
+            }
+
+            const arabicDigits = "٠١٢٣٤٥٦٧٨٩";
+            const englishDigits = "0123456789";
+
+            return String(value)
+                .trim()
+                .toLowerCase()
+                .replace(/[٠-٩]/g, (digit) => englishDigits[arabicDigits.indexOf(digit)] || digit)
+                .replace(/[^\p{L}\p{N}]+/gu, "");
         },
     },
 };

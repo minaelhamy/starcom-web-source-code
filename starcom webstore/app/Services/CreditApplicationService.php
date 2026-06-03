@@ -156,10 +156,21 @@ class CreditApplicationService
         $actor = Auth::user();
         $method = $request->get('paginate', 0) == 1 ? 'paginate' : 'get';
         $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
+        $term = trim((string) $request->get('term', ''));
 
-        return $this->portfolioQuery($actor)
-            ->latest()
-            ->$method($methodValue);
+        $query = $this->portfolioQuery($actor);
+
+        if ($term !== '') {
+            $normalizedTerm = preg_replace('/\s+/', '', $term);
+
+            $query->whereHas('user', function ($userQuery) use ($term, $normalizedTerm) {
+                $userQuery->where('name', 'like', '%' . $term . '%')
+                    ->orWhere('phone', 'like', '%' . $normalizedTerm . '%')
+                    ->orWhereRaw("REPLACE(CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')), ' ', '') LIKE ?", ['%' . $normalizedTerm . '%']);
+            });
+        }
+
+        return $query->latest()->$method($methodValue);
     }
 
     public function show(CreditApplication $creditApplication): CreditApplication

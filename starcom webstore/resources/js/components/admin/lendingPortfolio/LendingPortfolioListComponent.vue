@@ -5,6 +5,44 @@
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">المحفظة التمويلية</h3>
             </div>
+            <div class="p-4 border-b border-gray-100">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div class="rounded-lg border border-[#E8E8F3] p-4">
+                        <p class="text-sm text-secondary mb-1">إجمالي عدد العملاء</p>
+                        <h5 class="text-xl font-semibold text-heading">{{ totalCustomers }}</h5>
+                    </div>
+                    <div class="rounded-lg border border-[#E8E8F3] p-4">
+                        <p class="text-sm text-secondary mb-1">إجمالي المبلغ المعتمد</p>
+                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(totalApprovedAmount) }}</h5>
+                    </div>
+                    <div class="rounded-lg border border-[#E8E8F3] p-4">
+                        <p class="text-sm text-secondary mb-1">إجمالي المبلغ المستخدم</p>
+                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(totalUtilizedAmount) }}</h5>
+                    </div>
+                </div>
+
+                <form class="flex flex-col md:flex-row gap-3 items-start md:items-end" @submit.prevent="submitSearch">
+                    <div class="w-full md:flex-1">
+                        <label class="db-field-title after:hidden">البحث باسم العميل أو رقم الهاتف</label>
+                        <input
+                            v-model="searchForm.term"
+                            type="text"
+                            class="db-field-control"
+                            placeholder="اكتب اسم العميل أو رقم الهاتف"
+                        />
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" class="db-btn py-2 text-white bg-primary" @click="submitSearch">
+                            <i class="lab lab-line-search lab-font-size-16"></i>
+                            <span>بحث</span>
+                        </button>
+                        <button type="button" class="db-btn py-2 text-white bg-gray-600" @click="clearSearch">
+                            <i class="lab lab-line-cross lab-font-size-22"></i>
+                            <span>مسح</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
             <div class="db-table-responsive">
                 <table class="db-table">
                     <thead class="db-table-head">
@@ -21,8 +59,8 @@
                             <th class="db-table-head-th">الملف</th>
                         </tr>
                     </thead>
-                    <tbody class="db-table-body" v-if="portfolio.length">
-                        <tr class="db-table-body-tr" v-for="item in portfolio" :key="item.id">
+                    <tbody class="db-table-body" v-if="filteredPortfolio.length">
+                        <tr class="db-table-body-tr" v-for="item in filteredPortfolio" :key="item.id">
                             <td class="db-table-body-td">
                                 <div class="font-semibold">{{ item.user?.name || "--" }}</div>
                                 <div class="text-xs text-text">{{ item.user?.phone || "" }}</div>
@@ -53,6 +91,7 @@
 
 <script>
 import LoadingComponent from "../components/LoadingComponent.vue";
+import appService from "../../../services/appService";
 
 export default {
     name: "LendingPortfolioListComponent",
@@ -62,20 +101,99 @@ export default {
             loading: {
                 isActive: false,
             },
+            searchForm: {
+                term: "",
+            },
+            appliedTerm: "",
         };
     },
     computed: {
         portfolio: function () {
             return this.$store.getters["creditApplicationReview/portfolio"];
         },
+        filteredPortfolio: function () {
+            const term = this.normalizeSearchValue(this.appliedTerm);
+            if (!term) {
+                return this.portfolio;
+            }
+
+            return this.portfolio.filter((item) => {
+                const userName = this.normalizeSearchValue(item.user?.name || "");
+                const userPhone = this.normalizeSearchValue(item.user?.phone || "");
+                const userEmail = this.normalizeSearchValue(item.user?.email || "");
+                const userCountryCode = this.normalizeSearchValue(item.user?.country_code || "");
+                const localPhone = userPhone.startsWith("20") ? `0${userPhone.slice(2)}` : userPhone;
+                const internationalPhone = `${userCountryCode}${userPhone}`;
+
+                return userName.includes(term)
+                    || userPhone.includes(term)
+                    || localPhone.includes(term)
+                    || internationalPhone.includes(term)
+                    || userEmail.includes(term);
+            });
+        },
+        totalCustomers: function () {
+            return this.filteredPortfolio.length;
+        },
+        totalApprovedAmount: function () {
+            return this.filteredPortfolio.reduce((sum, item) => sum + Number(item.approved_amount || 0), 0);
+        },
+        totalUtilizedAmount: function () {
+            return this.filteredPortfolio.reduce((sum, item) => sum + Number(item.utilized_amount || 0), 0);
+        },
+        setting: function () {
+            return this.$store.getters["frontendSetting/lists"] || {};
+        },
     },
     mounted() {
-        this.loading.isActive = true;
-        this.$store.dispatch("creditApplicationReview/portfolio", { paginate: 0 }).finally(() => {
-            this.loading.isActive = false;
-        });
+        this.list();
     },
     methods: {
+        list: function () {
+            this.loading.isActive = true;
+            this.$store.dispatch("creditApplicationReview/portfolio", {
+                paginate: 0,
+                term: this.appliedTerm,
+            }).finally(() => {
+                this.loading.isActive = false;
+            });
+        },
+        submitSearch: function () {
+            this.appliedTerm = this.searchForm.term.trim();
+            this.list();
+        },
+        clearSearch: function () {
+            this.searchForm.term = "";
+            this.appliedTerm = "";
+            this.list();
+        },
+        normalizeSearchValue: function (value) {
+            if (value === null || typeof value === "undefined") {
+                return "";
+            }
+
+            const arabicDigits = "٠١٢٣٤٥٦٧٨٩";
+            const englishDigits = "0123456789";
+
+            return String(value)
+                .trim()
+                .toLowerCase()
+                .replace(/[٠-٩]/g, (digit) => englishDigits[arabicDigits.indexOf(digit)] || digit)
+                .replace(/[^\p{L}\p{N}]+/gu, "");
+        },
+        displayCurrency: function (rawAmount = 0) {
+            const decimal = Number.isFinite(Number(this.setting.site_digit_after_decimal_point))
+                ? Number(this.setting.site_digit_after_decimal_point)
+                : 2;
+            const symbol = this.setting.site_default_currency_symbol || "";
+            const position = this.setting.site_currency_position;
+
+            if (symbol && position !== undefined && position !== null && position !== "") {
+                return appService.currencyFormat(rawAmount || 0, decimal, symbol, position);
+            }
+
+            return Number(rawAmount || 0).toFixed(decimal);
+        },
         statusText: function (status) {
             if (status === "approved") {
                 return "معتمد";
