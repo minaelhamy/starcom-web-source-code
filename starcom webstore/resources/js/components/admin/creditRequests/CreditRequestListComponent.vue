@@ -5,6 +5,29 @@
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">طلبات اشتري بالآجل</h3>
             </div>
+            <div class="p-4 border-b border-gray-100">
+                <form class="flex flex-col md:flex-row gap-3 items-start md:items-end" @submit.prevent="search">
+                    <div class="w-full md:flex-1">
+                        <label class="db-field-title after:hidden">البحث باسم العميل أو رقم الهاتف</label>
+                        <input
+                            v-model="search.term"
+                            type="text"
+                            class="db-field-control"
+                            placeholder="اكتب اسم العميل أو رقم الهاتف"
+                        />
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="db-btn py-2 text-white bg-primary">
+                            <i class="lab lab-line-search lab-font-size-16"></i>
+                            <span>بحث</span>
+                        </button>
+                        <button type="button" class="db-btn py-2 text-white bg-gray-600" @click="clearSearch">
+                            <i class="lab lab-line-cross lab-font-size-22"></i>
+                            <span>مسح</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
             <div class="db-table-responsive">
                 <table class="db-table">
                     <thead class="db-table-head">
@@ -83,6 +106,9 @@ export default {
                 isActive: false,
             },
             reviewForms: {},
+            search: {
+                term: "",
+            },
         };
     },
     computed: {
@@ -102,7 +128,10 @@ export default {
     methods: {
         list: function () {
             this.loading.isActive = true;
-            this.$store.dispatch("creditApplicationReview/lists", { paginate: 0 }).then(() => {
+            this.$store.dispatch("creditApplicationReview/lists", {
+                paginate: 0,
+                term: this.search.term,
+            }).then(() => {
                 this.lists.forEach((item) => {
                     if (!this.reviewForms[item.id]) {
                         this.reviewForms[item.id] = {
@@ -116,6 +145,13 @@ export default {
             }).finally(() => {
                 this.loading.isActive = false;
             });
+        },
+        search: function () {
+            this.list();
+        },
+        clearSearch: function () {
+            this.search.term = "";
+            this.list();
         },
         approve: function (id) {
             this.loading.isActive = true;
