@@ -60,15 +60,15 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
                     <div class="rounded-lg border border-[#E8E8F3] p-4">
                         <p class="text-sm text-secondary mb-1">إجمالي الاعتمادات</p>
-                        <h5 class="text-xl font-semibold text-heading">{{ summary.wallet_value_currency || displayCurrency(summary.wallet_value) }}</h5>
+                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.wallet_value, summary.wallet_value_currency) }}</h5>
                     </div>
                     <div class="rounded-lg border border-[#E8E8F3] p-4">
                         <p class="text-sm text-secondary mb-1">الرصيد المتاح</p>
-                        <h5 class="text-xl font-semibold text-heading">{{ summary.available_wallet_value_currency || displayCurrency(summary.available_wallet_value) }}</h5>
+                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.available_wallet_value, summary.available_wallet_value_currency) }}</h5>
                     </div>
                     <div class="rounded-lg border border-[#E8E8F3] p-4">
                         <p class="text-sm text-secondary mb-1">الرصيد المستخدم</p>
-                        <h5 class="text-xl font-semibold text-heading">{{ summary.utilized_wallet_value_currency || displayCurrency(summary.utilized_wallet_value) }}</h5>
+                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.utilized_wallet_value, summary.utilized_wallet_value_currency) }}</h5>
                     </div>
                 </div>
 
@@ -328,18 +328,18 @@ export default {
                 this.loading.isActive = false;
             });
         },
-        displayCurrency: function (rawAmount = 0) {
+        displayCurrency: function (rawAmount = 0, formattedValue = "") {
+            if (formattedValue !== null && formattedValue !== undefined && formattedValue !== "") {
+                return String(formattedValue)
+                    .replace(/\$/g, "EGP ")
+                    .replace(/\bUSD\b/gi, "EGP")
+                    .trim();
+            }
+
             const decimal = Number.isFinite(Number(this.setting.site_digit_after_decimal_point))
                 ? Number(this.setting.site_digit_after_decimal_point)
                 : 2;
-            const symbol = this.setting.site_default_currency_symbol || "";
-            const position = this.setting.site_currency_position;
-
-            if (symbol && position !== undefined && position !== null && position !== "") {
-                return appService.currencyFormat(rawAmount || 0, decimal, symbol, position);
-            }
-
-            return Number(rawAmount || 0).toFixed(decimal);
+            return `EGP ${Number(rawAmount || 0).toFixed(decimal)}`;
         },
         submitSearch: function () {
             this.appliedTerm = this.searchForm.term.trim();

@@ -185,14 +185,7 @@ export default {
             const decimal = Number.isFinite(Number(this.setting.site_digit_after_decimal_point))
                 ? Number(this.setting.site_digit_after_decimal_point)
                 : 2;
-            const symbol = this.setting.site_default_currency_symbol || "";
-            const position = this.setting.site_currency_position;
-
-            if (symbol && position !== undefined && position !== null && position !== "") {
-                return appService.currencyFormat(rawAmount || 0, decimal, symbol, position);
-            }
-
-            return Number(rawAmount || 0).toFixed(decimal);
+            return `EGP ${Number(rawAmount || 0).toFixed(decimal)}`;
         },
         statusText: function (status) {
             if (status === "approved") {

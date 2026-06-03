@@ -227,20 +227,16 @@ export default {
         },
         displayCurrency: function (formattedValue, rawAmount = 0) {
             if (formattedValue !== null && formattedValue !== undefined && formattedValue !== "") {
-                return formattedValue;
+                return String(formattedValue)
+                    .replace(/\$/g, "EGP ")
+                    .replace(/\bUSD\b/gi, "EGP")
+                    .trim();
             }
 
             const decimal = Number.isFinite(Number(this.setting.site_digit_after_decimal_point))
                 ? Number(this.setting.site_digit_after_decimal_point)
                 : 2;
-            const symbol = this.setting.site_default_currency_symbol || "";
-            const position = this.setting.site_currency_position;
-
-            if (symbol && position !== undefined && position !== null && position !== "") {
-                return appService.currencyFormat(rawAmount || 0, decimal, symbol, position);
-            }
-
-            return Number(rawAmount || 0).toFixed(decimal);
+            return `EGP ${Number(rawAmount || 0).toFixed(decimal)}`;
         },
     },
 };
