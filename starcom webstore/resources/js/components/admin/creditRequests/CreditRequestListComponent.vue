@@ -40,8 +40,8 @@
                             <th class="db-table-head-th">القرار</th>
                         </tr>
                     </thead>
-                    <tbody class="db-table-body" v-if="lists.length">
-                        <tr class="db-table-body-tr" v-for="item in lists" :key="item.id">
+                    <tbody class="db-table-body" v-if="filteredLists.length">
+                        <tr class="db-table-body-tr" v-for="item in filteredLists" :key="item.id">
                             <td class="db-table-body-td">
                                 <div class="font-semibold">{{ item.user?.name }}</div>
                                 <div class="text-xs text-text">{{ item.user?.email }}</div>
@@ -115,6 +115,20 @@ export default {
         lists: function () {
             return this.$store.getters["creditApplicationReview/lists"];
         },
+        filteredLists: function () {
+            const term = this.normalizeSearchValue(this.search.term);
+            if (!term) {
+                return this.lists;
+            }
+
+            return this.lists.filter((item) => {
+                const userName = this.normalizeSearchValue(item.user?.name || "");
+                const userEmail = this.normalizeSearchValue(item.user?.email || "");
+                const userPhone = this.normalizeSearchValue(item.user?.phone || "");
+
+                return userName.includes(term) || userEmail.includes(term) || userPhone.includes(term);
+            });
+        },
         authInfo: function () {
             return this.$store.getters.authInfo || {};
         },
@@ -152,6 +166,20 @@ export default {
         clearSearch: function () {
             this.search.term = "";
             this.list();
+        },
+        normalizeSearchValue: function (value) {
+            if (value === null || typeof value === "undefined") {
+                return "";
+            }
+
+            const arabicDigits = "٠١٢٣٤٥٦٧٨٩";
+            const englishDigits = "0123456789";
+
+            return String(value)
+                .trim()
+                .toLowerCase()
+                .replace(/[٠-٩]/g, (digit) => englishDigits[arabicDigits.indexOf(digit)] || digit)
+                .replace(/[^\p{L}\p{N}]+/gu, "");
         },
         approve: function (id) {
             this.loading.isActive = true;
