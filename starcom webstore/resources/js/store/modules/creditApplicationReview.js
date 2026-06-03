@@ -159,6 +159,16 @@ export const creditApplicationReview = {
                 });
             });
         },
+        addFacilityNote: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.post(`admin/credit-application/portfolio/note/${payload.id}`, payload.form).then((res) => {
+                    context.commit("portfolioShow", res.data.data);
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
     },
     mutations: {
         lists: function (state, payload) {

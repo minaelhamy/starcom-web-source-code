@@ -25,6 +25,27 @@
 
         <div class="db-card mb-4">
             <div class="db-card-header border-none">
+                <h3 class="db-card-title">سجل ملاحظات الجهة التمويلية</h3>
+            </div>
+            <div class="p-4 space-y-3">
+                <div v-if="application.notes_history?.length" class="space-y-3">
+                    <div v-for="note in application.notes_history" :key="note.id" class="db-field-control !h-auto py-3">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-1 mb-2">
+                            <div class="font-semibold text-sm">
+                                {{ note.author?.name || "مستخدم النظام" }}
+                                <span v-if="note.institution?.name" class="text-text font-normal">- {{ note.institution.name }}</span>
+                            </div>
+                            <div class="text-xs text-text">{{ note.created_at || "--" }}</div>
+                        </div>
+                        <div class="text-sm whitespace-pre-line">{{ note.note }}</div>
+                    </div>
+                </div>
+                <div v-else class="db-field-control min-h-[80px] !h-auto py-3">لا توجد ملاحظات بعد.</div>
+            </div>
+        </div>
+
+        <div class="db-card mb-4">
+            <div class="db-card-header border-none">
                 <h3 class="db-card-title">المستندات</h3>
             </div>
             <div class="row p-4">

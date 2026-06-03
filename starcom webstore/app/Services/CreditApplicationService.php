@@ -6,12 +6,14 @@ use App\Enums\CreditApplicationStatus;
 use App\Enums\CreditFacilityStatus;
 use App\Enums\Role as EnumRole;
 use App\Http\Requests\CreditApplicationDecisionRequest;
+use App\Http\Requests\CreditApplicationNoteRequest;
 use App\Http\Requests\CreditFacilityAssignmentRequest;
 use App\Http\Requests\CreditApplicationStoreRequest;
 use App\Http\Requests\PaginateRequest;
 use App\Libraries\AppLibrary;
 use App\Libraries\QueryExceptionLibrary;
 use App\Models\CreditApplication;
+use App\Models\CreditApplicationNote;
 use App\Models\CreditFacility;
 use App\Models\User;
 use App\Notifications\CreditApplicationApprovedNotification;
@@ -32,6 +34,7 @@ class CreditApplicationService
 
         return CreditApplication::with([
             'user',
+            'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
             'facilities.employee',
         ])
@@ -94,6 +97,7 @@ class CreditApplicationService
 
             return $application->load([
                 'user',
+                'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'facilities.institution.financialInstitutionProfile',
                 'facilities.employee',
             ]);
@@ -123,6 +127,7 @@ class CreditApplicationService
 
         $query = CreditApplication::with([
             'user',
+            'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
             'facilities.employee',
         ]);
@@ -181,6 +186,7 @@ class CreditApplicationService
 
         return $creditApplication->load([
             'user',
+            'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
             'facilities.employee',
         ]);
@@ -200,6 +206,8 @@ class CreditApplicationService
         return $creditFacility->load([
             'user',
             'application.user',
+            'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
+            'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'application.facilities.institution.financialInstitutionProfile',
             'application.facilities.employee',
             'institution.financialInstitutionProfile',
@@ -269,6 +277,8 @@ class CreditApplicationService
                 return $facility->load([
                     'user',
                     'application.user',
+                    'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
+                    'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                     'application.facilities.institution.financialInstitutionProfile',
                     'application.facilities.employee',
                     'institution.financialInstitutionProfile',
@@ -329,12 +339,14 @@ class CreditApplicationService
                 ]);
 
                 $application = $facility->application;
+                $facility->notesHistory()->delete();
                 $facility->delete();
                 $this->refreshApplicationStatus($application);
             });
 
             return CreditApplication::with([
                 'user',
+                'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'facilities.institution.financialInstitutionProfile',
                 'facilities.employee',
             ])
@@ -389,6 +401,8 @@ class CreditApplicationService
                 ]
             );
 
+            $this->createFacilityNote($creditApplication, $facility, $actor, $request->notes);
+
             $this->refreshApplicationStatus($creditApplication);
             $this->safeNotify($creditApplication->user, new CreditApplicationApprovedNotification($creditApplication, $facility));
 
@@ -396,6 +410,7 @@ class CreditApplicationService
                 'user',
                 'institution.financialInstitutionProfile',
                 'employee',
+                'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'application',
             ]);
         } catch (Exception $exception) {
@@ -439,6 +454,8 @@ class CreditApplicationService
                 'notes'                         => $request->decline_reason ?: $request->notes,
             ]);
 
+            $this->createFacilityNote($creditApplication, $facility, $actor, $request->decline_reason ?: $request->notes);
+
             $this->refreshApplicationStatus($creditApplication);
             $this->safeNotify($creditApplication->user, new CreditApplicationDeclinedNotification($creditApplication, $facility));
 
@@ -446,6 +463,7 @@ class CreditApplicationService
                 'user',
                 'institution.financialInstitutionProfile',
                 'employee',
+                'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'application',
             ]);
         } catch (Exception $exception) {
@@ -477,6 +495,38 @@ class CreditApplicationService
             'total_utilized_credit'      => (float)$approvedFacilities->sum('utilized_amount'),
             'active_facilities'          => $approvedFacilities->count(),
         ];
+    }
+
+    public function addFacilityNote(CreditFacility $creditFacility, CreditApplicationNoteRequest $request): CreditFacility
+    {
+        try {
+            $actor = Auth::user();
+            if (!$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) && !$actor->hasRole(EnumRole::ADMIN)) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if (
+                $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                (int)$creditFacility->financial_institution_user_id !== (int)$this->resolveInstitutionUserId($actor)
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            DB::transaction(function () use ($creditFacility, $actor, $request) {
+                $facility = CreditFacility::with('application')->lockForUpdate()->findOrFail($creditFacility->id);
+                $note = trim((string)$request->note);
+
+                $facility->notes = $note;
+                $facility->save();
+
+                $this->createFacilityNote($facility->application, $facility, $actor, $note);
+            });
+
+            return $this->showFacility($creditFacility);
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
     }
 
     protected function refreshApplicationStatus(CreditApplication $creditApplication): void
@@ -519,11 +569,13 @@ class CreditApplicationService
                 $application = CreditApplication::with(['facilities.orderAllocations'])->lockForUpdate()->findOrFail($creditApplication->id);
 
                 foreach ($application->facilities as $facility) {
+                    $facility->notesHistory()->delete();
                     $facility->orderAllocations()->delete();
                     WalletTransaction::where('credit_facility_id', $facility->id)->delete();
                     $facility->delete();
                 }
 
+                $application->notesHistory()->delete();
                 WalletTransaction::where('credit_application_id', $application->id)->delete();
                 $application->clearMediaCollection('national_id_front_document');
                 $application->clearMediaCollection('national_id_back_document');
@@ -609,5 +661,20 @@ class CreditApplicationService
             $employee->financial_institution_owner_user_id = $institution->id;
             $employee->save();
         }
+    }
+
+    protected function createFacilityNote(CreditApplication $application, ?CreditFacility $facility, User $author, ?string $note): ?CreditApplicationNote
+    {
+        $note = trim((string)$note);
+        if ($note === '') {
+            return null;
+        }
+
+        return CreditApplicationNote::create([
+            'credit_application_id' => $application->id,
+            'credit_facility_id' => $facility?->id,
+            'author_user_id' => $author->id,
+            'note' => $note,
+        ]);
     }
 }

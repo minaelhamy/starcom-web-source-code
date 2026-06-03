@@ -14,6 +14,18 @@ class CreditFacilityResource extends JsonResource
     {
         $showInstitution = Auth::check() && !Auth::user()->hasRole(Role::CUSTOMER);
         $application = $this->relationLoaded('application') ? $this->application : null;
+        $notesHistory = $this->relationLoaded('notesHistory') ? $this->notesHistory : collect();
+
+        if ($notesHistory->isEmpty() && !empty($this->notes)) {
+            $notesHistory = collect([
+                (object) [
+                    'id' => 'legacy-facility-note-' . $this->id,
+                    'note' => $this->notes,
+                    'created_at' => $this->reviewed_at ?: $this->updated_at ?: $this->created_at,
+                    'author' => $this->employee ?: $this->institution,
+                ],
+            ]);
+        }
 
         return [
             'id'                => $this->id,
@@ -36,6 +48,7 @@ class CreditFacilityResource extends JsonResource
             'due_at'            => $this->due_at ? $this->due_at->toDateString() : null,
             'reviewed_at'       => $this->reviewed_at ? $this->reviewed_at->toDateTimeString() : null,
             'notes'             => $this->notes,
+            'notes_history'     => CreditApplicationNoteResource::collection($notesHistory),
             'starcom_intelligence' => StarcomIntelligenceCalculator::forUser($this->user),
             'institution'       => $showInstitution && $this->institution ? [
                 'id'           => $this->institution->id,
@@ -54,6 +67,7 @@ class CreditFacilityResource extends JsonResource
                 'created_at'                    => $application->created_at ? $application->created_at->toDateTimeString() : null,
                 'created_date'                  => $application->created_at ? AppLibrary::date($application->created_at) : null,
                 'notes'                         => $application->notes,
+                'notes_history'                 => CreditApplicationNoteResource::collection($application->relationLoaded('notesHistory') ? $application->notesHistory : collect()),
                 'national_id_front_document'    => $application->national_id_front_document,
                 'national_id_back_document'     => $application->national_id_back_document,
                 'commercial_register_documents' => $application->commercial_register_documents,

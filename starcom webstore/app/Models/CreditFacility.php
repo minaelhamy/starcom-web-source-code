@@ -65,4 +65,9 @@ class CreditFacility extends Model
     {
         return $this->hasMany(CreditFacilityOrderAllocation::class);
     }
+
+    public function notesHistory(): HasMany
+    {
+        return $this->hasMany(CreditApplicationNote::class)->orderBy('created_at');
+    }
 }

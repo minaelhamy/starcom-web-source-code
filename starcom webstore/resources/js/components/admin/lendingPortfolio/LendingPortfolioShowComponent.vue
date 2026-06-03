@@ -28,8 +28,29 @@
                     </div>
                 </div>
                 <div class="col-12 mt-4">
-                    <label class="db-field-title">ملاحظات الجهة التمويلية</label>
-                    <div class="db-field-control min-h-[100px] !h-auto py-3">{{ facility.notes || "لا توجد ملاحظات." }}</div>
+                    <label class="db-field-title">سجل ملاحظات الجهة التمويلية</label>
+                    <div class="space-y-3">
+                        <div v-if="facility.notes_history?.length" class="space-y-3">
+                            <div v-for="note in facility.notes_history" :key="note.id" class="db-field-control !h-auto py-3">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-1 mb-2">
+                                    <div class="font-semibold text-sm">
+                                        {{ note.author?.name || "مستخدم النظام" }}
+                                        <span v-if="note.institution?.name" class="text-text font-normal">- {{ note.institution.name }}</span>
+                                    </div>
+                                    <div class="text-xs text-text">{{ note.created_at || "--" }}</div>
+                                </div>
+                                <div class="text-sm whitespace-pre-line">{{ note.note }}</div>
+                            </div>
+                        </div>
+                        <div v-else class="db-field-control min-h-[100px] !h-auto py-3">لا توجد ملاحظات.</div>
+                    </div>
+                </div>
+                <div class="col-12 mt-4" v-if="canAddNote">
+                    <label class="db-field-title">إضافة ملاحظة جديدة</label>
+                    <textarea v-model="noteForm.note" class="db-field-control h-28" placeholder="اكتب ملاحظة جديدة على العميل"></textarea>
+                    <div class="mt-3">
+                        <button class="db-btn py-2 text-white bg-primary" @click="addNote">حفظ الملاحظة</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -148,6 +169,9 @@ export default {
                 financial_institution_user_id: "",
                 financial_institution_employee_user_id: "",
             },
+            noteForm: {
+                note: "",
+            },
         };
     },
     computed: {
@@ -176,6 +200,9 @@ export default {
             return this.authInfo.role_id === roleEnum.ADMIN &&
                 this.facility.status === "approved" &&
                 Number(this.facility.utilized_amount || 0) === 0;
+        },
+        canAddNote: function () {
+            return (this.isAdmin || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) && this.facility.id;
         },
     },
     mounted() {
@@ -226,6 +253,20 @@ export default {
                 this.syncAssignmentForm();
             }).catch((err) => {
                 alertService.error(err.response?.data?.message || "تعذر تحديث التعيين.");
+            }).finally(() => {
+                this.loading.isActive = false;
+            });
+        },
+        addNote: function () {
+            this.loading.isActive = true;
+            this.$store.dispatch("creditApplicationReview/addFacilityNote", {
+                id: this.facility.id,
+                form: this.noteForm,
+            }).then((res) => {
+                alertService.success(res.data.message || "تمت إضافة الملاحظة بنجاح.");
+                this.noteForm.note = "";
+            }).catch((err) => {
+                alertService.error(err.response?.data?.message || "تعذر إضافة الملاحظة.");
             }).finally(() => {
                 this.loading.isActive = false;
             });

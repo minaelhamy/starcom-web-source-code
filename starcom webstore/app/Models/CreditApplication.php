@@ -35,6 +35,11 @@ class CreditApplication extends Model implements HasMedia
         return $this->hasMany(CreditFacility::class);
     }
 
+    public function notesHistory(): HasMany
+    {
+        return $this->hasMany(CreditApplicationNote::class)->orderBy('created_at');
+    }
+
     public function getNationalIdFrontDocumentAttribute(): ?string
     {
         return $this->getFirstMediaUrl('national_id_front_document') ?: null;

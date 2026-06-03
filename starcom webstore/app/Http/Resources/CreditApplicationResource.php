@@ -6,6 +6,7 @@ use App\Libraries\AppLibrary;
 use App\Support\StarcomIntelligenceCalculator;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Resources\CreditApplicationNoteResource;
 
 class CreditApplicationResource extends JsonResource
 {
@@ -36,6 +37,7 @@ class CreditApplicationResource extends JsonResource
             'commercial_register_document' => $this->commercial_register_document,
             'tax_card_document'            => $this->tax_card_document,
             'reviewed_by_me'               => $reviewedByMe,
+            'notes_history'                => CreditApplicationNoteResource::collection($this->whenLoaded('notesHistory')),
             'user'                         => $this->user ? [
                 'id'              => $this->user->id,
                 'name'            => $this->user->name,
