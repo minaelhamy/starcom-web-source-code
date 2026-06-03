@@ -208,7 +208,10 @@ export default {
                 if (i !== 1) {
                     response += "&";
                 }
-                response += request + "=" + requests[request];
+                response +=
+                    encodeURIComponent(request) +
+                    "=" +
+                    encodeURIComponent(requests[request]);
             }
             i++;
         }

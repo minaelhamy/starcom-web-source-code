@@ -6,18 +6,18 @@
                 <h3 class="db-card-title">طلبات اشتري بالآجل</h3>
             </div>
             <div class="p-4 border-b border-gray-100">
-                <form class="flex flex-col md:flex-row gap-3 items-start md:items-end" @submit.prevent="search">
+                <form class="flex flex-col md:flex-row gap-3 items-start md:items-end" @submit.prevent="submitSearch">
                     <div class="w-full md:flex-1">
                         <label class="db-field-title after:hidden">البحث باسم العميل أو رقم الهاتف</label>
                         <input
-                            v-model="search.term"
+                            v-model="searchForm.term"
                             type="text"
                             class="db-field-control"
                             placeholder="اكتب اسم العميل أو رقم الهاتف"
                         />
                     </div>
                     <div class="flex gap-2">
-                        <button class="db-btn py-2 text-white bg-primary">
+                        <button type="button" class="db-btn py-2 text-white bg-primary" @click="submitSearch">
                             <i class="lab lab-line-search lab-font-size-16"></i>
                             <span>بحث</span>
                         </button>
@@ -106,9 +106,10 @@ export default {
                 isActive: false,
             },
             reviewForms: {},
-            search: {
+            searchForm: {
                 term: "",
             },
+            appliedTerm: "",
         };
     },
     computed: {
@@ -116,7 +117,7 @@ export default {
             return this.$store.getters["creditApplicationReview/lists"];
         },
         filteredLists: function () {
-            const term = this.normalizeSearchValue(this.search.term);
+            const term = this.normalizeSearchValue(this.appliedTerm);
             if (!term) {
                 return this.lists;
             }
@@ -125,8 +126,15 @@ export default {
                 const userName = this.normalizeSearchValue(item.user?.name || "");
                 const userEmail = this.normalizeSearchValue(item.user?.email || "");
                 const userPhone = this.normalizeSearchValue(item.user?.phone || "");
+                const userCountryCode = this.normalizeSearchValue(item.user?.country_code || "");
+                const localPhone = userPhone.startsWith("20") ? `0${userPhone.slice(2)}` : userPhone;
+                const internationalPhone = `${userCountryCode}${userPhone}`;
 
-                return userName.includes(term) || userEmail.includes(term) || userPhone.includes(term);
+                return userName.includes(term)
+                    || userEmail.includes(term)
+                    || userPhone.includes(term)
+                    || localPhone.includes(term)
+                    || internationalPhone.includes(term);
             });
         },
         authInfo: function () {
@@ -144,7 +152,7 @@ export default {
             this.loading.isActive = true;
             this.$store.dispatch("creditApplicationReview/lists", {
                 paginate: 0,
-                term: this.search.term,
+                term: this.appliedTerm,
             }).then(() => {
                 this.lists.forEach((item) => {
                     if (!this.reviewForms[item.id]) {
@@ -160,11 +168,13 @@ export default {
                 this.loading.isActive = false;
             });
         },
-        search: function () {
+        submitSearch: function () {
+            this.appliedTerm = this.searchForm.term.trim();
             this.list();
         },
         clearSearch: function () {
-            this.search.term = "";
+            this.searchForm.term = "";
+            this.appliedTerm = "";
             this.list();
         },
         normalizeSearchValue: function (value) {
