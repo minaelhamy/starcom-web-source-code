@@ -29,6 +29,8 @@ class CreditFacilityResource extends JsonResource
 
         return [
             'id'                => $this->id,
+            'full_name'         => $application?->full_name,
+            'national_id_number'=> $application?->national_id_number,
             'status'            => $this->status,
             'approved_amount'   => (float)$this->approved_amount,
             'available_amount'  => (float)$this->available_amount,
@@ -65,6 +67,8 @@ class CreditFacilityResource extends JsonResource
             'application'       => $application ? [
                 'id'                            => $application->id,
                 'status'                        => $application->status,
+                'full_name'                     => $application->full_name,
+                'national_id_number'            => $application->national_id_number,
                 'created_at'                    => $application->created_at ? $application->created_at->toDateTimeString() : null,
                 'created_date'                  => $application->created_at ? AppLibrary::date($application->created_at) : null,
                 'notes'                         => $application->notes,

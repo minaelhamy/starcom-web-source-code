@@ -9,6 +9,8 @@
                 <div class="col-12 lg:col-6">
                     <div class="space-y-2 text-sm">
                         <div><span class="font-semibold">العميل:</span> {{ facility.user?.name || "--" }}</div>
+                        <div><span class="font-semibold">الاسم رباعي:</span> {{ facility.full_name || "--" }}</div>
+                        <div><span class="font-semibold">الرقم القومي:</span> {{ facility.national_id_number || "--" }}</div>
                         <div><span class="font-semibold">العنوان:</span> {{ facility.user?.address || "--" }}</div>
                         <div><span class="font-semibold">الهاتف:</span> {{ facility.user?.phone || "--" }}</div>
                         <div><span class="font-semibold">المبلغ المعتمد:</span> {{ facility.approved_currency || "--" }}</div>
@@ -51,6 +53,27 @@
                     <div class="mt-3">
                         <button class="db-btn py-2 text-white bg-primary" @click="addNote">حفظ الملاحظة</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="isAdmin" class="db-card mb-4">
+            <div class="db-card-header border-none">
+                <h3 class="db-card-title">بيانات الهوية</h3>
+            </div>
+            <div class="row p-4">
+                <div class="col-12 md:col-6">
+                    <label class="db-field-title required">الاسم رباعي</label>
+                    <input v-model="identityForm.full_name" type="text" class="db-field-control" />
+                    <small class="db-field-alert" v-if="identityErrors.full_name">{{ identityErrors.full_name[0] }}</small>
+                </div>
+                <div class="col-12 md:col-6">
+                    <label class="db-field-title required">الرقم القومي</label>
+                    <input v-model="identityForm.national_id_number" type="text" class="db-field-control" />
+                    <small class="db-field-alert" v-if="identityErrors.national_id_number">{{ identityErrors.national_id_number[0] }}</small>
+                </div>
+                <div class="col-12 mt-3">
+                    <button class="db-btn py-2 text-white bg-primary" @click="updateIdentity">حفظ بيانات الهوية</button>
                 </div>
             </div>
         </div>
@@ -172,6 +195,11 @@ export default {
             noteForm: {
                 note: "",
             },
+            identityForm: {
+                full_name: "",
+                national_id_number: "",
+            },
+            identityErrors: {},
         };
     },
     computed: {
@@ -212,6 +240,7 @@ export default {
             this.isAdmin ? this.$store.dispatch("creditApplicationReview/assignmentOptions") : Promise.resolve(),
         ]).finally(() => {
             this.syncAssignmentForm();
+            this.syncIdentityForm();
             this.loading.isActive = false;
         });
     },
@@ -221,6 +250,11 @@ export default {
             this.assignmentForm.financial_institution_employee_user_id = this.facility.employee?.id && this.facility.employee?.id !== this.facility.institution?.id
                 ? String(this.facility.employee.id)
                 : "";
+        },
+        syncIdentityForm: function () {
+            this.identityForm.full_name = this.facility.full_name || "";
+            this.identityForm.national_id_number = this.facility.national_id_number || "";
+            this.identityErrors = {};
         },
         handleInstitutionChange: function () {
             const selectedEmployeeId = Number(this.assignmentForm.financial_institution_employee_user_id || 0);
@@ -267,6 +301,28 @@ export default {
                 this.noteForm.note = "";
             }).catch((err) => {
                 alertService.error(err.response?.data?.message || "تعذر إضافة الملاحظة.");
+            }).finally(() => {
+                this.loading.isActive = false;
+            });
+        },
+        updateIdentity: function () {
+            if (!this.facility.application?.id) {
+                return;
+            }
+
+            this.loading.isActive = true;
+            this.$store.dispatch("creditApplicationReview/updateIdentity", {
+                id: this.facility.application.id,
+                form: this.identityForm,
+            }).then((res) => {
+                alertService.success(res.data.message || "تم تحديث بيانات الهوية بنجاح.");
+                this.identityErrors = {};
+                return this.$store.dispatch("creditApplicationReview/showFacility", this.facility.id).finally(() => {
+                    this.syncIdentityForm();
+                });
+            }).catch((err) => {
+                this.identityErrors = err.response?.data?.errors || {};
+                alertService.error(err.response?.data?.message || "تعذر تحديث بيانات الهوية.");
             }).finally(() => {
                 this.loading.isActive = false;
             });

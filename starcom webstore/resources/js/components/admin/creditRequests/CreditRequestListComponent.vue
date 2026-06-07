@@ -8,12 +8,12 @@
             <div class="p-4 border-b border-gray-100">
                 <form class="flex flex-col md:flex-row gap-3 items-start md:items-end" @submit.prevent="submitSearch">
                     <div class="w-full md:flex-1">
-                        <label class="db-field-title after:hidden">البحث باسم العميل أو رقم الهاتف</label>
+                        <label class="db-field-title after:hidden">البحث بالاسم رباعي أو الرقم القومي أو اسم العميل أو رقم الهاتف</label>
                         <input
                             v-model="searchForm.term"
                             type="text"
                             class="db-field-control"
-                            placeholder="اكتب اسم العميل أو رقم الهاتف"
+                            placeholder="اكتب الاسم أو الرقم القومي أو رقم الهاتف"
                         />
                     </div>
                     <div class="flex gap-2">
@@ -33,6 +33,8 @@
                     <thead class="db-table-head">
                         <tr class="db-table-head-tr">
                             <th class="db-table-head-th">العميل</th>
+                            <th class="db-table-head-th">الاسم رباعي</th>
+                            <th class="db-table-head-th">الرقم القومي</th>
                             <th class="db-table-head-th">الهاتف</th>
                             <th class="db-table-head-th">الحالة</th>
                             <th class="db-table-head-th">إجمالي المعتمد</th>
@@ -46,6 +48,8 @@
                                 <div class="font-semibold">{{ item.user?.name }}</div>
                                 <div class="text-xs text-text">{{ item.user?.email }}</div>
                             </td>
+                            <td class="db-table-body-td">{{ item.full_name || "--" }}</td>
+                            <td class="db-table-body-td">{{ item.national_id_number || "--" }}</td>
                             <td class="db-table-body-td">{{ item.user?.phone }}</td>
                             <td class="db-table-body-td">{{ statusText(item.status) }}</td>
                             <td class="db-table-body-td">{{ item.approved_amount_currency }}</td>
@@ -93,7 +97,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="6">لا توجد طلبات جديدة حالياً.</td>
+                            <td class="db-table-body-td text-center" colspan="8">لا توجد طلبات جديدة حالياً.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -135,6 +139,8 @@ export default {
 
             return this.lists.filter((item) => {
                 const userName = this.normalizeSearchValue(item.user?.name || "");
+                const fullName = this.normalizeSearchValue(item.full_name || "");
+                const nationalIdNumber = this.normalizeSearchValue(item.national_id_number || "");
                 const userEmail = this.normalizeSearchValue(item.user?.email || "");
                 const userPhone = this.normalizeSearchValue(item.user?.phone || "");
                 const userCountryCode = this.normalizeSearchValue(item.user?.country_code || "");
@@ -142,6 +148,8 @@ export default {
                 const internationalPhone = `${userCountryCode}${userPhone}`;
 
                 return userName.includes(term)
+                    || fullName.includes(term)
+                    || nationalIdNumber.includes(term)
                     || userEmail.includes(term)
                     || userPhone.includes(term)
                     || localPhone.includes(term)

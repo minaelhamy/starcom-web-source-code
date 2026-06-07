@@ -9,6 +9,8 @@
                 <div class="col-12 lg:col-6">
                     <div class="space-y-2 text-sm">
                         <div><span class="font-semibold">العميل:</span> {{ application.user?.name || "--" }}</div>
+                        <div><span class="font-semibold">الاسم رباعي:</span> {{ application.full_name || "--" }}</div>
+                        <div><span class="font-semibold">الرقم القومي:</span> {{ application.national_id_number || "--" }}</div>
                         <div><span class="font-semibold">العنوان:</span> {{ application.user?.address || "--" }}</div>
                         <div><span class="font-semibold">الهاتف:</span> {{ application.user?.phone || "--" }}</div>
                         <div><span class="font-semibold">المحفظة الحالية:</span> {{ application.user?.wallet_balance || "--" }}</div>
@@ -19,6 +21,27 @@
                 <div class="col-12 lg:col-6">
                     <label class="db-field-title">ملاحظات العميل</label>
                     <div class="db-field-control min-h-[120px] !h-auto py-3">{{ application.notes || "لا توجد ملاحظات." }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="isAdmin" class="db-card mb-4">
+            <div class="db-card-header border-none">
+                <h3 class="db-card-title">بيانات الهوية</h3>
+            </div>
+            <div class="row p-4">
+                <div class="col-12 md:col-6">
+                    <label class="db-field-title required">الاسم رباعي</label>
+                    <input v-model="identityForm.full_name" type="text" class="db-field-control" />
+                    <small class="db-field-alert" v-if="identityErrors.full_name">{{ identityErrors.full_name[0] }}</small>
+                </div>
+                <div class="col-12 md:col-6">
+                    <label class="db-field-title required">الرقم القومي</label>
+                    <input v-model="identityForm.national_id_number" type="text" class="db-field-control" />
+                    <small class="db-field-alert" v-if="identityErrors.national_id_number">{{ identityErrors.national_id_number[0] }}</small>
+                </div>
+                <div class="col-12 mt-3">
+                    <button class="db-btn py-2 text-white bg-primary" @click="updateIdentity">حفظ بيانات الهوية</button>
                 </div>
             </div>
         </div>
@@ -174,6 +197,11 @@ export default {
                 financial_institution_user_id: "",
                 financial_institution_employee_user_id: "",
             },
+            identityForm: {
+                full_name: "",
+                national_id_number: "",
+            },
+            identityErrors: {},
         };
     },
     computed: {
@@ -212,8 +240,14 @@ export default {
                 this.$store.dispatch("creditApplicationReview/show", this.$route.params.id),
                 this.isAdmin ? this.$store.dispatch("creditApplicationReview/assignmentOptions") : Promise.resolve(),
             ]).finally(() => {
+                this.syncIdentityForm();
                 this.loading.isActive = false;
             });
+        },
+        syncIdentityForm: function () {
+            this.identityForm.full_name = this.application.full_name || "";
+            this.identityForm.national_id_number = this.application.national_id_number || "";
+            this.identityErrors = {};
         },
         handleInstitutionChange: function () {
             const selectedEmployeeId = Number(this.form.financial_institution_employee_user_id || 0);
@@ -265,6 +299,23 @@ export default {
                     alertService.error(err.response?.data?.message || "تعذر حذف الطلب.");
                 });
             }).catch(() => {
+                this.loading.isActive = false;
+            });
+        },
+        updateIdentity: function () {
+            this.loading.isActive = true;
+            this.$store.dispatch("creditApplicationReview/updateIdentity", {
+                id: this.application.id,
+                form: this.identityForm,
+            }).then((res) => {
+                alertService.success(res.data.message || "تم تحديث بيانات الهوية بنجاح.");
+                this.identityErrors = {};
+                this.$store.commit("creditApplicationReview/show", res.data.data);
+                this.syncIdentityForm();
+            }).catch((err) => {
+                this.identityErrors = err.response?.data?.errors || {};
+                alertService.error(err.response?.data?.message || "تعذر تحديث بيانات الهوية.");
+            }).finally(() => {
                 this.loading.isActive = false;
             });
         },

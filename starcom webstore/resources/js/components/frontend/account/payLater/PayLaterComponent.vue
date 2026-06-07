@@ -28,8 +28,18 @@
                 <h3 class="text-lg font-bold mb-4">طلب اشتري بالآجل</h3>
                 <form @submit.prevent="save">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="db-field-title required">الاسم رباعي</label>
+                            <input v-model="form.full_name" class="db-field-control" type="text" />
+                            <small class="db-field-alert" v-if="errors.full_name">{{ errors.full_name[0] }}</small>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="db-field-title required">الرقم القومي</label>
+                            <input v-model="form.national_id_number" class="db-field-control" type="text" />
+                            <small class="db-field-alert" v-if="errors.national_id_number">{{ errors.national_id_number[0] }}</small>
+                        </div>
                         <div>
-                            <label class="db-field-title">البطاقة الشخصية - الوجه الأمامي</label>
+                            <label class="db-field-title required">البطاقة الشخصية - الوجه الأمامي</label>
                             <input class="db-field-control" type="file" accept=".jpg,.jpeg,.png,.pdf" @change="setFile($event, 'national_id_front_document')" />
                             <small class="db-field-alert" v-if="errors.national_id_front_document">{{ errors.national_id_front_document[0] }}</small>
                         </div>
@@ -76,6 +86,10 @@
                                   :class="application.status === 'approved' ? 'bg-green-100 text-green-700' : application.status === 'declined' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'">
                                 {{ statusText(application.status) }}
                             </span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 text-sm">
+                            <div><span class="font-semibold">الاسم رباعي:</span> {{ application.full_name || "--" }}</div>
+                            <div><span class="font-semibold">الرقم القومي:</span> {{ application.national_id_number || "--" }}</div>
                         </div>
                         <p class="text-sm mb-3" v-if="application.notes">{{ application.notes }}</p>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -146,6 +160,8 @@ export default {
                 isActive: false,
             },
             form: {
+                full_name: "",
+                national_id_number: "",
                 national_id_front_document: null,
                 national_id_back_document: null,
                 commercial_register_documents: [],
@@ -201,12 +217,16 @@ export default {
             if (this.form.tax_card_document) {
                 formData.append("tax_card_document", this.form.tax_card_document);
             }
+            formData.append("full_name", this.form.full_name || "");
+            formData.append("national_id_number", this.form.national_id_number || "");
             formData.append("notes", this.form.notes || "");
 
             this.$store.dispatch("frontendPayLater/save", formData).then((res) => {
                 alertService.success(res.data.message || "تم إرسال الطلب بنجاح.");
                 this.errors = {};
                 this.form = {
+                    full_name: "",
+                    national_id_number: "",
                     national_id_front_document: null,
                     national_id_back_document: null,
                     commercial_register_documents: [],

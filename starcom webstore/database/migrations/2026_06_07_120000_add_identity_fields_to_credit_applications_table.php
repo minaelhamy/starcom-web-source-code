@@ -1,0 +1,34 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('credit_applications', function (Blueprint $table) {
+            if (!Schema::hasColumn('credit_applications', 'full_name')) {
+                $table->string('full_name')->nullable()->after('user_id');
+            }
+
+            if (!Schema::hasColumn('credit_applications', 'national_id_number')) {
+                $table->string('national_id_number', 32)->nullable()->after('full_name');
+            }
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('credit_applications', function (Blueprint $table) {
+            if (Schema::hasColumn('credit_applications', 'national_id_number')) {
+                $table->dropColumn('national_id_number');
+            }
+
+            if (Schema::hasColumn('credit_applications', 'full_name')) {
+                $table->dropColumn('full_name');
+            }
+        });
+    }
+};

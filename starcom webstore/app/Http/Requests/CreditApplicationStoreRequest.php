@@ -14,8 +14,10 @@ class CreditApplicationStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'full_name'                       => ['required', 'string', 'max:255'],
+            'national_id_number'              => ['required', 'string', 'max:32'],
             'notes'                           => ['nullable', 'string'],
-            'national_id_front_document'      => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'national_id_front_document'      => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'national_id_back_document'       => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'commercial_register_documents'   => ['nullable', 'array', 'max:4'],
             'commercial_register_documents.*' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],

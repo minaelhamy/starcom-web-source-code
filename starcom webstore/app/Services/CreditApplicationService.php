@@ -6,6 +6,7 @@ use App\Enums\CreditApplicationStatus;
 use App\Enums\CreditFacilityStatus;
 use App\Enums\Role as EnumRole;
 use App\Http\Requests\CreditApplicationDecisionRequest;
+use App\Http\Requests\CreditApplicationIdentityRequest;
 use App\Http\Requests\CreditApplicationNoteRequest;
 use App\Http\Requests\CreditFacilityAssignmentRequest;
 use App\Http\Requests\CreditApplicationStoreRequest;
@@ -70,6 +71,8 @@ class CreditApplicationService
 
             $application = CreditApplication::create([
                 'user_id' => Auth::id(),
+                'full_name' => $request->full_name,
+                'national_id_number' => $request->national_id_number,
                 'status'  => CreditApplicationStatus::PENDING,
                 'notes'   => $request->notes,
             ]);
@@ -117,6 +120,30 @@ class CreditApplicationService
         $this->destroyApplication($creditApplication, false);
     }
 
+    public function updateIdentity(CreditApplication $creditApplication, CreditApplicationIdentityRequest $request): CreditApplication
+    {
+        try {
+            $actor = Auth::user();
+            if (!$actor->hasRole(EnumRole::ADMIN)) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            $creditApplication->full_name = $request->full_name;
+            $creditApplication->national_id_number = $request->national_id_number;
+            $creditApplication->save();
+
+            return $creditApplication->load([
+                'user',
+                'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
+                'facilities.institution.financialInstitutionProfile',
+                'facilities.employee',
+            ]);
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
     public function queueList(PaginateRequest $request)
     {
         $actor = Auth::user();
@@ -140,10 +167,13 @@ class CreditApplicationService
         if ($term !== '') {
             $normalizedTerm = preg_replace('/\s+/', '', $term);
 
-            $query->whereHas('user', function ($userQuery) use ($term, $normalizedTerm) {
-                $userQuery->where('name', 'like', '%' . $term . '%')
-                    ->orWhere('phone', 'like', '%' . $normalizedTerm . '%')
-                    ->orWhereRaw("REPLACE(CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')), ' ', '') LIKE ?", ['%' . $normalizedTerm . '%']);
+            $query->where(function ($filterQuery) use ($term, $normalizedTerm) {
+                $filterQuery->whereHas('user', function ($userQuery) use ($term, $normalizedTerm) {
+                    $userQuery->where('name', 'like', '%' . $term . '%')
+                        ->orWhere('phone', 'like', '%' . $normalizedTerm . '%')
+                        ->orWhereRaw("REPLACE(CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')), ' ', '') LIKE ?", ['%' . $normalizedTerm . '%']);
+                })->orWhere('full_name', 'like', '%' . $term . '%')
+                    ->orWhere('national_id_number', 'like', '%' . $normalizedTerm . '%');
             });
         }
 
@@ -162,10 +192,15 @@ class CreditApplicationService
         if ($term !== '') {
             $normalizedTerm = preg_replace('/\s+/', '', $term);
 
-            $query->whereHas('user', function ($userQuery) use ($term, $normalizedTerm) {
-                $userQuery->where('name', 'like', '%' . $term . '%')
-                    ->orWhere('phone', 'like', '%' . $normalizedTerm . '%')
-                    ->orWhereRaw("REPLACE(CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')), ' ', '') LIKE ?", ['%' . $normalizedTerm . '%']);
+            $query->where(function ($filterQuery) use ($term, $normalizedTerm) {
+                $filterQuery->whereHas('user', function ($userQuery) use ($term, $normalizedTerm) {
+                    $userQuery->where('name', 'like', '%' . $term . '%')
+                        ->orWhere('phone', 'like', '%' . $normalizedTerm . '%')
+                        ->orWhereRaw("REPLACE(CONCAT(COALESCE(country_code, ''), COALESCE(phone, '')), ' ', '') LIKE ?", ['%' . $normalizedTerm . '%']);
+                })->orWhereHas('application', function ($applicationQuery) use ($term, $normalizedTerm) {
+                    $applicationQuery->where('full_name', 'like', '%' . $term . '%')
+                        ->orWhere('national_id_number', 'like', '%' . $normalizedTerm . '%');
+                });
             });
         }
 
@@ -527,7 +562,7 @@ class CreditApplicationService
 
     public function portfolioQuery(User $actor)
     {
-        $query = CreditFacility::with(['user', 'institution.financialInstitutionProfile', 'employee']);
+        $query = CreditFacility::with(['user', 'application', 'institution.financialInstitutionProfile', 'employee']);
 
         if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
             $query->where('financial_institution_user_id', $this->resolveInstitutionUserId($actor));

@@ -85,6 +85,16 @@ export const creditApplicationReview = {
                 });
             });
         },
+        updateIdentity: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.post(`admin/credit-application/identity/${payload.id}`, payload.form).then((res) => {
+                    context.commit("show", res.data.data);
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
         approve: function (context, payload) {
             return new Promise((resolve, reject) => {
                 axios.post(`admin/credit-application/approve/${payload.id}`, payload.form).then((res) => {

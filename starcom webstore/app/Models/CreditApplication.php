@@ -14,15 +14,19 @@ class CreditApplication extends Model implements HasMedia
 
     protected $fillable = [
         'user_id',
+        'full_name',
+        'national_id_number',
         'status',
         'notes',
     ];
 
     protected $casts = [
-        'id'      => 'integer',
-        'user_id' => 'integer',
-        'status'  => 'string',
-        'notes'   => 'string',
+        'id'                 => 'integer',
+        'user_id'            => 'integer',
+        'full_name'          => 'string',
+        'national_id_number' => 'string',
+        'status'             => 'string',
+        'notes'              => 'string',
     ];
 
     public function user(): BelongsTo

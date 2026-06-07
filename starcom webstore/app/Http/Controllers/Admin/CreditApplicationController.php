@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Requests\CreditApplicationDecisionRequest;
+use App\Http\Requests\CreditApplicationIdentityRequest;
 use App\Http\Requests\CreditApplicationNoteRequest;
 use App\Http\Requests\CreditFacilityAssignmentRequest;
 use App\Http\Requests\PaginateRequest;
@@ -29,7 +30,7 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
         return [
             new Middleware('permission:credit-requests', only: ['index', 'destroy']),
             new Middleware('permission:credit-requests_show', only: ['show']),
-            new Middleware('permission:credit-requests_review', only: ['approve', 'decline', 'resetApproval', 'assignmentOptions', 'addFacilityNote']),
+            new Middleware('permission:credit-requests_review', only: ['approve', 'decline', 'resetApproval', 'assignmentOptions', 'addFacilityNote', 'updateIdentity']),
             new Middleware('permission:lending-portfolio', only: ['portfolio']),
             new Middleware('permission:lending-portfolio_show', only: ['showFacility', 'assignFacility']),
         ];
@@ -77,6 +78,19 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
             return response([
                 'status' => true,
                 'data' => $this->creditApplicationService->assignmentOptions(),
+            ]);
+        } catch (\Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function updateIdentity(CreditApplication $creditApplication, CreditApplicationIdentityRequest $request): CreditApplicationResource|Response|Application|ResponseFactory
+    {
+        try {
+            return response([
+                'status' => true,
+                'message' => 'تم تحديث بيانات الهوية بنجاح.',
+                'data' => new CreditApplicationResource($this->creditApplicationService->updateIdentity($creditApplication, $request)),
             ]);
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);

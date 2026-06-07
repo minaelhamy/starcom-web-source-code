@@ -26,6 +26,8 @@ class CreditApplicationResource extends JsonResource
 
         return [
             'id'                           => $this->id,
+            'full_name'                    => $this->full_name,
+            'national_id_number'           => $this->national_id_number,
             'status'                       => $this->status,
             'notes'                        => $this->notes,
             'created_at'                   => $this->created_at ? $this->created_at->toDateTimeString() : null,
@@ -42,6 +44,7 @@ class CreditApplicationResource extends JsonResource
                 'id'              => $this->user->id,
                 'name'            => $this->user->name,
                 'email'           => $this->user->email,
+                'country_code'    => $this->user->country_code,
                 'phone'           => trim(($this->user->country_code ?: '') . ' ' . ($this->user->phone ?: '')),
                 'address'         => $this->user->address,
                 'balance'         => (float)$this->user->balance,

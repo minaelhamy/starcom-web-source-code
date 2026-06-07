@@ -595,6 +595,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/', [CreditApplicationController::class, 'index']);
         Route::get('/show/{creditApplication}', [CreditApplicationController::class, 'show']);
         Route::get('/assignment-options', [CreditApplicationController::class, 'assignmentOptions']);
+        Route::post('/identity/{creditApplication}', [CreditApplicationController::class, 'updateIdentity']);
         Route::delete('/{creditApplication}', [CreditApplicationController::class, 'destroy']);
         Route::post('/approve/{creditApplication}', [CreditApplicationController::class, 'approve']);
         Route::post('/decline/{creditApplication}', [CreditApplicationController::class, 'decline']);
