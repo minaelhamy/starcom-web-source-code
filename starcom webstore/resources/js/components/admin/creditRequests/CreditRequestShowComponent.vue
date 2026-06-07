@@ -140,9 +140,6 @@
                         </div>
                     </div>
                 </div>
-                <div v-else-if="application.reviewed_by_me" class="text-sm text-text">
-                    تم اتخاذ القرار من حسابك بالفعل على هذا الطلب.
-                </div>
                 <div v-else class="space-y-3">
                     <div class="text-sm text-text">هذا الطلب لم يعد متاحاً للمراجعة.</div>
                     <div class="flex gap-2 flex-wrap">
@@ -202,7 +199,7 @@ export default {
             return this.authInfo.role_id === roleEnum.ADMIN;
         },
         canReview: function () {
-            return this.application.status === "pending" && !this.application.reviewed_by_me;
+            return this.application.status === "pending" || this.application.status === "declined";
         },
     },
     mounted() {

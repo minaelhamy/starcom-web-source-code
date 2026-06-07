@@ -30,20 +30,15 @@ class CreditApplicationService
 {
     public function lenderOpportunitiesQuery(User $actor)
     {
-        $institutionId = $this->resolveInstitutionUserId($actor);
-
         return CreditApplication::with([
             'user',
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
             'facilities.employee',
         ])
-            ->where('status', CreditApplicationStatus::PENDING)
+            ->whereIn('status', [CreditApplicationStatus::PENDING, CreditApplicationStatus::DECLINED])
             ->whereDoesntHave('facilities', function ($facilityQuery) {
                 $facilityQuery->where('status', CreditFacilityStatus::APPROVED);
-            })
-            ->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
-                $facilityQuery->where('financial_institution_user_id', $institutionId);
             });
     }
 
@@ -65,7 +60,11 @@ class CreditApplicationService
     public function customerStore(CreditApplicationStoreRequest $request): CreditApplication
     {
         try {
-            if (CreditApplication::where('user_id', Auth::id())->where('status', CreditApplicationStatus::PENDING)->exists()) {
+            if (
+                CreditApplication::where('user_id', Auth::id())
+                    ->whereIn('status', [CreditApplicationStatus::PENDING, CreditApplicationStatus::DECLINED])
+                    ->exists()
+            ) {
                 throw new Exception(trans('all.message.credit_application_pending_exists'), 422);
             }
 
@@ -178,19 +177,10 @@ class CreditApplicationService
         $actor = Auth::user();
 
         if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
-            $institutionId = $this->resolveInstitutionUserId($actor);
             if (
-                $creditApplication->status !== CreditApplicationStatus::PENDING ||
+                !in_array($creditApplication->status, [CreditApplicationStatus::PENDING, CreditApplicationStatus::DECLINED], true) ||
                 $creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()
             ) {
-                throw new Exception(trans('all.message.permission_denied'), 422);
-            }
-
-            $hasReviewed = $creditApplication->facilities()
-                ->where('financial_institution_user_id', $institutionId)
-                ->exists();
-
-            if ($hasReviewed) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
         }
@@ -389,28 +379,52 @@ class CreditApplicationService
             [$institution, $employee] = $this->resolveAssignmentActors($actor, $request);
 
             if (
-                $creditApplication->status !== CreditApplicationStatus::PENDING ||
+                !in_array($creditApplication->status, [CreditApplicationStatus::PENDING, CreditApplicationStatus::DECLINED], true) ||
                 $creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()
             ) {
                 throw new Exception('تمت مراجعة هذا الطلب بالفعل من جهة تمويل أخرى.', 422);
             }
 
-            if ($creditApplication->facilities()->where('financial_institution_user_id', $institution->id)->exists()) {
-                throw new Exception(trans('all.message.credit_application_already_reviewed'), 422);
-            }
+            $facility = DB::transaction(function () use ($creditApplication, $institution, $employee, $request) {
+                $application = CreditApplication::lockForUpdate()->findOrFail($creditApplication->id);
+                $existingFacility = CreditFacility::where('credit_application_id', $application->id)
+                    ->where('financial_institution_user_id', $institution->id)
+                    ->lockForUpdate()
+                    ->first();
 
-            $facility = app(WalletService::class)->creditByFacility(
-                $creditApplication->user,
-                $creditApplication,
-                $institution,
-                (float)$request->approved_amount,
-                'تمت إضافة رصيد إلى المحفظة',
-                [
-                    'duration_days' => (int)$request->duration_days,
-                    'notes'         => $request->notes,
-                    'financial_institution_employee_user_id' => $employee->id,
-                ]
-            );
+                if ($existingFacility && $existingFacility->status === CreditFacilityStatus::APPROVED) {
+                    throw new Exception(trans('all.message.credit_application_already_reviewed'), 422);
+                }
+
+                if ($application->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()) {
+                    throw new Exception('تمت مراجعة هذا الطلب بالفعل من جهة تمويل أخرى.', 422);
+                }
+
+                if ($existingFacility) {
+                    return $this->approveExistingFacility(
+                        $existingFacility,
+                        $application,
+                        $institution,
+                        $employee,
+                        (float)$request->approved_amount,
+                        (int)$request->duration_days,
+                        $request->notes
+                    );
+                }
+
+                return app(WalletService::class)->creditByFacility(
+                    $application->user,
+                    $application,
+                    $institution,
+                    (float)$request->approved_amount,
+                    'تمت إضافة رصيد إلى المحفظة',
+                    [
+                        'duration_days' => (int)$request->duration_days,
+                        'notes'         => $request->notes,
+                        'financial_institution_employee_user_id' => $employee->id,
+                    ]
+                );
+            });
 
             $this->createFacilityNote($creditApplication, $facility, $actor, $request->notes);
 
@@ -441,29 +455,57 @@ class CreditApplicationService
             [$institution, $employee] = $this->resolveAssignmentActors($actor, $request, false);
 
             if (
-                $creditApplication->status !== CreditApplicationStatus::PENDING ||
+                !in_array($creditApplication->status, [CreditApplicationStatus::PENDING, CreditApplicationStatus::DECLINED], true) ||
                 $creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()
             ) {
                 throw new Exception('تمت مراجعة هذا الطلب بالفعل من جهة تمويل أخرى.', 422);
             }
 
-            if ($creditApplication->facilities()->where('financial_institution_user_id', $institution->id)->exists()) {
-                throw new Exception(trans('all.message.credit_application_already_reviewed'), 422);
-            }
+            $facility = DB::transaction(function () use ($creditApplication, $institution, $employee, $request) {
+                $application = CreditApplication::lockForUpdate()->findOrFail($creditApplication->id);
+                $existingFacility = CreditFacility::where('credit_application_id', $application->id)
+                    ->where('financial_institution_user_id', $institution->id)
+                    ->lockForUpdate()
+                    ->first();
 
-            $facility = CreditFacility::create([
-                'credit_application_id'         => $creditApplication->id,
-                'user_id'                       => $creditApplication->user_id,
-                'financial_institution_user_id' => $institution->id,
-                'financial_institution_employee_user_id' => $employee->id,
-                'status'                        => CreditFacilityStatus::DECLINED,
-                'approved_amount'               => 0,
-                'available_amount'              => 0,
-                'utilized_amount'               => 0,
-                'duration_days'                 => 30,
-                'reviewed_at'                   => now(),
-                'notes'                         => $request->decline_reason ?: $request->notes,
-            ]);
+                if ($existingFacility && $existingFacility->status === CreditFacilityStatus::APPROVED) {
+                    throw new Exception(trans('all.message.credit_application_already_reviewed'), 422);
+                }
+
+                if ($application->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()) {
+                    throw new Exception('تمت مراجعة هذا الطلب بالفعل من جهة تمويل أخرى.', 422);
+                }
+
+                if ($existingFacility) {
+                    $existingFacility->financial_institution_employee_user_id = $employee->id;
+                    $existingFacility->status = CreditFacilityStatus::DECLINED;
+                    $existingFacility->approved_amount = 0;
+                    $existingFacility->available_amount = 0;
+                    $existingFacility->utilized_amount = 0;
+                    $existingFacility->duration_days = max(30, (int)$request->duration_days);
+                    $existingFacility->starts_at = null;
+                    $existingFacility->due_at = null;
+                    $existingFacility->reviewed_at = now();
+                    $existingFacility->notes = $request->decline_reason ?: $request->notes;
+                    $existingFacility->save();
+
+                    return $existingFacility;
+                }
+
+                return CreditFacility::create([
+                    'credit_application_id'         => $application->id,
+                    'user_id'                       => $application->user_id,
+                    'financial_institution_user_id' => $institution->id,
+                    'financial_institution_employee_user_id' => $employee->id,
+                    'status'                        => CreditFacilityStatus::DECLINED,
+                    'approved_amount'               => 0,
+                    'available_amount'              => 0,
+                    'utilized_amount'               => 0,
+                    'duration_days'                 => max(30, (int)$request->duration_days),
+                    'reviewed_at'                   => now(),
+                    'notes'                         => $request->decline_reason ?: $request->notes,
+                ]);
+            });
 
             $this->createFacilityNote($creditApplication, $facility, $actor, $request->decline_reason ?: $request->notes);
 
@@ -687,5 +729,48 @@ class CreditApplicationService
             'author_user_id' => $author->id,
             'note' => $note,
         ]);
+    }
+
+    protected function approveExistingFacility(
+        CreditFacility $facility,
+        CreditApplication $application,
+        User $institution,
+        User $employee,
+        float $amount,
+        int $durationDays,
+        ?string $notes
+    ): CreditFacility {
+        $user = User::lockForUpdate()->findOrFail($application->user_id);
+
+        $facility->financial_institution_employee_user_id = $employee->id;
+        $facility->status = CreditFacilityStatus::APPROVED;
+        $facility->approved_amount = $amount;
+        $facility->available_amount = $amount;
+        $facility->utilized_amount = 0;
+        $facility->duration_days = $durationDays;
+        $facility->starts_at = now();
+        $facility->due_at = now()->addDays($durationDays);
+        $facility->reviewed_at = now();
+        $facility->notes = $notes;
+        $facility->save();
+
+        $before = (float)$user->balance;
+        $user->balance = $before + $amount;
+        $user->save();
+
+        WalletTransaction::create([
+            'user_id'                        => $user->id,
+            'financial_institution_user_id'  => $institution->id,
+            'credit_application_id'          => $application->id,
+            'credit_facility_id'             => $facility->id,
+            'type'                           => 'facility_approved',
+            'direction'                      => 'credit',
+            'amount'                         => $amount,
+            'balance_before'                 => $before,
+            'balance_after'                  => (float)$user->balance,
+            'description'                    => 'تمت إضافة رصيد إلى المحفظة',
+        ]);
+
+        return $facility;
     }
 }

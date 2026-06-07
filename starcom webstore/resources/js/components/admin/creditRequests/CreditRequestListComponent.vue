@@ -69,6 +69,17 @@
                                         <button v-if="isAdmin" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication(item.id)">حذف</button>
                                     </div>
                                 </div>
+                                <div v-else-if="canReReview(item)" class="space-y-2 min-w-[240px]">
+                                    <div class="text-text text-sm">
+                                        تم رفض الطلب سابقاً من حسابك. يمكنك مراجعة الملف والاطلاع على الملاحظات السابقة ثم اتخاذ قرار جديد.
+                                    </div>
+                                    <div class="flex gap-2 flex-wrap">
+                                        <router-link :to="{ name: 'admin.creditRequests.show', params: { id: item.id } }" class="db-btn py-2 text-white bg-primary">
+                                            مراجعة
+                                        </router-link>
+                                        <button v-if="isAdmin" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication(item.id)">حذف</button>
+                                    </div>
+                                </div>
                                 <div v-else class="space-y-2 min-w-[240px]">
                                     <div class="text-text text-sm">
                                         {{ item.reviewed_by_me ? "تم اتخاذ القرار من حسابك." : "هذا الطلب لم يعد متاحاً للمراجعة." }}
@@ -236,7 +247,13 @@ export default {
             });
         },
         canReview: function (item) {
-            return item.status === "pending" && !item.reviewed_by_me;
+            return this.isReopenable(item) && !item.reviewed_by_me;
+        },
+        canReReview: function (item) {
+            return this.isReopenable(item) && item.reviewed_by_me;
+        },
+        isReopenable: function (item) {
+            return item.status === "pending" || item.status === "declined";
         },
         statusText: function (status) {
             if (status === "approved") {
