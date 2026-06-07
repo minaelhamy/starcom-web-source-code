@@ -25,7 +25,7 @@
             </div>
         </div>
 
-        <div v-if="isAdmin" class="db-card mb-4">
+        <div v-if="canManageIdentity" class="db-card mb-4">
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">بيانات الهوية</h3>
             </div>
@@ -225,6 +225,9 @@ export default {
         },
         isAdmin: function () {
             return this.authInfo.role_id === roleEnum.ADMIN;
+        },
+        canManageIdentity: function () {
+            return this.authInfo.role_id === roleEnum.ADMIN || this.authInfo.role_id === roleEnum.MANAGER;
         },
         canReview: function () {
             return this.application.status === "pending" || this.application.status === "declined";
