@@ -3,6 +3,7 @@
 use App\Services\CartonaCustomerOnboardingService;
 use App\Services\CustomerServiceLeadService;
 use App\Models\User;
+use App\Enums\Role as RoleEnum;
 use Carbon\Carbon;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Auth;
@@ -242,9 +243,9 @@ Artisan::command('customer-service:import-workbook {--file=} {--redistribute}', 
     );
 
     if ($this->option('redistribute')) {
-        $admin = User::find(1);
+        $admin = User::role(RoleEnum::ADMIN)->orderBy('id')->first();
         if (!$admin) {
-            $this->error('Admin user #1 was not found, so redistribution could not run automatically.');
+            $this->error('No admin user was found, so redistribution could not run automatically.');
             return self::FAILURE;
         }
 
@@ -268,9 +269,9 @@ Artisan::command('customer-service:import-workbook {--file=} {--redistribute}', 
 })->purpose('Import customer service CRM history from عملا التمويل workbook');
 
 Artisan::command('customer-service:redistribute {--per-agent=300}', function (CustomerServiceLeadService $service) {
-    $admin = User::find(1);
+    $admin = User::role(RoleEnum::ADMIN)->orderBy('id')->first();
     if (!$admin) {
-        $this->error('Admin user #1 was not found, so redistribution could not run.');
+        $this->error('No admin user was found, so redistribution could not run.');
         return self::FAILURE;
     }
 

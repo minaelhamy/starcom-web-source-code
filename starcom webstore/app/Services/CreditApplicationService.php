@@ -36,6 +36,7 @@ class CreditApplicationService
 
         return CreditApplication::with([
             'user',
+            'submittedByCustomerService',
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
             'facilities.employee',
@@ -116,6 +117,7 @@ class CreditApplicationService
 
             return $application->load([
                 'user',
+                'submittedByCustomerService',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'facilities.institution.financialInstitutionProfile',
                 'facilities.employee',
@@ -169,6 +171,7 @@ class CreditApplicationService
 
             return $creditApplication->load([
                 'user',
+                'submittedByCustomerService',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'facilities.institution.financialInstitutionProfile',
                 'facilities.employee',
@@ -223,6 +226,7 @@ class CreditApplicationService
 
         $query = CreditApplication::with([
             'user',
+            'submittedByCustomerService',
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
             'facilities.employee',
@@ -294,6 +298,7 @@ class CreditApplicationService
             if ($creditApplication->status === CreditApplicationStatus::PENDING) {
                 return $creditApplication->load([
                     'user',
+                    'submittedByCustomerService',
                     'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                     'facilities.institution.financialInstitutionProfile',
                     'facilities.employee',
@@ -310,6 +315,7 @@ class CreditApplicationService
 
         return $creditApplication->load([
             'user',
+            'submittedByCustomerService',
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
             'facilities.employee',
@@ -470,6 +476,7 @@ class CreditApplicationService
 
             return CreditApplication::with([
                 'user',
+                'submittedByCustomerService',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'facilities.institution.financialInstitutionProfile',
                 'facilities.employee',

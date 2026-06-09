@@ -195,12 +195,18 @@ class CustomerServiceLeadService
                 if (!$application) {
                     $application = CreditApplication::create([
                         'user_id' => $lead->user_id,
+                        'submitted_by_customer_service_user_id' => $actor->id,
+                        'submitted_by_customer_service_at' => now(),
                         'full_name' => $request->full_name,
                         'national_id_number' => $request->national_id_number,
                         'status' => CreditApplicationStatus::PENDING,
                         'notes' => $request->note,
                     ]);
                 } else {
+                    if ((int)($application->submitted_by_customer_service_user_id ?? 0) === 0) {
+                        $application->submitted_by_customer_service_user_id = $actor->id;
+                        $application->submitted_by_customer_service_at = now();
+                    }
                     $application->full_name = $request->full_name;
                     $application->national_id_number = $request->national_id_number;
                     $application->status = CreditApplicationStatus::PENDING;
@@ -285,7 +291,7 @@ class CustomerServiceLeadService
             'not_approached_count' => $all->where('status', CustomerServiceLeadStatus::NOT_APPROACHED)->count() + $all->whereNull('status')->count(),
             'today_updates_count' => CustomerServiceLeadActivity::whereDate('created_at', today())->count(),
             'week_updates_count' => CustomerServiceLeadActivity::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-            'applications_submitted_count' => CustomerServiceLeadActivity::where('meta->submitted_via_customer_service', true)->count(),
+            'applications_submitted_count' => CreditApplication::whereNotNull('submitted_by_customer_service_user_id')->count(),
             'status_breakdown' => $this->statusBreakdown($all),
             'top_agents' => $this->agentPerformanceCollection(request()),
         ];
@@ -357,6 +363,71 @@ class CustomerServiceLeadService
                 'remaining_unassigned_count' => max($pool->count() - $assigned, 0),
             ];
         });
+    }
+
+    public function assignFreshLeadsToAgent(User $agent, int $limit = 300): array
+    {
+        if (!$agent->hasRole(EnumRole::CUSTOMER_SERVICE) || (int)$agent->status !== 5) {
+            return [
+                'agent_id' => $agent->id,
+                'assigned_count' => 0,
+                'current_assigned_count' => 0,
+                'remaining_capacity' => $limit,
+            ];
+        }
+
+        return DB::transaction(function () use ($agent, $limit) {
+            $currentAssignedCount = CustomerServiceLead::query()
+                ->where('assigned_to_user_id', $agent->id)
+                ->whereDoesntHave('user.creditApplications')
+                ->count();
+
+            $remainingCapacity = max($limit - $currentAssignedCount, 0);
+            if ($remainingCapacity === 0) {
+                return [
+                    'agent_id' => $agent->id,
+                    'assigned_count' => 0,
+                    'current_assigned_count' => $currentAssignedCount,
+                    'remaining_capacity' => 0,
+                ];
+            }
+
+            $assignmentCycle = max((int)CustomerServiceLead::max('assignment_cycle'), 1);
+
+            $leadIds = $this->unassignedLeadQuery()
+                ->orderBy('priority_order')
+                ->orderByRaw('CASE WHEN next_follow_up_at IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('next_follow_up_at')
+                ->latest('updated_at')
+                ->limit($remainingCapacity)
+                ->pluck('id');
+
+            if ($leadIds->isNotEmpty()) {
+                CustomerServiceLead::whereIn('id', $leadIds)->update([
+                    'assigned_to_user_id' => $agent->id,
+                    'assigned_at' => now(),
+                    'assignment_cycle' => $assignmentCycle,
+                ]);
+            }
+
+            return [
+                'agent_id' => $agent->id,
+                'assigned_count' => $leadIds->count(),
+                'current_assigned_count' => $currentAssignedCount + $leadIds->count(),
+                'remaining_capacity' => max($limit - ($currentAssignedCount + $leadIds->count()), 0),
+            ];
+        });
+    }
+
+    public function releaseAgentLeads(User $agent): int
+    {
+        return CustomerServiceLead::query()
+            ->where('assigned_to_user_id', $agent->id)
+            ->whereDoesntHave('user.creditApplications')
+            ->update([
+                'assigned_to_user_id' => null,
+                'assigned_at' => null,
+            ]);
     }
 
     public function importWorkbook(string $path): array
@@ -570,6 +641,11 @@ class CustomerServiceLeadService
             ->whereDoesntHave('user.creditApplications');
     }
 
+    protected function unassignedLeadQuery(): Builder
+    {
+        return $this->redistributableLeadQuery()->whereNull('assigned_to_user_id');
+    }
+
     protected function applyTabFilter(Builder $query, string $tab): void
     {
         if ($tab === self::TAB_CALLBACK) {
@@ -672,7 +748,13 @@ class CustomerServiceLeadService
                     'callbacks_count' => $assignedLeads->whereIn('status', self::callbackStatuses())->count(),
                     'refused_count' => $assignedLeads->whereIn('status', self::refusedStatuses())->count(),
                     'period_updates_count' => $activities->count(),
-                    'period_applications_submitted_count' => $activities->where('meta.submitted_via_customer_service', true)->count(),
+                    'period_applications_submitted_count' => CreditApplication::query()
+                        ->where('submitted_by_customer_service_user_id', $agent->id)
+                        ->whereBetween('submitted_by_customer_service_at', [$dateFrom, $dateTo])
+                        ->count(),
+                    'total_applications_submitted_count' => CreditApplication::query()
+                        ->where('submitted_by_customer_service_user_id', $agent->id)
+                        ->count(),
                     'today_updates_count' => $agent->customerServiceLeadActivities()->whereDate('created_at', today())->count(),
                     'week_updates_count' => $agent->customerServiceLeadActivities()->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
                 ];

@@ -14,6 +14,8 @@ class CreditApplication extends Model implements HasMedia
 
     protected $fillable = [
         'user_id',
+        'submitted_by_customer_service_user_id',
+        'submitted_by_customer_service_at',
         'full_name',
         'national_id_number',
         'status',
@@ -23,6 +25,8 @@ class CreditApplication extends Model implements HasMedia
     protected $casts = [
         'id'                 => 'integer',
         'user_id'            => 'integer',
+        'submitted_by_customer_service_user_id' => 'integer',
+        'submitted_by_customer_service_at' => 'datetime',
         'full_name'          => 'string',
         'national_id_number' => 'string',
         'status'             => 'string',
@@ -32,6 +36,11 @@ class CreditApplication extends Model implements HasMedia
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class)->withTrashed();
+    }
+
+    public function submittedByCustomerService(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by_customer_service_user_id')->withTrashed();
     }
 
     public function facilities(): HasMany

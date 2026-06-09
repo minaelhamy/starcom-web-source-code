@@ -14,8 +14,10 @@ class CreditApplicationResource extends JsonResource
     {
         $reviewedByMe = false;
         $myReviewStatus = null;
+        $canViewCustomerServiceAttribution = false;
         if (Auth::check()) {
             $actor = Auth::user();
+            $canViewCustomerServiceAttribution = $actor->hasRole(\App\Enums\Role::ADMIN) || $actor->hasRole(\App\Enums\Role::MANAGER);
             if ($actor->hasRole(\App\Enums\Role::FINANCIAL_INSTITUTION)) {
                 $institutionId = $actor->resolvedFinancialInstitutionUserId();
                 $myFacility = $this->facilities->first(function ($facility) use ($institutionId, $actor) {
@@ -58,6 +60,15 @@ class CreditApplicationResource extends JsonResource
             'facilities'                    => CreditFacilityResource::collection($this->whenLoaded('facilities')),
             'approved_amount'               => (float)$this->facilities->where('status', 'approved')->sum('approved_amount'),
             'approved_amount_currency'      => AppLibrary::currencyAmountFormat($this->facilities->where('status', 'approved')->sum('approved_amount')),
+            'submitted_by_customer_service' => $this->when($canViewCustomerServiceAttribution, $this->submittedByCustomerService ? [
+                'id' => $this->submittedByCustomerService->id,
+                'name' => $this->submittedByCustomerService->name,
+                'phone' => trim(($this->submittedByCustomerService->country_code ?: '') . ' ' . ($this->submittedByCustomerService->phone ?: '')),
+            ] : null),
+            'submitted_by_customer_service_at' => $this->when(
+                $canViewCustomerServiceAttribution,
+                $this->submitted_by_customer_service_at?->toDateTimeString()
+            ),
         ];
     }
 }

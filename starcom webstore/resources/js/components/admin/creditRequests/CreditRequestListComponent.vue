@@ -62,6 +62,7 @@
                             <th class="db-table-head-th">الاسم رباعي</th>
                             <th class="db-table-head-th">الرقم القومي</th>
                             <th class="db-table-head-th">الهاتف</th>
+                            <th v-if="canViewCustomerServiceAttribution" class="db-table-head-th">تم التقديم بواسطة</th>
                             <th class="db-table-head-th">الحالة</th>
                             <th class="db-table-head-th">إجمالي المعتمد</th>
                             <th class="db-table-head-th">المستندات</th>
@@ -77,6 +78,13 @@
                             <td class="db-table-body-td">{{ item.full_name || "--" }}</td>
                             <td class="db-table-body-td">{{ item.national_id_number || "--" }}</td>
                             <td class="db-table-body-td">{{ item.user?.phone }}</td>
+                            <td v-if="canViewCustomerServiceAttribution" class="db-table-body-td">
+                                <div v-if="item.submitted_by_customer_service">
+                                    <div class="font-semibold">{{ item.submitted_by_customer_service.name }}</div>
+                                    <div class="text-xs text-text">{{ item.submitted_by_customer_service_at || "--" }}</div>
+                                </div>
+                                <span v-else>--</span>
+                            </td>
                             <td class="db-table-body-td">{{ statusText(item.status) }}</td>
                             <td class="db-table-body-td">{{ item.approved_amount_currency }}</td>
                             <td class="db-table-body-td">
@@ -126,7 +134,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="8">لا توجد طلبات جديدة حالياً.</td>
+                            <td class="db-table-body-td text-center" :colspan="canViewCustomerServiceAttribution ? 9 : 8">لا توجد طلبات جديدة حالياً.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -204,6 +212,9 @@ export default {
         },
         isAdmin: function () {
             return this.authInfo.role_id === roleEnum.ADMIN;
+        },
+        canViewCustomerServiceAttribution: function () {
+            return this.authInfo.role_id === roleEnum.ADMIN || this.authInfo.role_id === roleEnum.MANAGER;
         },
     },
     mounted() {

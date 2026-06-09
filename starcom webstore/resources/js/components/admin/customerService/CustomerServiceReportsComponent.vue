@@ -27,6 +27,7 @@
                             <th class="db-table-head-th">إعادة اتصال</th>
                             <th class="db-table-head-th">في انتظار الأوراق</th>
                             <th class="db-table-head-th">مرفوض / مغلق</th>
+                            <th class="db-table-head-th">إجمالي التقديمات</th>
                             <th class="db-table-head-th">تحديثات اليوم</th>
                             <th class="db-table-head-th">تحديثات الأسبوع</th>
                             <th class="db-table-head-th">تحديثات الفترة</th>
@@ -41,6 +42,7 @@
                             <td class="db-table-body-td">{{ agent.callbacks_count }}</td>
                             <td class="db-table-body-td">{{ agent.waiting_documents_count }}</td>
                             <td class="db-table-body-td">{{ agent.refused_count }}</td>
+                            <td class="db-table-body-td">{{ agent.total_applications_submitted_count }}</td>
                             <td class="db-table-body-td">{{ agent.today_updates_count }}</td>
                             <td class="db-table-body-td">{{ agent.week_updates_count }}</td>
                             <td class="db-table-body-td">{{ agent.period_updates_count }}</td>
@@ -49,7 +51,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="10">لا توجد بيانات لعرضها.</td>
+                            <td class="db-table-body-td text-center" colspan="11">لا توجد بيانات لعرضها.</td>
                         </tr>
                     </tbody>
                 </table>

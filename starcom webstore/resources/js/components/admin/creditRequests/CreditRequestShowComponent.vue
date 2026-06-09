@@ -13,6 +13,8 @@
                         <div><span class="font-semibold">الرقم القومي:</span> {{ application.national_id_number || "--" }}</div>
                         <div><span class="font-semibold">العنوان:</span> {{ application.user?.address || "--" }}</div>
                         <div><span class="font-semibold">الهاتف:</span> {{ application.user?.phone || "--" }}</div>
+                        <div v-if="canViewCustomerServiceAttribution"><span class="font-semibold">تم التقديم بواسطة:</span> {{ application.submitted_by_customer_service?.name || "--" }}</div>
+                        <div v-if="canViewCustomerServiceAttribution"><span class="font-semibold">تاريخ التقديم عبر خدمة العملاء:</span> {{ application.submitted_by_customer_service_at || "--" }}</div>
                         <div><span class="font-semibold">المحفظة الحالية:</span> {{ application.user?.wallet_balance || "--" }}</div>
                         <div><span class="font-semibold">حالة الطلب:</span> {{ statusText(application.status) }}</div>
                         <div><span class="font-semibold">تاريخ الطلب:</span> {{ application.created_date || "--" }}</div>
@@ -228,6 +230,9 @@ export default {
             return this.authInfo.role_id === roleEnum.ADMIN;
         },
         canManageIdentity: function () {
+            return this.authInfo.role_id === roleEnum.ADMIN || this.authInfo.role_id === roleEnum.MANAGER;
+        },
+        canViewCustomerServiceAttribution: function () {
             return this.authInfo.role_id === roleEnum.ADMIN || this.authInfo.role_id === roleEnum.MANAGER;
         },
         canReview: function () {

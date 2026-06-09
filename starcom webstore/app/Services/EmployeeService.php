@@ -6,6 +6,7 @@ use Exception;
 use App\Enums\Ask;
 use App\Models\User;
 use App\Enums\Role as EnumRole;
+use App\Services\CustomerServiceLeadService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
@@ -19,6 +20,10 @@ use App\Models\FinancialInstitutionProfile;
 
 class EmployeeService
 {
+    public function __construct(private readonly CustomerServiceLeadService $customerServiceLeadService)
+    {
+    }
+
     public $user;
     public $phoneFilter = ['phone'];
     public $roleFilter = ['role_id'];
@@ -99,6 +104,8 @@ class EmployeeService
 
                     $this->user->assignRole($request->role_id);
                 });
+
+                $this->syncCustomerServiceAutomation($this->user, (int)$request->role_id);
                 return $this->user;
             } else {
                 throw new Exception(trans('all.message.permission_denied'), 422);
@@ -134,6 +141,7 @@ class EmployeeService
                     $this->user->save();
                 });
                 $this->user->syncRoles($request->role_id);
+                $this->syncCustomerServiceAutomation($this->user, (int)$request->role_id);
                 return $this->user;
             } else {
                 throw new Exception(trans('all.message.permission_denied'), 422);
@@ -211,6 +219,18 @@ class EmployeeService
         }
 
         return $owner->id;
+    }
+
+    private function syncCustomerServiceAutomation(User $user, int $roleId): void
+    {
+        if ($roleId === EnumRole::CUSTOMER_SERVICE && (int)$user->status === 5) {
+            $this->customerServiceLeadService->assignFreshLeadsToAgent($user, 300);
+            return;
+        }
+
+        if ($user->hasRole(EnumRole::CUSTOMER_SERVICE) || $roleId !== EnumRole::CUSTOMER_SERVICE || (int)$user->status !== 5) {
+            $this->customerServiceLeadService->releaseAgentLeads($user);
+        }
     }
 
     /**
