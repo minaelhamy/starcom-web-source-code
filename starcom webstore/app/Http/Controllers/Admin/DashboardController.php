@@ -172,6 +172,9 @@ class DashboardController extends AdminController implements HasMiddleware
             $activeCustomersCount = (clone $approvedFacilitiesQuery)->distinct('user_id')->count('user_id');
             $activeFacilitiesCount = (clone $approvedFacilitiesQuery)->count();
             $reviewedRequestsCount = (clone $reviewedFacilitiesQuery)->count();
+            $acceptedRequestsCount = (clone $reviewedFacilitiesQuery)
+                ->where('status', CreditFacilityStatus::APPROVED)
+                ->count();
             $declinedRequestsCount = (clone $reviewedFacilitiesQuery)
                 ->where('status', CreditFacilityStatus::DECLINED)
                 ->count();
@@ -234,6 +237,7 @@ class DashboardController extends AdminController implements HasMiddleware
                     'active_customers_count'             => $activeCustomersCount,
                     'active_facilities_count'            => $activeFacilitiesCount,
                     'reviewed_requests_count'            => $reviewedRequestsCount,
+                    'accepted_requests_count'            => $acceptedRequestsCount,
                     'declined_requests_count'            => $declinedRequestsCount,
                     'wallet_value'                       => $approvedAmount,
                     'wallet_value_currency'              => AppLibrary::currencyAmountFormat($approvedAmount),
@@ -278,6 +282,7 @@ class DashboardController extends AdminController implements HasMiddleware
             $activeCustomersCount = (clone $approvedFacilitiesQuery)->distinct('user_id')->count('user_id');
             $approvedFacilitiesCount = (clone $approvedFacilitiesQuery)->count();
             $reviewedRequestsCount = (clone $reviewedFacilitiesQuery)->count();
+            $acceptedRequestsCount = (clone $reviewedFacilitiesQuery)->where('status', CreditFacilityStatus::APPROVED)->count();
             $declinedRequestsCount = (clone $reviewedFacilitiesQuery)->where('status', CreditFacilityStatus::DECLINED)->count();
             $expiredFacilitiesCount = (clone $reviewedFacilitiesQuery)->where('status', CreditFacilityStatus::EXPIRED)->count();
             $institutionsCount = (clone $reviewedFacilitiesQuery)->distinct('financial_institution_user_id')->count('financial_institution_user_id');
@@ -367,6 +372,7 @@ class DashboardController extends AdminController implements HasMiddleware
                     'active_customers_count'          => $activeCustomersCount,
                     'approved_facilities_count'       => $approvedFacilitiesCount,
                     'reviewed_requests_count'         => $reviewedRequestsCount,
+                    'accepted_requests_count'         => $acceptedRequestsCount,
                     'declined_requests_count'         => $declinedRequestsCount,
                     'expired_facilities_count'        => $expiredFacilitiesCount,
                     'institutions_count'              => $institutionsCount,

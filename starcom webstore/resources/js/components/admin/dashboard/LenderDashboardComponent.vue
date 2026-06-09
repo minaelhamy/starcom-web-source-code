@@ -192,7 +192,7 @@ export default {
                 {
                     title: "طلبات تمت مراجعتها",
                     displayValue: this.summary.reviewed_requests_count ?? 0,
-                    note: `تم رفض ${this.summary.declined_requests_count ?? 0} طلب حتى الآن`,
+                    note: `تم قبول ${this.summary.accepted_requests_count ?? 0} ورفض ${this.summary.declined_requests_count ?? 0}`,
                     className: "bg-admin-blue",
                     icon: "lab-fill-box text-admin-blue text-2xl lab-font-size-24",
                 },

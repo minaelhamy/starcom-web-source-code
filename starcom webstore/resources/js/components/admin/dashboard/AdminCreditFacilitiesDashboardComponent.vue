@@ -258,14 +258,14 @@ export default {
                 {
                     title: "المحافظ المعتمدة",
                     displayValue: this.summary.approved_facilities_count ?? 0,
-                    note: `منها ${this.summary.expired_facilities_count ?? 0} منتهية`,
+                    note: `تم قبول ${this.summary.accepted_requests_count ?? 0} ومنه ${this.summary.expired_facilities_count ?? 0} منتهية`,
                     className: "bg-admin-pink",
                     icon: "lab-fill-wallet text-admin-pink text-2xl lab-font-size-24",
                 },
                 {
-                    title: "الجهات والموظفون",
-                    displayValue: `${this.summary.institutions_count ?? 0} / ${this.summary.employees_count ?? 0}`,
-                    note: "عدد الجهات التمويلية مقابل عدد الموظفين المرتبطين بها",
+                    title: "الطلبات المرفوضة",
+                    displayValue: this.summary.declined_requests_count ?? 0,
+                    note: `إجمالي الطلبات المرفوضة من أصل ${this.summary.reviewed_requests_count ?? 0} طلب تمت مراجعته`,
                     className: "bg-admin-blue",
                     icon: "lab-fill-box text-admin-blue text-2xl lab-font-size-24",
                 },

@@ -1,1 +1,0 @@
-import{_ as e,r as t,k as r,o as n}from"./app-GU8wC-J5.js";const c={name:"ProductCategoryComponent"};function s(a,p,_,m,u,d){const o=t("router-view");return n(),r(o)}const i=e(c,[["render",s]]);export{i as default};
