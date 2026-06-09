@@ -259,6 +259,10 @@ class CreditApplicationService
 
         $query = $this->portfolioQuery($actor);
 
+        if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
+            $query->where('status', CreditFacilityStatus::APPROVED);
+        }
+
         if ($term !== '') {
             $normalizedTerm = preg_replace('/\s+/', '', $term);
 
