@@ -110,6 +110,8 @@
         "financial_institution_employees": "موظفو الجهات التمويلية",
         "credit_requests": "طلبات اشتري بالآجل",
         "lending_portfolio": "المحفظة التمويلية",
+        "customer_service_leads": "متابعة خدمة العملاء",
+        "customer_service_reports": "تقارير خدمة العملاء",
         "pay_later_wallet": "محفظتي - اشتري بالآجل"
     },
     "label": {

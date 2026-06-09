@@ -111,6 +111,8 @@
         "financial_institution_employees": "Financial Institution Employees",
         "credit_requests": "Credit Requests",
         "lending_portfolio": "Lending Portfolio",
+        "customer_service_leads": "Customer Service Leads",
+        "customer_service_reports": "Customer Service Reports",
         "pay_later_wallet": "Pay Later Wallet"
     },
     "label": {

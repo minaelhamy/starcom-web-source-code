@@ -1,8 +1,10 @@
 <?php
 
 use App\Services\CartonaCustomerOnboardingService;
+use App\Services\CustomerServiceLeadService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -222,3 +224,58 @@ Artisan::command('starcom:backfill-invoice-timeline {--months=12} {--dry-run}', 
 
     return self::SUCCESS;
 })->purpose('Backfill Starcom Intelligence invoice dates across the rolling invoice-history window and generate missing monthly history');
+
+Artisan::command('customer-service:import-workbook {--file=} {--redistribute}', function (CustomerServiceLeadService $service) {
+    $filePath = (string)($this->option('file') ?: dirname(base_path()) . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'عملا التمويل.xlsx');
+
+    $summary = $service->importWorkbook($filePath);
+
+    $this->table(
+        ['Matched Rows', 'Unmatched Rows', 'Sheet7 Updated', 'Total Leads'],
+        [[
+            $summary['matched_rows'],
+            $summary['unmatched_rows'],
+            $summary['sheet7_rows_updated'],
+            $summary['leads_total'],
+        ]]
+    );
+
+    if ($this->option('redistribute')) {
+        Auth::loginUsingId(1);
+        $distribution = $service->redistribute();
+        $this->table(
+            ['Cycle', 'Agents', 'Per Agent', 'Assigned', 'Unassigned'],
+            [[
+                $distribution['cycle'],
+                $distribution['agents_count'],
+                $distribution['per_agent'],
+                $distribution['assigned_count'],
+                $distribution['remaining_unassigned_count'],
+            ]]
+        );
+    }
+
+    $this->info('Customer service CRM workbook import completed.');
+
+    return self::SUCCESS;
+})->purpose('Import customer service CRM history from عملا التمويل workbook');
+
+Artisan::command('customer-service:redistribute {--per-agent=300}', function (CustomerServiceLeadService $service) {
+    Auth::loginUsingId(1);
+    $distribution = $service->redistribute((int)$this->option('per-agent'));
+
+    $this->table(
+        ['Cycle', 'Agents', 'Per Agent', 'Assigned', 'Unassigned'],
+        [[
+            $distribution['cycle'],
+            $distribution['agents_count'],
+            $distribution['per_agent'],
+            $distribution['assigned_count'],
+            $distribution['remaining_unassigned_count'],
+        ]]
+    );
+
+    $this->info('Customer service CRM redistribution completed.');
+
+    return self::SUCCESS;
+})->purpose('Redistribute unresolved customer service leads across the active team');

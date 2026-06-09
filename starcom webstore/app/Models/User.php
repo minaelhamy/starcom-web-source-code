@@ -189,6 +189,21 @@ class User extends Authenticatable implements HasMedia
         return $this->hasMany(StarcomIntelligenceCustomer::class);
     }
 
+    public function customerServiceLead(): HasOne
+    {
+        return $this->hasOne(CustomerServiceLead::class);
+    }
+
+    public function assignedCustomerServiceLeads(): HasMany
+    {
+        return $this->hasMany(CustomerServiceLead::class, 'assigned_to_user_id');
+    }
+
+    public function customerServiceLeadActivities(): HasMany
+    {
+        return $this->hasMany(CustomerServiceLeadActivity::class, 'actor_user_id');
+    }
+
     public function resolvedFinancialInstitutionUserId(): ?int
     {
         if (!$this->hasRole(\App\Enums\Role::FINANCIAL_INSTITUTION)) {

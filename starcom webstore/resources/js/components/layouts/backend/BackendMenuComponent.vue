@@ -92,6 +92,28 @@ export default {
                 }
             }
 
+            if ([roleEnum.ADMIN, roleEnum.MANAGER, roleEnum.CUSTOMER_SERVICE].includes(this.authInfo.role_id)) {
+                if (!menus.some((menu) => menu?.url === "customer-service-leads")) {
+                    menus.push({
+                        name: "Customer Service Leads",
+                        language: "customer_service_leads",
+                        url: "customer-service-leads",
+                        icon: "lab lab-line-users",
+                    });
+                }
+            }
+
+            if ([roleEnum.ADMIN, roleEnum.MANAGER].includes(this.authInfo.role_id)) {
+                if (!menus.some((menu) => menu?.url === "customer-service-reports")) {
+                    menus.push({
+                        name: "Customer Service Reports",
+                        language: "customer_service_reports",
+                        url: "customer-service-reports",
+                        icon: "lab lab-line-chart",
+                    });
+                }
+            }
+
             return menus;
         }
     },

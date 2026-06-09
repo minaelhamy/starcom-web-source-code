@@ -1,1 +1,0 @@
-import{_ as o,r as t,k as n,o as r}from"./app-x1a3C_da.js";const s={name:"OutletComponent"};function c(a,p,_,m,u,f){const e=t("router-view");return r(),n(e)}const l=o(s,[["render",c]]);export{l as default};

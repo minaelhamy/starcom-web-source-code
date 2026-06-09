@@ -10,8 +10,10 @@
         <h3 class="capitalize font-bold text-2xl text-primary mb-1.5">{{ visitorMessage() }}</h3>
         <h4 class="capitalize font-medium text-xl text-secondary">{{ authInfo.name }}</h4>
     </div>
-    <LenderDashboardComponent v-if="isLender" />
-    <template v-else-if="isAdmin">
+    <CustomerServiceDashboardComponent v-if="isCustomerService" />
+    <LenderDashboardComponent v-else-if="isLender" />
+    <template v-else-if="isAdminLike">
+        <CustomerServiceAdminDashboardComponent />
         <AdminCreditFacilitiesDashboardComponent />
         <!--========OVERVIEW START=============-->
         <OverviewComponent />
@@ -78,6 +80,8 @@
 import LoadingComponent from "../components/LoadingComponent";
 import roleEnum from "../../../enums/modules/roleEnum";
 import AdminCreditFacilitiesDashboardComponent from "./AdminCreditFacilitiesDashboardComponent.vue";
+import CustomerServiceAdminDashboardComponent from "./CustomerServiceAdminDashboardComponent.vue";
+import CustomerServiceDashboardComponent from "./CustomerServiceDashboardComponent.vue";
 import LenderDashboardComponent from "./LenderDashboardComponent.vue";
 import OverviewComponent from "./OverviewComponent";
 import OrderStatisticsComponent from "./OrderStatisticsComponent";
@@ -93,6 +97,8 @@ export default {
     components: {
         LoadingComponent,
         AdminCreditFacilitiesDashboardComponent,
+        CustomerServiceAdminDashboardComponent,
+        CustomerServiceDashboardComponent,
         LenderDashboardComponent,
         OverviewComponent,
         OrderStatisticsComponent,
@@ -117,8 +123,11 @@ export default {
         isLender: function () {
             return this.authInfo?.role_id === roleEnum.FINANCIAL_INSTITUTION;
         },
-        isAdmin: function () {
-            return this.authInfo?.role_id === roleEnum.ADMIN;
+        isCustomerService: function () {
+            return this.authInfo?.role_id === roleEnum.CUSTOMER_SERVICE;
+        },
+        isAdminLike: function () {
+            return this.authInfo?.role_id === roleEnum.ADMIN || this.authInfo?.role_id === roleEnum.MANAGER;
         }
     },
     methods: {

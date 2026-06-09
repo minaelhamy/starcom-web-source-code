@@ -18,6 +18,7 @@ import { creditApplicationReview } from "./modules/creditApplicationReview";
 import { creditBalanceReport } from "./modules/creditBalanceReport";
 import { currency } from "./modules/currency";
 import { customer } from "./modules/customer";
+import { customerServiceCrm } from "./modules/customerServiceCrm";
 import { customerAddress } from "./modules/customerAddress";
 import { damage } from "./modules/damage";
 import { dashboard } from "./modules/dashboard";
@@ -152,6 +153,7 @@ export default new createStore({
         administrator,
         administratorAddress,
         customer,
+        customerServiceCrm,
         customerAddress,
         employee,
         employeeAddress,

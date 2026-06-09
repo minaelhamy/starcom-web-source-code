@@ -10,4 +10,5 @@ interface Role
     const POS_OPERATOR          = 4;
     const STUFF                 = 5;
     const FINANCIAL_INSTITUTION = 6;
+    const CUSTOMER_SERVICE      = 7;
 }

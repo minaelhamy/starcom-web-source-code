@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\CountryController;
 use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\CreditBalanceReportController;
 use App\Http\Controllers\Admin\CurrencyController;
+use App\Http\Controllers\Admin\CustomerServiceLeadController;
 use App\Http\Controllers\Admin\CustomerAddressController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DamageController;
@@ -605,6 +606,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::post('/portfolio/note/{creditFacility}', [CreditApplicationController::class, 'addFacilityNote']);
         Route::get('/portfolio', [CreditApplicationController::class, 'portfolio']);
         Route::get('/portfolio/show/{creditFacility}', [CreditApplicationController::class, 'showFacility']);
+    });
+
+    Route::prefix('customer-service-leads')->name('customer-service-leads.')->group(function () {
+        Route::get('/', [CustomerServiceLeadController::class, 'index']);
+        Route::get('/dashboard-summary', [CustomerServiceLeadController::class, 'dashboardSummary']);
+        Route::get('/report-summary', [CustomerServiceLeadController::class, 'reportSummary']);
+        Route::get('/show/{customerServiceLead}', [CustomerServiceLeadController::class, 'show']);
+        Route::post('/status/{customerServiceLead}', [CustomerServiceLeadController::class, 'updateStatus']);
+        Route::post('/application/{customerServiceLead}', [CustomerServiceLeadController::class, 'submitApplication']);
+        Route::post('/redistribute', [CustomerServiceLeadController::class, 'redistribute']);
     });
 
     Route::prefix('my-order')->name('my-order.')->group(function () {
