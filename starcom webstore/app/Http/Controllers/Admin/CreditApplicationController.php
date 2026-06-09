@@ -30,7 +30,7 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
         return [
             new Middleware('permission:credit-requests', only: ['index', 'destroy']),
             new Middleware('permission:credit-requests_show', only: ['show']),
-            new Middleware('permission:credit-requests_review', only: ['approve', 'decline', 'resetApproval', 'assignmentOptions', 'addFacilityNote', 'updateIdentity']),
+            new Middleware('permission:credit-requests_review', only: ['approve', 'decline', 'markPendingApproval', 'resetApproval', 'assignmentOptions', 'addFacilityNote', 'updateIdentity']),
             new Middleware('permission:lending-portfolio', only: ['portfolio']),
             new Middleware('permission:lending-portfolio_show', only: ['showFacility', 'assignFacility']),
         ];
@@ -110,6 +110,15 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
     {
         try {
             return new CreditFacilityResource($this->creditApplicationService->decline($creditApplication, $request));
+        } catch (\Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function markPendingApproval(CreditApplication $creditApplication, CreditApplicationDecisionRequest $request): CreditFacilityResource|Response|Application|ResponseFactory
+    {
+        try {
+            return new CreditFacilityResource($this->creditApplicationService->markPendingApproval($creditApplication, $request));
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

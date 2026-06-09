@@ -67,7 +67,7 @@
                     <div class="flex flex-wrap gap-3 mt-4">
                         <button type="submit" class="db-btn py-2 text-white bg-primary">
                             <i class="lab lab-fill-save"></i>
-                            <span>إرسال الطلب</span>
+                            <span>{{ editableApplication ? "حفظ التعديلات" : "إرسال الطلب" }}</span>
                         </button>
                     </div>
                 </form>
@@ -90,6 +90,16 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 text-sm">
                             <div><span class="font-semibold">الاسم رباعي:</span> {{ application.full_name || "--" }}</div>
                             <div><span class="font-semibold">الرقم القومي:</span> {{ application.national_id_number || "--" }}</div>
+                        </div>
+                        <div v-if="application.notes_history?.length" class="rounded-lg bg-[#F7F7FC] p-3 mb-3">
+                            <p class="font-semibold mb-2">ملاحظات جهة التمويل</p>
+                            <div class="space-y-2 text-sm">
+                                <div v-for="note in application.notes_history" :key="note.id" class="border-b border-gray-200 pb-2 last:border-b-0 last:pb-0">
+                                    <div class="font-medium">{{ note.institution?.name || note.author?.name || "جهة التمويل" }}</div>
+                                    <div class="text-text whitespace-pre-line">{{ note.note }}</div>
+                                    <div class="text-xs text-text mt-1">{{ note.created_at }}</div>
+                                </div>
+                            </div>
                         </div>
                         <p class="text-sm mb-3" v-if="application.notes">{{ application.notes }}</p>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -178,6 +188,9 @@ export default {
         applications: function () {
             return this.$store.getters["frontendPayLater/applications"];
         },
+        editableApplication: function () {
+            return this.applications.find((application) => application.status === "pending_approval") || null;
+        },
         walletTransactions: function () {
             return this.$store.getters["frontendPayLater/walletTransactions"];
         },
@@ -193,8 +206,18 @@ export default {
                 this.$store.dispatch("frontendPayLater/applications", { paginate: 0 }),
                 this.$store.dispatch("frontendPayLater/walletTransactions", { paginate: 0 }),
             ]).finally(() => {
+                this.syncEditableApplication();
                 this.loading.isActive = false;
             });
+        },
+        syncEditableApplication: function () {
+            if (!this.editableApplication) {
+                return;
+            }
+
+            this.form.full_name = this.editableApplication.full_name || "";
+            this.form.national_id_number = this.editableApplication.national_id_number || "";
+            this.form.notes = this.editableApplication.notes || "";
         },
         setFile: function (event, key) {
             this.form[key] = event.target.files[0] || null;
@@ -221,7 +244,12 @@ export default {
             formData.append("national_id_number", this.form.national_id_number || "");
             formData.append("notes", this.form.notes || "");
 
-            this.$store.dispatch("frontendPayLater/save", formData).then((res) => {
+            const action = this.editableApplication ? "frontendPayLater/update" : "frontendPayLater/save";
+            const payload = this.editableApplication
+                ? { id: this.editableApplication.id, form: formData }
+                : formData;
+
+            this.$store.dispatch(action, payload).then((res) => {
                 alertService.success(res.data.message || "تم إرسال الطلب بنجاح.");
                 this.errors = {};
                 this.form = {
@@ -263,6 +291,9 @@ export default {
         statusText: function (status) {
             if (status === "approved") {
                 return "تمت الموافقة";
+            }
+            if (status === "pending_approval") {
+                return "قيد التعديل";
             }
             if (status === "declined") {
                 return "مرفوض";

@@ -113,6 +113,15 @@ export const creditApplicationReview = {
                 });
             });
         },
+        pendingApproval: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.post(`admin/credit-application/pending-approval/${payload.id}`, payload.form).then((res) => {
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
         destroy: function (context, payload) {
             return new Promise((resolve, reject) => {
                 axios.delete(`admin/credit-application/${payload}`).then((res) => {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreditApplicationStoreRequest;
+use App\Http\Requests\CreditApplicationUpdateRequest;
 use App\Http\Requests\PaginateRequest;
 use App\Http\Resources\CreditApplicationResource;
 use App\Http\Resources\WalletTransactionResource;
@@ -38,6 +39,15 @@ class CreditApplicationController extends Controller
     {
         try {
             return new CreditApplicationResource($this->creditApplicationService->customerStore($request));
+        } catch (\Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function update(\App\Models\CreditApplication $creditApplication, CreditApplicationUpdateRequest $request)
+    {
+        try {
+            return new CreditApplicationResource($this->creditApplicationService->customerUpdate($creditApplication, $request));
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

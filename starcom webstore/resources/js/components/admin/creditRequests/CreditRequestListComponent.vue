@@ -6,6 +6,32 @@
                 <h3 class="db-card-title">طلبات اشتري بالآجل</h3>
             </div>
             <div class="p-4 border-b border-gray-100">
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button
+                        type="button"
+                        class="db-btn py-2"
+                        :class="activeTab === 'pending' ? 'text-white bg-primary' : 'text-primary bg-primary/10'"
+                        @click="activeTab = 'pending'"
+                    >
+                        الطلبات الجديدة
+                    </button>
+                    <button
+                        type="button"
+                        class="db-btn py-2"
+                        :class="activeTab === 'pending_approval' ? 'text-white bg-primary' : 'text-primary bg-primary/10'"
+                        @click="activeTab = 'pending_approval'"
+                    >
+                        قيد التعديل
+                    </button>
+                    <button
+                        type="button"
+                        class="db-btn py-2"
+                        :class="activeTab === 'declined' ? 'text-white bg-primary' : 'text-primary bg-primary/10'"
+                        @click="activeTab = 'declined'"
+                    >
+                        المرفوضة
+                    </button>
+                </div>
                 <form class="flex flex-col md:flex-row gap-3 items-start md:items-end" @submit.prevent="submitSearch">
                     <div class="w-full md:flex-1">
                         <label class="db-field-title after:hidden">البحث بالاسم رباعي أو الرقم القومي أو اسم العميل أو رقم الهاتف</label>
@@ -42,8 +68,8 @@
                             <th class="db-table-head-th">القرار</th>
                         </tr>
                     </thead>
-                    <tbody class="db-table-body" v-if="filteredLists.length">
-                        <tr class="db-table-body-tr" v-for="item in filteredLists" :key="item.id">
+                    <tbody class="db-table-body" v-if="tabbedLists.length">
+                        <tr class="db-table-body-tr" v-for="item in tabbedLists" :key="item.id">
                             <td class="db-table-body-td">
                                 <div class="font-semibold">{{ item.user?.name }}</div>
                                 <div class="text-xs text-text">{{ item.user?.email }}</div>
@@ -69,13 +95,16 @@
                                     <textarea v-model="reviewForms[item.id].notes" class="db-field-control h-20" placeholder="ملاحظات"></textarea>
                                     <div class="flex gap-2">
                                         <button class="db-btn py-2 text-white bg-primary" @click="approve(item.id)">اعتماد</button>
+                                        <button class="db-btn py-2 text-white bg-yellow-600" @click="markPendingApproval(item.id)">قيد التعديل</button>
                                         <button class="db-btn py-2 text-white bg-red-500" @click="decline(item.id)">رفض</button>
                                         <button v-if="isAdmin" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication(item.id)">حذف</button>
                                     </div>
                                 </div>
                                 <div v-else-if="canReReview(item)" class="space-y-2 min-w-[240px]">
                                     <div class="text-text text-sm">
-                                        تم رفض الطلب سابقاً من حسابك. يمكنك مراجعة الملف والاطلاع على الملاحظات السابقة ثم اتخاذ قرار جديد.
+                                        {{ item.my_review_status === 'pending_approval'
+                                            ? 'هذا الطلب قيد التعديل من حسابك. يمكنك فتح الملف وقراءة الملاحظات ومراجعته بعد استكمال البيانات.'
+                                            : 'تم رفض الطلب سابقاً من حسابك. يمكنك مراجعة الملف والاطلاع على الملاحظات السابقة ثم اتخاذ قرار جديد.' }}
                                     </div>
                                     <div class="flex gap-2 flex-wrap">
                                         <router-link :to="{ name: 'admin.creditRequests.show', params: { id: item.id } }" class="db-btn py-2 text-white bg-primary">
@@ -120,6 +149,7 @@ export default {
             loading: {
                 isActive: false,
             },
+            activeTab: "pending",
             reviewForms: {},
             searchForm: {
                 term: "",
@@ -154,6 +184,19 @@ export default {
                     || userPhone.includes(term)
                     || localPhone.includes(term)
                     || internationalPhone.includes(term);
+            });
+        },
+        tabbedLists: function () {
+            return this.filteredLists.filter((item) => {
+                if (this.activeTab === "pending_approval") {
+                    return item.status === "pending_approval";
+                }
+
+                if (this.activeTab === "declined") {
+                    return item.status === "declined";
+                }
+
+                return item.status === "pending";
             });
         },
         authInfo: function () {
@@ -240,6 +283,24 @@ export default {
                 alertService.error(err.response?.data?.message || "تعذر رفض الطلب.");
             });
         },
+        markPendingApproval: function (id) {
+            this.loading.isActive = true;
+            const payload = {
+                ...this.reviewForms[id],
+                decline_reason: this.reviewForms[id].notes || "يرجى استكمال المستندات أو البيانات المطلوبة.",
+            };
+            this.$store.dispatch("creditApplicationReview/pendingApproval", {
+                id,
+                form: payload,
+            }).then((res) => {
+                alertService.success(res.data.message || "تم نقل الطلب إلى قيد التعديل.");
+                this.activeTab = "pending_approval";
+                this.list();
+            }).catch((err) => {
+                this.loading.isActive = false;
+                alertService.error(err.response?.data?.message || "تعذر تحديث حالة الطلب.");
+            });
+        },
         destroyApplication: function (id) {
             appService.destroyConfirmation().then(() => {
                 this.loading.isActive = true;
@@ -261,11 +322,14 @@ export default {
             return this.isReopenable(item) && item.reviewed_by_me;
         },
         isReopenable: function (item) {
-            return item.status === "pending" || item.status === "declined";
+            return item.status === "pending" || item.status === "pending_approval" || item.status === "declined";
         },
         statusText: function (status) {
             if (status === "approved") {
                 return "تمت الموافقة";
+            }
+            if (status === "pending_approval") {
+                return "قيد التعديل";
             }
             if (status === "declined") {
                 return "مرفوض";

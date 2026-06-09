@@ -99,6 +99,19 @@ export const frontendPayLater = {
                 });
             });
         },
+        update: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.post(`frontend/pay-later/applications/${payload.id}`, payload.form, {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                }).then((res) => {
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
         destroy: function (context, payload) {
             return new Promise((resolve, reject) => {
                 axios.delete(`frontend/pay-later/applications/${payload}`).then((res) => {

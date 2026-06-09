@@ -157,6 +157,7 @@
                     <div class="col-12 mt-2">
                         <div class="flex gap-2 flex-wrap">
                             <button class="db-btn py-2 text-white bg-primary" @click="approve">اعتماد الطلب</button>
+                            <button class="db-btn py-2 text-white bg-yellow-600" @click="markPendingApproval">قيد التعديل</button>
                             <button class="db-btn py-2 text-white bg-red-500" @click="decline">رفض الطلب</button>
                             <button v-if="isAdmin" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication">حذف الطلب</button>
                             <router-link :to="{ name: 'admin.creditRequests.list' }" class="db-btn py-2 text-white bg-gray-600">العودة للطلبات</router-link>
@@ -291,6 +292,23 @@ export default {
                 alertService.error(err.response?.data?.message || "تعذر رفض الطلب.");
             });
         },
+        markPendingApproval: function () {
+            this.loading.isActive = true;
+            const payload = {
+                ...this.form,
+                decline_reason: this.form.notes || "يرجى استكمال المستندات أو البيانات المطلوبة.",
+            };
+            this.$store.dispatch("creditApplicationReview/pendingApproval", {
+                id: this.application.id,
+                form: payload,
+            }).then((res) => {
+                alertService.success(res.data.message || "تم نقل الطلب إلى قيد التعديل.");
+                this.$router.push({ name: "admin.creditRequests.list" });
+            }).catch((err) => {
+                this.loading.isActive = false;
+                alertService.error(err.response?.data?.message || "تعذر تحديث حالة الطلب.");
+            });
+        },
         destroyApplication: function () {
             appService.destroyConfirmation().then(() => {
                 this.loading.isActive = true;
@@ -325,6 +343,9 @@ export default {
         statusText: function (status) {
             if (status === "approved") {
                 return "تمت الموافقة";
+            }
+            if (status === "pending_approval") {
+                return "قيد التعديل";
             }
             if (status === "declined") {
                 return "مرفوض";

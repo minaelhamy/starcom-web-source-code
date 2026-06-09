@@ -13,14 +13,17 @@ class CreditApplicationResource extends JsonResource
     public function toArray($request): array
     {
         $reviewedByMe = false;
+        $myReviewStatus = null;
         if (Auth::check()) {
             $actor = Auth::user();
             if ($actor->hasRole(\App\Enums\Role::FINANCIAL_INSTITUTION)) {
                 $institutionId = $actor->resolvedFinancialInstitutionUserId();
-                $reviewedByMe = $this->facilities->contains(function ($facility) use ($institutionId, $actor) {
+                $myFacility = $this->facilities->first(function ($facility) use ($institutionId, $actor) {
                     return (int)$facility->financial_institution_user_id === (int)$institutionId ||
                         (int)$facility->financial_institution_employee_user_id === (int)$actor->id;
                 });
+                $reviewedByMe = (bool)$myFacility;
+                $myReviewStatus = $myFacility?->status;
             }
         }
 
@@ -39,6 +42,7 @@ class CreditApplicationResource extends JsonResource
             'commercial_register_document' => $this->commercial_register_document,
             'tax_card_document'            => $this->tax_card_document,
             'reviewed_by_me'               => $reviewedByMe,
+            'my_review_status'             => $myReviewStatus,
             'notes_history'                => CreditApplicationNoteResource::collection($this->whenLoaded('notesHistory')),
             'user'                         => $this->user ? [
                 'id'              => $this->user->id,

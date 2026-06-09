@@ -10,6 +10,7 @@ use App\Http\Requests\CreditApplicationIdentityRequest;
 use App\Http\Requests\CreditApplicationNoteRequest;
 use App\Http\Requests\CreditFacilityAssignmentRequest;
 use App\Http\Requests\CreditApplicationStoreRequest;
+use App\Http\Requests\CreditApplicationUpdateRequest;
 use App\Http\Requests\PaginateRequest;
 use App\Libraries\AppLibrary;
 use App\Libraries\QueryExceptionLibrary;
@@ -31,13 +32,25 @@ class CreditApplicationService
 {
     public function lenderOpportunitiesQuery(User $actor)
     {
+        $institutionId = $this->resolveInstitutionUserId($actor);
+
         return CreditApplication::with([
             'user',
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
             'facilities.employee',
         ])
-            ->whereIn('status', [CreditApplicationStatus::PENDING, CreditApplicationStatus::DECLINED])
+            ->where(function ($query) use ($institutionId) {
+                $query->where('status', CreditApplicationStatus::PENDING)
+                    ->orWhere(function ($reopenQuery) use ($institutionId) {
+                        $reopenQuery->whereIn('status', [
+                            CreditApplicationStatus::PENDING_APPROVAL,
+                            CreditApplicationStatus::DECLINED,
+                        ])->whereHas('facilities', function ($facilityQuery) use ($institutionId) {
+                            $facilityQuery->where('financial_institution_user_id', $institutionId);
+                        });
+                    });
+            })
             ->whereDoesntHave('facilities', function ($facilityQuery) {
                 $facilityQuery->where('status', CreditFacilityStatus::APPROVED);
             });
@@ -63,7 +76,11 @@ class CreditApplicationService
         try {
             if (
                 CreditApplication::where('user_id', Auth::id())
-                    ->whereIn('status', [CreditApplicationStatus::PENDING, CreditApplicationStatus::DECLINED])
+                    ->whereIn('status', [
+                        CreditApplicationStatus::PENDING,
+                        CreditApplicationStatus::PENDING_APPROVAL,
+                        CreditApplicationStatus::DECLINED,
+                    ])
                     ->exists()
             ) {
                 throw new Exception(trans('all.message.credit_application_pending_exists'), 422);
@@ -98,6 +115,59 @@ class CreditApplicationService
             });
 
             return $application->load([
+                'user',
+                'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
+                'facilities.institution.financialInstitutionProfile',
+                'facilities.employee',
+            ]);
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    public function customerUpdate(CreditApplication $creditApplication, CreditApplicationUpdateRequest $request): CreditApplication
+    {
+        try {
+            $actor = Auth::user();
+
+            if ((int)$creditApplication->user_id !== (int)$actor->id) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if ($creditApplication->status !== CreditApplicationStatus::PENDING_APPROVAL) {
+                throw new Exception('يمكن تعديل الطلب فقط عندما تكون حالته قيد التعديل.', 422);
+            }
+
+            $creditApplication->full_name = $request->full_name;
+            $creditApplication->national_id_number = $request->national_id_number;
+            $creditApplication->notes = $request->notes;
+            $creditApplication->status = CreditApplicationStatus::PENDING;
+            $creditApplication->save();
+
+            if ($request->hasFile('national_id_front_document')) {
+                $creditApplication->clearMediaCollection('national_id_front_document');
+                $creditApplication->addMedia($request->file('national_id_front_document'))->toMediaCollection('national_id_front_document');
+            }
+
+            if ($request->hasFile('national_id_back_document')) {
+                $creditApplication->clearMediaCollection('national_id_back_document');
+                $creditApplication->addMedia($request->file('national_id_back_document'))->toMediaCollection('national_id_back_document');
+            }
+
+            if ($request->hasFile('commercial_register_documents')) {
+                $creditApplication->clearMediaCollection('commercial_register_documents');
+                foreach ($request->file('commercial_register_documents', []) as $commercialRegisterDocument) {
+                    $creditApplication->addMedia($commercialRegisterDocument)->toMediaCollection('commercial_register_documents');
+                }
+            }
+
+            if ($request->hasFile('tax_card_document')) {
+                $creditApplication->clearMediaCollection('tax_card_document');
+                $creditApplication->addMedia($request->file('tax_card_document'))->toMediaCollection('tax_card_document');
+            }
+
+            return $creditApplication->load([
                 'user',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'facilities.institution.financialInstitutionProfile',
@@ -212,9 +282,23 @@ class CreditApplicationService
         $actor = Auth::user();
 
         if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
+            $institutionId = $this->resolveInstitutionUserId($actor);
+            if ($creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if ($creditApplication->status === CreditApplicationStatus::PENDING) {
+                return $creditApplication->load([
+                    'user',
+                    'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
+                    'facilities.institution.financialInstitutionProfile',
+                    'facilities.employee',
+                ]);
+            }
+
             if (
-                !in_array($creditApplication->status, [CreditApplicationStatus::PENDING, CreditApplicationStatus::DECLINED], true) ||
-                $creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()
+                !in_array($creditApplication->status, [CreditApplicationStatus::PENDING_APPROVAL, CreditApplicationStatus::DECLINED], true) ||
+                !$creditApplication->facilities()->where('financial_institution_user_id', $institutionId)->exists()
             ) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
@@ -414,7 +498,7 @@ class CreditApplicationService
             [$institution, $employee] = $this->resolveAssignmentActors($actor, $request);
 
             if (
-                !in_array($creditApplication->status, [CreditApplicationStatus::PENDING, CreditApplicationStatus::DECLINED], true) ||
+                !in_array($creditApplication->status, [CreditApplicationStatus::PENDING, CreditApplicationStatus::PENDING_APPROVAL, CreditApplicationStatus::DECLINED], true) ||
                 $creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()
             ) {
                 throw new Exception('تمت مراجعة هذا الطلب بالفعل من جهة تمويل أخرى.', 422);
@@ -490,7 +574,7 @@ class CreditApplicationService
             [$institution, $employee] = $this->resolveAssignmentActors($actor, $request, false);
 
             if (
-                !in_array($creditApplication->status, [CreditApplicationStatus::PENDING, CreditApplicationStatus::DECLINED], true) ||
+                !in_array($creditApplication->status, [CreditApplicationStatus::PENDING, CreditApplicationStatus::PENDING_APPROVAL, CreditApplicationStatus::DECLINED], true) ||
                 $creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()
             ) {
                 throw new Exception('تمت مراجعة هذا الطلب بالفعل من جهة تمويل أخرى.', 422);
@@ -546,6 +630,84 @@ class CreditApplicationService
 
             $this->refreshApplicationStatus($creditApplication);
             $this->safeNotify($creditApplication->user, new CreditApplicationDeclinedNotification($creditApplication, $facility));
+
+            return $facility->load([
+                'user',
+                'institution.financialInstitutionProfile',
+                'employee',
+                'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
+                'application',
+            ]);
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    public function markPendingApproval(CreditApplication $creditApplication, CreditApplicationDecisionRequest $request): CreditFacility
+    {
+        try {
+            $actor = Auth::user();
+            if (!$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) && !$actor->hasRole(EnumRole::ADMIN)) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            [$institution, $employee] = $this->resolveAssignmentActors($actor, $request, false);
+            $note = trim((string)($request->notes ?: $request->decline_reason));
+            if ($note === '') {
+                throw new Exception('يرجى كتابة الملاحظات المطلوبة قبل إرسال الطلب إلى قيد التعديل.', 422);
+            }
+
+            if (
+                !in_array($creditApplication->status, [CreditApplicationStatus::PENDING, CreditApplicationStatus::PENDING_APPROVAL, CreditApplicationStatus::DECLINED], true) ||
+                $creditApplication->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()
+            ) {
+                throw new Exception('تمت مراجعة هذا الطلب بالفعل من جهة تمويل أخرى.', 422);
+            }
+
+            $facility = DB::transaction(function () use ($creditApplication, $institution, $employee, $note, $request) {
+                $application = CreditApplication::lockForUpdate()->findOrFail($creditApplication->id);
+                $existingFacility = CreditFacility::where('credit_application_id', $application->id)
+                    ->where('financial_institution_user_id', $institution->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($application->facilities()->where('status', CreditFacilityStatus::APPROVED)->exists()) {
+                    throw new Exception('تمت مراجعة هذا الطلب بالفعل من جهة تمويل أخرى.', 422);
+                }
+
+                if ($existingFacility) {
+                    $existingFacility->financial_institution_employee_user_id = $employee->id;
+                    $existingFacility->status = CreditFacilityStatus::PENDING_APPROVAL;
+                    $existingFacility->approved_amount = 0;
+                    $existingFacility->available_amount = 0;
+                    $existingFacility->utilized_amount = 0;
+                    $existingFacility->duration_days = max(30, (int)$request->duration_days);
+                    $existingFacility->starts_at = null;
+                    $existingFacility->due_at = null;
+                    $existingFacility->reviewed_at = now();
+                    $existingFacility->notes = $note;
+                    $existingFacility->save();
+                    return $existingFacility;
+                }
+
+                return CreditFacility::create([
+                    'credit_application_id' => $application->id,
+                    'user_id' => $application->user_id,
+                    'financial_institution_user_id' => $institution->id,
+                    'financial_institution_employee_user_id' => $employee->id,
+                    'status' => CreditFacilityStatus::PENDING_APPROVAL,
+                    'approved_amount' => 0,
+                    'available_amount' => 0,
+                    'utilized_amount' => 0,
+                    'duration_days' => max(30, (int)$request->duration_days),
+                    'reviewed_at' => now(),
+                    'notes' => $note,
+                ]);
+            });
+
+            $this->createFacilityNote($creditApplication, $facility, $actor, $note);
+            $this->refreshApplicationStatus($creditApplication);
 
             return $facility->load([
                 'user',
@@ -624,6 +786,8 @@ class CreditApplicationService
 
         if ($facilities->where('status', CreditFacilityStatus::APPROVED)->count() > 0) {
             $creditApplication->status = CreditApplicationStatus::APPROVED;
+        } elseif ($facilities->where('status', CreditFacilityStatus::PENDING_APPROVAL)->count() > 0) {
+            $creditApplication->status = CreditApplicationStatus::PENDING_APPROVAL;
         } elseif ($facilities->count() > 0 && $facilities->where('status', CreditFacilityStatus::DECLINED)->count() === $facilities->count()) {
             $creditApplication->status = CreditApplicationStatus::DECLINED;
         } else {
