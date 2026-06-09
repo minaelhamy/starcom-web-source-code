@@ -379,7 +379,7 @@ class CustomerServiceLeadService
             ->get();
 
         $usersByPhone = $customers->keyBy(function (User $user) {
-            return $this->normalizePhone(($user->country_code ?: '') . ($user->phone ?: ''));
+            return $this->normalizePhone($user->phone ?: '');
         });
 
         $createdLeads = 0;
@@ -717,12 +717,18 @@ class CustomerServiceLeadService
     {
         $digits = preg_replace('/[^0-9]/', '', $this->normalizeArabicDigits((string)$value));
 
-        if (str_starts_with($digits, '20') && strlen($digits) >= 12) {
-            $digits = '0' . substr($digits, 2);
+        if (str_starts_with($digits, '0020') && strlen($digits) >= 14) {
+            $digits = substr($digits, 4);
+        } elseif (str_starts_with($digits, '20') && strlen($digits) >= 12) {
+            $digits = substr($digits, 2);
         }
 
         if (strlen($digits) === 10 && str_starts_with($digits, '1')) {
             $digits = '0' . $digits;
+        }
+
+        if (strlen($digits) > 11 && str_starts_with($digits, '0')) {
+            $digits = substr($digits, -11);
         }
 
         return $digits;

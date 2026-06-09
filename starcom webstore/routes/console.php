@@ -2,6 +2,7 @@
 
 use App\Services\CartonaCustomerOnboardingService;
 use App\Services\CustomerServiceLeadService;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Auth;
@@ -241,7 +242,13 @@ Artisan::command('customer-service:import-workbook {--file=} {--redistribute}', 
     );
 
     if ($this->option('redistribute')) {
-        Auth::loginUsingId(1);
+        $admin = User::find(1);
+        if (!$admin) {
+            $this->error('Admin user #1 was not found, so redistribution could not run automatically.');
+            return self::FAILURE;
+        }
+
+        Auth::setUser($admin);
         $distribution = $service->redistribute();
         $this->table(
             ['Cycle', 'Agents', 'Per Agent', 'Assigned', 'Unassigned'],
@@ -261,7 +268,13 @@ Artisan::command('customer-service:import-workbook {--file=} {--redistribute}', 
 })->purpose('Import customer service CRM history from عملا التمويل workbook');
 
 Artisan::command('customer-service:redistribute {--per-agent=300}', function (CustomerServiceLeadService $service) {
-    Auth::loginUsingId(1);
+    $admin = User::find(1);
+    if (!$admin) {
+        $this->error('Admin user #1 was not found, so redistribution could not run.');
+        return self::FAILURE;
+    }
+
+    Auth::setUser($admin);
     $distribution = $service->redistribute((int)$this->option('per-agent'));
 
     $this->table(
