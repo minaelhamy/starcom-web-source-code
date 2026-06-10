@@ -383,7 +383,7 @@ class CreditApplicationService
     {
         try {
             $actor = Auth::user();
-            if (!$actor->hasRole(EnumRole::ADMIN)) {
+            if (!$actor->hasRole(EnumRole::ADMIN) && !$actor->hasRole(EnumRole::MANAGER)) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
 
@@ -425,7 +425,7 @@ class CreditApplicationService
     {
         try {
             $actor = Auth::user();
-            if (!$actor->hasRole(EnumRole::ADMIN)) {
+            if (!$actor->hasRole(EnumRole::ADMIN) && !$actor->hasRole(EnumRole::MANAGER)) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
 
@@ -491,7 +491,7 @@ class CreditApplicationService
     public function adminDestroy(CreditApplication $creditApplication): void
     {
         $actor = Auth::user();
-        if (!$actor->hasRole(EnumRole::ADMIN)) {
+        if (!$actor->hasRole(EnumRole::ADMIN) && !$actor->hasRole(EnumRole::MANAGER)) {
             throw new Exception(trans('all.message.permission_denied'), 422);
         }
 
@@ -762,7 +762,11 @@ class CreditApplicationService
     {
         try {
             $actor = Auth::user();
-            if (!$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) && !$actor->hasRole(EnumRole::ADMIN)) {
+            if (
+                !$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                !$actor->hasRole(EnumRole::ADMIN) &&
+                !$actor->hasRole(EnumRole::MANAGER)
+            ) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
 

@@ -138,7 +138,7 @@
                         <label class="db-field-title">ملاحظات</label>
                         <input v-model="form.notes" type="text" class="db-field-control" />
                     </div>
-                    <div v-if="isAdmin" class="col-12 md:col-6">
+                    <div v-if="isAdminLike" class="col-12 md:col-6">
                         <label class="db-field-title required">جهة التمويل</label>
                         <select v-model="form.financial_institution_user_id" class="db-field-control" @change="handleInstitutionChange">
                             <option value="">اختر جهة التمويل</option>
@@ -147,7 +147,7 @@
                             </option>
                         </select>
                     </div>
-                    <div v-if="isAdmin" class="col-12 md:col-6">
+                    <div v-if="isAdminLike" class="col-12 md:col-6">
                         <label class="db-field-title">الموظف المسؤول</label>
                         <select v-model="form.financial_institution_employee_user_id" class="db-field-control">
                             <option value="">نفس جهة التمويل</option>
@@ -161,7 +161,7 @@
                             <button class="db-btn py-2 text-white bg-primary" @click="approve">اعتماد الطلب</button>
                             <button class="db-btn py-2 text-white bg-yellow-600" @click="markPendingApproval">قيد التعديل</button>
                             <button class="db-btn py-2 text-white bg-red-500" @click="decline">رفض الطلب</button>
-                            <button v-if="isAdmin" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication">حذف الطلب</button>
+                            <button v-if="isAdminLike" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication">حذف الطلب</button>
                             <router-link :to="{ name: 'admin.creditRequests.list' }" class="db-btn py-2 text-white bg-gray-600">العودة للطلبات</router-link>
                         </div>
                     </div>
@@ -169,7 +169,7 @@
                 <div v-else class="space-y-3">
                     <div class="text-sm text-text">هذا الطلب لم يعد متاحاً للمراجعة.</div>
                     <div class="flex gap-2 flex-wrap">
-                        <button v-if="isAdmin" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication">حذف الطلب</button>
+                        <button v-if="isAdminLike" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication">حذف الطلب</button>
                         <router-link :to="{ name: 'admin.creditRequests.list' }" class="db-btn py-2 text-white bg-gray-600">العودة للطلبات</router-link>
                     </div>
                 </div>
@@ -226,14 +226,14 @@ export default {
                 return !employee.institution_owner_user_id || Number(employee.institution_owner_user_id) === institutionId || Number(employee.id) === institutionId;
             });
         },
-        isAdmin: function () {
-            return this.authInfo.role_id === roleEnum.ADMIN;
+        isAdminLike: function () {
+            return this.authInfo.role_id === roleEnum.ADMIN || this.authInfo.role_id === roleEnum.MANAGER;
         },
         canManageIdentity: function () {
-            return this.authInfo.role_id === roleEnum.ADMIN || this.authInfo.role_id === roleEnum.MANAGER;
+            return this.isAdminLike;
         },
         canViewCustomerServiceAttribution: function () {
-            return this.authInfo.role_id === roleEnum.ADMIN || this.authInfo.role_id === roleEnum.MANAGER;
+            return this.isAdminLike;
         },
         canReview: function () {
             return this.application.status === "pending" || this.application.status === "declined";
@@ -247,7 +247,7 @@ export default {
             this.loading.isActive = true;
             Promise.all([
                 this.$store.dispatch("creditApplicationReview/show", this.$route.params.id),
-                this.isAdmin ? this.$store.dispatch("creditApplicationReview/assignmentOptions") : Promise.resolve(),
+                this.isAdminLike ? this.$store.dispatch("creditApplicationReview/assignmentOptions") : Promise.resolve(),
             ]).finally(() => {
                 this.syncIdentityForm();
                 this.loading.isActive = false;

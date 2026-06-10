@@ -105,7 +105,7 @@
                                         <button class="db-btn py-2 text-white bg-primary" @click="approve(item.id)">اعتماد</button>
                                         <button class="db-btn py-2 text-white bg-yellow-600" @click="markPendingApproval(item.id)">قيد التعديل</button>
                                         <button class="db-btn py-2 text-white bg-red-500" @click="decline(item.id)">رفض</button>
-                                        <button v-if="isAdmin" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication(item.id)">حذف</button>
+                                        <button v-if="isAdminLike" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication(item.id)">حذف</button>
                                     </div>
                                 </div>
                                 <div v-else-if="canReReview(item)" class="space-y-2 min-w-[240px]">
@@ -118,14 +118,14 @@
                                         <router-link :to="{ name: 'admin.creditRequests.show', params: { id: item.id } }" class="db-btn py-2 text-white bg-primary">
                                             مراجعة
                                         </router-link>
-                                        <button v-if="isAdmin" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication(item.id)">حذف</button>
+                                        <button v-if="isAdminLike" class="db-btn py-2 text-white bg-red-700" @click="destroyApplication(item.id)">حذف</button>
                                     </div>
                                 </div>
                                 <div v-else class="space-y-2 min-w-[240px]">
                                     <div class="text-text text-sm">
                                         {{ item.reviewed_by_me ? "تم اتخاذ القرار من حسابك." : "هذا الطلب لم يعد متاحاً للمراجعة." }}
                                     </div>
-                                    <div v-if="isAdmin" class="flex gap-2">
+                                    <div v-if="isAdminLike" class="flex gap-2">
                                         <button class="db-btn py-2 text-white bg-red-700" @click="destroyApplication(item.id)">حذف</button>
                                     </div>
                                 </div>
@@ -210,11 +210,11 @@ export default {
         authInfo: function () {
             return this.$store.getters.authInfo || {};
         },
-        isAdmin: function () {
-            return this.authInfo.role_id === roleEnum.ADMIN;
+        isAdminLike: function () {
+            return this.authInfo.role_id === roleEnum.ADMIN || this.authInfo.role_id === roleEnum.MANAGER;
         },
         canViewCustomerServiceAttribution: function () {
-            return this.authInfo.role_id === roleEnum.ADMIN || this.authInfo.role_id === roleEnum.MANAGER;
+            return this.isAdminLike;
         },
     },
     mounted() {

@@ -128,7 +128,7 @@
             </div>
         </div>
 
-        <div v-if="isAdmin" class="db-card mb-4">
+        <div v-if="isAdminLike" class="db-card mb-4">
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">تعيين جهة التمويل والموظف</h3>
             </div>
@@ -221,26 +221,26 @@ export default {
                 return !employee.institution_owner_user_id || Number(employee.institution_owner_user_id) === institutionId || Number(employee.id) === institutionId;
             });
         },
-        isAdmin: function () {
-            return this.authInfo.role_id === roleEnum.ADMIN;
-        },
-        canManageIdentity: function () {
+        isAdminLike: function () {
             return this.authInfo.role_id === roleEnum.ADMIN || this.authInfo.role_id === roleEnum.MANAGER;
         },
+        canManageIdentity: function () {
+            return this.isAdminLike;
+        },
         canResetApproval: function () {
-            return this.authInfo.role_id === roleEnum.ADMIN &&
+            return this.isAdminLike &&
                 this.facility.status === "approved" &&
                 Number(this.facility.utilized_amount || 0) === 0;
         },
         canAddNote: function () {
-            return (this.isAdmin || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) && this.facility.id;
+            return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) && this.facility.id;
         },
     },
     mounted() {
         this.loading.isActive = true;
         Promise.all([
             this.$store.dispatch("creditApplicationReview/showFacility", this.$route.params.id),
-            this.isAdmin ? this.$store.dispatch("creditApplicationReview/assignmentOptions") : Promise.resolve(),
+            this.isAdminLike ? this.$store.dispatch("creditApplicationReview/assignmentOptions") : Promise.resolve(),
         ]).finally(() => {
             this.syncAssignmentForm();
             this.syncIdentityForm();

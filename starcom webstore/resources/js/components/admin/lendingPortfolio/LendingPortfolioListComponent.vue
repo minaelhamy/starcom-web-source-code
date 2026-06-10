@@ -6,6 +6,18 @@
                 <h3 class="db-card-title">المحفظة التمويلية</h3>
             </div>
             <div class="p-4 border-b border-gray-100">
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button
+                        v-for="tab in tabs"
+                        :key="tab.value"
+                        type="button"
+                        class="db-btn py-2"
+                        :class="activeTab === tab.value ? 'text-white bg-primary' : 'text-primary bg-primary/10'"
+                        @click="activeTab = tab.value"
+                    >
+                        {{ tab.label }}
+                    </button>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div class="rounded-lg border border-[#E8E8F3] p-4">
                         <p class="text-sm text-secondary mb-1">إجمالي عدد العملاء</p>
@@ -61,8 +73,8 @@
                             <th class="db-table-head-th">الملف</th>
                         </tr>
                     </thead>
-                    <tbody class="db-table-body" v-if="filteredPortfolio.length">
-                        <tr class="db-table-body-tr" v-for="item in filteredPortfolio" :key="item.id">
+                    <tbody class="db-table-body" v-if="tabbedPortfolio.length">
+                        <tr class="db-table-body-tr" v-for="item in tabbedPortfolio" :key="item.id">
                             <td class="db-table-body-td">
                                 <div class="font-semibold">{{ item.user?.name || "--" }}</div>
                                 <div class="text-xs text-text">{{ item.user?.phone || "" }}</div>
@@ -84,7 +96,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="12">لا توجد عمليات تمويل معتمدة حتى الآن.</td>
+                            <td class="db-table-body-td text-center" colspan="12">{{ emptyStateText }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -105,10 +117,17 @@ export default {
             loading: {
                 isActive: false,
             },
+            activeTab: "approved",
             searchForm: {
                 term: "",
             },
             appliedTerm: "",
+            tabs: [
+                { value: "approved", label: "المعتمدة" },
+                { value: "declined", label: "المرفوضة" },
+                { value: "expired", label: "المنتهية" },
+                { value: "all", label: "الكل" },
+            ],
         };
     },
     computed: {
@@ -140,17 +159,39 @@ export default {
                     || userEmail.includes(term);
             });
         },
+        tabbedPortfolio: function () {
+            if (this.activeTab === "all") {
+                return this.filteredPortfolio;
+            }
+
+            return this.filteredPortfolio.filter((item) => item.status === this.activeTab);
+        },
         totalCustomers: function () {
-            return this.filteredPortfolio.length;
+            return this.tabbedPortfolio.length;
         },
         totalApprovedAmount: function () {
-            return this.filteredPortfolio.reduce((sum, item) => sum + Number(item.approved_amount || 0), 0);
+            return this.tabbedPortfolio.reduce((sum, item) => sum + Number(item.approved_amount || 0), 0);
         },
         totalUtilizedAmount: function () {
-            return this.filteredPortfolio.reduce((sum, item) => sum + Number(item.utilized_amount || 0), 0);
+            return this.tabbedPortfolio.reduce((sum, item) => sum + Number(item.utilized_amount || 0), 0);
         },
         setting: function () {
             return this.$store.getters["frontendSetting/lists"] || {};
+        },
+        emptyStateText: function () {
+            if (this.activeTab === "declined") {
+                return "لا توجد عمليات تمويل مرفوضة حالياً.";
+            }
+
+            if (this.activeTab === "expired") {
+                return "لا توجد عمليات تمويل منتهية حالياً.";
+            }
+
+            if (this.activeTab === "all") {
+                return "لا توجد عمليات تمويل لعرضها حالياً.";
+            }
+
+            return "لا توجد عمليات تمويل معتمدة حتى الآن.";
         },
     },
     mounted() {
