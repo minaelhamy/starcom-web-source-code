@@ -215,6 +215,14 @@ class CreditApplicationService
                 $creditApplication->addMedia($request->file('national_id_back_document'))->toMediaCollection('national_id_back_document');
             }
 
+            if (
+                $request->boolean('return_to_review') &&
+                $creditApplication->status === CreditApplicationStatus::PENDING_APPROVAL
+            ) {
+                $creditApplication->status = CreditApplicationStatus::PENDING;
+                $creditApplication->save();
+            }
+
             return $creditApplication->load([
                 'user',
                 'submittedByCustomerService',

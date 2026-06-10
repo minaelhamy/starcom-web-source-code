@@ -53,7 +53,16 @@
                     <small class="db-field-alert" v-if="identityErrors.national_id_back_document">{{ identityErrors.national_id_back_document[0] }}</small>
                 </div>
                 <div class="col-12 mt-3">
-                    <button class="db-btn py-2 text-white bg-primary" @click="updateIdentity">حفظ بيانات الهوية</button>
+                    <div class="flex gap-2 flex-wrap">
+                        <button class="db-btn py-2 text-white bg-primary" @click="updateIdentity()">حفظ بيانات الهوية</button>
+                        <button
+                            v-if="application.status === 'pending_approval'"
+                            class="db-btn py-2 text-white bg-green-600"
+                            @click="updateIdentity(true)"
+                        >
+                            حفظ وإعادة الطلب للمراجعة
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -345,11 +354,14 @@ export default {
                 this.loading.isActive = false;
             });
         },
-        updateIdentity: function () {
+        updateIdentity: function (returnToReview = false) {
             this.loading.isActive = true;
             const form = new FormData();
             form.append("full_name", this.identityForm.full_name || "");
             form.append("national_id_number", this.identityForm.national_id_number || "");
+            if (returnToReview) {
+                form.append("return_to_review", "1");
+            }
             if (this.identityForm.national_id_front_document) {
                 form.append("national_id_front_document", this.identityForm.national_id_front_document);
             }
@@ -361,7 +373,11 @@ export default {
                 id: this.application.id,
                 form,
             }).then((res) => {
-                alertService.success(res.data.message || "تم تحديث بيانات الهوية بنجاح.");
+                alertService.success(
+                    res.data.message || (returnToReview
+                        ? "تم تحديث البيانات وإعادة الطلب إلى قيد المراجعة."
+                        : "تم تحديث بيانات الهوية بنجاح.")
+                );
                 this.identityErrors = {};
                 this.$store.commit("creditApplicationReview/show", res.data.data);
                 this.syncIdentityForm();
