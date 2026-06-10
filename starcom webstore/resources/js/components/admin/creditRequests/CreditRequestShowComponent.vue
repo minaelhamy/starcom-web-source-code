@@ -42,6 +42,16 @@
                     <input v-model="identityForm.national_id_number" type="text" class="db-field-control" />
                     <small class="db-field-alert" v-if="identityErrors.national_id_number">{{ identityErrors.national_id_number[0] }}</small>
                 </div>
+                <div class="col-12 md:col-6 mt-3">
+                    <label class="db-field-title after:hidden">رفع صورة البطاقة الأمامية من جديد</label>
+                    <input type="file" class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFile($event, 'national_id_front_document')" />
+                    <small class="db-field-alert" v-if="identityErrors.national_id_front_document">{{ identityErrors.national_id_front_document[0] }}</small>
+                </div>
+                <div class="col-12 md:col-6 mt-3">
+                    <label class="db-field-title after:hidden">رفع صورة البطاقة الخلفية من جديد</label>
+                    <input type="file" class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFile($event, 'national_id_back_document')" />
+                    <small class="db-field-alert" v-if="identityErrors.national_id_back_document">{{ identityErrors.national_id_back_document[0] }}</small>
+                </div>
                 <div class="col-12 mt-3">
                     <button class="db-btn py-2 text-white bg-primary" @click="updateIdentity">حفظ بيانات الهوية</button>
                 </div>
@@ -203,6 +213,8 @@ export default {
             identityForm: {
                 full_name: "",
                 national_id_number: "",
+                national_id_front_document: null,
+                national_id_back_document: null,
             },
             identityErrors: {},
         };
@@ -256,7 +268,12 @@ export default {
         syncIdentityForm: function () {
             this.identityForm.full_name = this.application.full_name || "";
             this.identityForm.national_id_number = this.application.national_id_number || "";
+            this.identityForm.national_id_front_document = null;
+            this.identityForm.national_id_back_document = null;
             this.identityErrors = {};
+        },
+        setIdentityFile: function (event, field) {
+            this.identityForm[field] = event.target.files?.[0] || null;
         },
         handleInstitutionChange: function () {
             const selectedEmployeeId = Number(this.form.financial_institution_employee_user_id || 0);
@@ -330,9 +347,19 @@ export default {
         },
         updateIdentity: function () {
             this.loading.isActive = true;
+            const form = new FormData();
+            form.append("full_name", this.identityForm.full_name || "");
+            form.append("national_id_number", this.identityForm.national_id_number || "");
+            if (this.identityForm.national_id_front_document) {
+                form.append("national_id_front_document", this.identityForm.national_id_front_document);
+            }
+            if (this.identityForm.national_id_back_document) {
+                form.append("national_id_back_document", this.identityForm.national_id_back_document);
+            }
+
             this.$store.dispatch("creditApplicationReview/updateIdentity", {
                 id: this.application.id,
-                form: this.identityForm,
+                form,
             }).then((res) => {
                 alertService.success(res.data.message || "تم تحديث بيانات الهوية بنجاح.");
                 this.identityErrors = {};

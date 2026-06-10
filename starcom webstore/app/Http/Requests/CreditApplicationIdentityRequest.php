@@ -16,6 +16,8 @@ class CreditApplicationIdentityRequest extends FormRequest
         return [
             'full_name' => ['required', 'string', 'max:255'],
             'national_id_number' => ['required', 'string', 'max:32'],
+            'national_id_front_document' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'national_id_back_document' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ];
     }
 }

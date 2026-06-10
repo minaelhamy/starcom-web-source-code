@@ -87,7 +87,9 @@ export const creditApplicationReview = {
         },
         updateIdentity: function (context, payload) {
             return new Promise((resolve, reject) => {
-                axios.post(`admin/credit-application/identity/${payload.id}`, payload.form).then((res) => {
+                axios.post(`admin/credit-application/identity/${payload.id}`, payload.form, {
+                    headers: payload.form instanceof FormData ? { "Content-Type": "multipart/form-data" } : {},
+                }).then((res) => {
                     context.commit("show", res.data.data);
                     resolve(res);
                 }).catch((err) => {

@@ -205,8 +205,19 @@ class CreditApplicationService
             $creditApplication->national_id_number = $request->national_id_number;
             $creditApplication->save();
 
+            if ($request->hasFile('national_id_front_document')) {
+                $creditApplication->clearMediaCollection('national_id_front_document');
+                $creditApplication->addMedia($request->file('national_id_front_document'))->toMediaCollection('national_id_front_document');
+            }
+
+            if ($request->hasFile('national_id_back_document')) {
+                $creditApplication->clearMediaCollection('national_id_back_document');
+                $creditApplication->addMedia($request->file('national_id_back_document'))->toMediaCollection('national_id_back_document');
+            }
+
             return $creditApplication->load([
                 'user',
+                'submittedByCustomerService',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'facilities.institution.financialInstitutionProfile',
                 'facilities.employee',
