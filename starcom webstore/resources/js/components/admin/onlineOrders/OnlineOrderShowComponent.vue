@@ -410,15 +410,11 @@ export default {
         },
         canEditOrder: function () {
             const status = parseInt(this.order.status);
-            const paymentSlug = this.order.payment_method_slug;
-            const walletPaidAmount = Number(this.order.wallet_paid_amount || 0);
-            const cashOnDeliveryAmount = Number(this.order.cash_on_delivery_amount || 0);
-
-            const isAllowedStatus = [orderStatusEnum.PENDING, orderStatusEnum.CONFIRMED].includes(status);
-            const isCashOnDelivery = paymentSlug === 'cashondelivery';
-            const isSplitPayLater = paymentSlug === 'credit' && walletPaidAmount > 0 && cashOnDeliveryAmount > 0;
-
-            return isAllowedStatus && (isCashOnDelivery || isSplitPayLater);
+            return ![
+                orderStatusEnum.DELIVERED,
+                orderStatusEnum.CANCELED,
+                orderStatusEnum.REJECTED
+            ].includes(status);
         }
     },
     mounted() {

@@ -556,29 +556,24 @@ class OrderService
             throw new Exception('هذه العملية مخصصة للطلبات أونلاين فقط.', 422);
         }
 
-        if (in_array((int)$order->status, [OrderStatus::ON_THE_WAY, OrderStatus::DELIVERED, OrderStatus::CANCELED, OrderStatus::REJECTED], true)) {
-            throw new Exception('لا يمكن تعديل طلب تم شحنه أو تسليمه أو إلغاؤه.', 422);
+        if ((int)$order->status === OrderStatus::DELIVERED) {
+            throw new Exception('لا يمكن تعديل طلب تم تسليمه.', 422);
         }
 
-        $paymentSlug = $order->paymentMethod?->slug;
-        $isCashOnDelivery = $paymentSlug === 'cashondelivery';
-        $isSplitPayLater = $paymentSlug === 'credit'
-            && (float)$order->wallet_paid_amount > 0
-            && (float)$order->cash_on_delivery_amount > 0;
-
-        if (!$isCashOnDelivery && !$isSplitPayLater) {
-            throw new Exception('يمكن تعديل الطلبات الدفع عند الاستلام أو اشتري بالآجل مع المتبقي كاش فقط.', 422);
+        if (in_array((int)$order->status, [OrderStatus::CANCELED, OrderStatus::REJECTED], true)) {
+            throw new Exception('لا يمكن تعديل طلب ملغي أو مرفوض.', 422);
         }
     }
 
     protected function recalculateOnlineOrderPayments(Order $order): void
     {
         $paymentSlug = $order->paymentMethod?->slug;
+        $wasPaid = (int)$order->payment_status === PaymentStatus::PAID;
 
         if ($paymentSlug === 'cashondelivery') {
             $order->wallet_paid_amount = 0;
-            $order->cash_on_delivery_amount = (float)$order->total;
-            $order->payment_status = PaymentStatus::UNPAID;
+            $order->cash_on_delivery_amount = $wasPaid ? 0 : (float)$order->total;
+            $order->payment_status = $wasPaid ? PaymentStatus::PAID : PaymentStatus::UNPAID;
             return;
         }
 
@@ -589,17 +584,27 @@ class OrderService
             }
 
             $walletUsed = app(WalletService::class)->debitUpToForOrder($order, (float)$order->total);
-            $cashOnDeliveryAmount = max(0, (float)$order->total - $walletUsed);
+            $cashOnDeliveryAmount = $wasPaid ? 0 : max(0, (float)$order->total - $walletUsed);
 
             $order->wallet_paid_amount = $walletUsed;
             $order->cash_on_delivery_amount = $cashOnDeliveryAmount;
-            $order->payment_status = $cashOnDeliveryAmount > 0 ? PaymentStatus::UNPAID : PaymentStatus::PAID;
+            $order->payment_status = $wasPaid ? PaymentStatus::PAID : ($cashOnDeliveryAmount > 0 ? PaymentStatus::UNPAID : PaymentStatus::PAID);
 
             $transaction = Transaction::where(['order_id' => $order->id, 'type' => 'payment'])->first();
             if ($transaction) {
                 $transaction->amount = $walletUsed;
                 $transaction->save();
             }
+            return;
+        }
+
+        $order->wallet_paid_amount = 0;
+        $order->cash_on_delivery_amount = 0;
+
+        $transaction = Transaction::where(['order_id' => $order->id, 'type' => 'payment'])->first();
+        if ($transaction) {
+            $transaction->amount = (float)$order->total;
+            $transaction->save();
         }
     }
 }
