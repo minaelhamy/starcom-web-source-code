@@ -5,9 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class CreditFacility extends Model
+class CreditFacility extends Model implements HasMedia
 {
+    use InteractsWithMedia;
+
     protected $fillable = [
         'credit_application_id',
         'user_id',
@@ -69,5 +73,16 @@ class CreditFacility extends Model
     public function notesHistory(): HasMany
     {
         return $this->hasMany(CreditApplicationNote::class)->orderBy('created_at');
+    }
+
+    public function getContractDocumentsAttribute(): array
+    {
+        return $this->getMedia('facility_contract_documents')->map(function ($media) {
+            return [
+                'id' => $media->id,
+                'name' => $media->file_name,
+                'url' => $media->getUrl(),
+            ];
+        })->values()->all();
     }
 }

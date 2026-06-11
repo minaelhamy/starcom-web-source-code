@@ -190,6 +190,18 @@ export const creditApplicationReview = {
                 });
             });
         },
+        uploadFacilityContracts: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.post(`admin/credit-application/portfolio/contracts/${payload.id}`, payload.form, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                }).then((res) => {
+                    context.commit("portfolioShow", res.data.data);
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
     },
     mutations: {
         lists: function (state, payload) {

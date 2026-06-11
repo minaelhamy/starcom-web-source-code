@@ -42,6 +42,8 @@ class CreditFacilityResource extends JsonResource
                 'country_code' => $this->user->country_code,
                 'phone' => trim(($this->user->country_code ?: '') . ' ' . ($this->user->phone ?: '')),
                 'address' => $this->user->display_address,
+                'city' => $this->user->display_city,
+                'area' => $this->user->display_area,
             ] : null,
             'approved_currency' => AppLibrary::currencyAmountFormat($this->approved_amount),
             'available_currency'=> AppLibrary::currencyAmountFormat($this->available_amount),
@@ -78,6 +80,7 @@ class CreditFacilityResource extends JsonResource
                 'commercial_register_documents' => $application->commercial_register_documents,
                 'tax_card_document'             => $application->tax_card_document,
             ] : null,
+            'contract_documents' => $this->contract_documents,
         ];
     }
 

@@ -9,6 +9,7 @@ use App\Http\Requests\CreditApplicationDecisionRequest;
 use App\Http\Requests\CreditApplicationIdentityRequest;
 use App\Http\Requests\CreditApplicationNoteRequest;
 use App\Http\Requests\CreditFacilityAssignmentRequest;
+use App\Http\Requests\CreditFacilityContractRequest;
 use App\Http\Requests\CreditApplicationStoreRequest;
 use App\Http\Requests\CreditApplicationUpdateRequest;
 use App\Http\Requests\PaginateRequest;
@@ -354,6 +355,7 @@ class CreditApplicationService
 
         return $creditFacility->load([
             'user',
+            'user.latestAddress',
             'application.user',
             'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
@@ -425,6 +427,7 @@ class CreditApplicationService
 
                 return $facility->load([
                     'user',
+                    'user.latestAddress',
                     'application.user',
                     'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                     'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
@@ -495,6 +498,7 @@ class CreditApplicationService
 
             return CreditApplication::with([
                 'user',
+                'user.latestAddress',
                 'submittedByCustomerService',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'facilities.institution.financialInstitutionProfile',
@@ -515,6 +519,51 @@ class CreditApplicationService
         }
 
         $this->destroyApplication($creditApplication, true);
+    }
+
+    public function uploadFacilityContracts(CreditFacility $creditFacility, CreditFacilityContractRequest $request): CreditFacility
+    {
+        try {
+            $actor = Auth::user();
+
+            if (
+                !$actor->hasRole(EnumRole::ADMIN) &&
+                !$actor->hasRole(EnumRole::MANAGER) &&
+                !$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if (
+                $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                (int) $creditFacility->financial_institution_user_id !== (int) $this->resolveInstitutionUserId($actor)
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if ($creditFacility->status !== CreditFacilityStatus::APPROVED) {
+                throw new Exception('يمكن رفع العقود فقط بعد اعتماد التمويل.', 422);
+            }
+
+            foreach ($request->file('contract_documents', []) as $contractDocument) {
+                $creditFacility->addMedia($contractDocument)->toMediaCollection('facility_contract_documents');
+            }
+
+            return $creditFacility->load([
+                'user',
+                'user.latestAddress',
+                'application.user',
+                'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
+                'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
+                'application.facilities.institution.financialInstitutionProfile',
+                'application.facilities.employee',
+                'institution.financialInstitutionProfile',
+                'employee',
+            ]);
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
     }
 
     public function approve(CreditApplication $creditApplication, CreditApplicationDecisionRequest $request): CreditFacility

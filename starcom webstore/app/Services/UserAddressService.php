@@ -124,6 +124,8 @@ class UserAddressService
 
         $user->forceFill([
             'address' => $latestAddress?->address,
+            'city' => $latestAddress?->state,
+            'area' => $latestAddress?->city,
         ])->save();
     }
 }

@@ -12,6 +12,8 @@
                         <div><span class="font-semibold">الاسم رباعي:</span> {{ facility.full_name || "--" }}</div>
                         <div><span class="font-semibold">الرقم القومي:</span> {{ facility.national_id_number || "--" }}</div>
                         <div><span class="font-semibold">العنوان:</span> {{ facility.user?.address || "--" }}</div>
+                        <div><span class="font-semibold">المدينة:</span> {{ facility.user?.city || "--" }}</div>
+                        <div><span class="font-semibold">المنطقة:</span> {{ facility.user?.area || "--" }}</div>
                         <div><span class="font-semibold">الهاتف:</span> {{ facility.user?.phone || "--" }}</div>
                         <div><span class="font-semibold">المبلغ المعتمد:</span> {{ facility.approved_currency || "--" }}</div>
                         <div><span class="font-semibold">المتاح:</span> {{ facility.available_currency || "--" }}</div>
@@ -113,6 +115,49 @@
             </div>
         </div>
 
+        <div v-if="canManageContracts || (facility.contract_documents || []).length" class="db-card mb-4">
+            <div class="db-card-header border-none">
+                <h3 class="db-card-title">عقود التمويل</h3>
+            </div>
+            <div class="row p-4">
+                <div class="col-12 lg:col-6">
+                    <div class="db-card p-4 h-full">
+                        <h4 class="font-semibold mb-3">العقود المرفوعة</h4>
+                        <div class="flex flex-col gap-2">
+                            <a
+                                v-for="(document, index) in facility.contract_documents || []"
+                                :key="document.id || index"
+                                :href="document.url"
+                                target="_blank"
+                                download
+                                class="db-btn py-2 text-white bg-primary"
+                            >
+                                تحميل العقد {{ index + 1 }}
+                            </a>
+                            <span v-if="!(facility.contract_documents || []).length" class="text-sm text-text">لا توجد عقود مرفوعة بعد.</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 lg:col-6" v-if="canManageContracts">
+                    <div class="db-card p-4 h-full">
+                        <h4 class="font-semibold mb-3">رفع عقود جديدة</h4>
+                        <input
+                            type="file"
+                            multiple
+                            class="db-field-control"
+                            accept=".jpg,.jpeg,.png,.pdf"
+                            @change="setContractFiles"
+                        />
+                        <small class="db-field-alert" v-if="contractErrors.contract_documents">{{ contractErrors.contract_documents[0] }}</small>
+                        <small class="db-field-alert" v-if="contractErrors['contract_documents.0']">{{ contractErrors['contract_documents.0'][0] }}</small>
+                        <div class="mt-3">
+                            <button class="db-btn py-2 text-white bg-primary" @click="uploadContracts">رفع العقود</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="db-card mb-4">
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">Starcom Intelligence</h3>
@@ -195,6 +240,10 @@ export default {
             noteForm: {
                 note: "",
             },
+            contractForm: {
+                contract_documents: [],
+            },
+            contractErrors: {},
             identityForm: {
                 full_name: "",
                 national_id_number: "",
@@ -235,6 +284,11 @@ export default {
         canAddNote: function () {
             return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) && this.facility.id;
         },
+        canManageContracts: function () {
+            return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) &&
+                this.facility.id &&
+                this.facility.status === "approved";
+        },
     },
     mounted() {
         this.loading.isActive = true;
@@ -258,6 +312,9 @@ export default {
             this.identityForm.full_name = this.facility.full_name || "";
             this.identityForm.national_id_number = this.facility.national_id_number || "";
             this.identityErrors = {};
+        },
+        setContractFiles: function (event) {
+            this.contractForm.contract_documents = Array.from(event.target.files || []);
         },
         handleInstitutionChange: function () {
             const selectedEmployeeId = Number(this.assignmentForm.financial_institution_employee_user_id || 0);
@@ -304,6 +361,32 @@ export default {
                 this.noteForm.note = "";
             }).catch((err) => {
                 alertService.error(err.response?.data?.message || "تعذر إضافة الملاحظة.");
+            }).finally(() => {
+                this.loading.isActive = false;
+            });
+        },
+        uploadContracts: function () {
+            if (!this.contractForm.contract_documents.length) {
+                alertService.error("يرجى اختيار عقد واحد على الأقل.");
+                return;
+            }
+
+            this.loading.isActive = true;
+            const form = new FormData();
+            this.contractForm.contract_documents.forEach((file) => {
+                form.append("contract_documents[]", file);
+            });
+
+            this.$store.dispatch("creditApplicationReview/uploadFacilityContracts", {
+                id: this.facility.id,
+                form,
+            }).then((res) => {
+                alertService.success(res.data.message || "تم رفع العقود بنجاح.");
+                this.contractErrors = {};
+                this.contractForm.contract_documents = [];
+            }).catch((err) => {
+                this.contractErrors = err.response?.data?.errors || {};
+                alertService.error(err.response?.data?.message || "تعذر رفع العقود.");
             }).finally(() => {
                 this.loading.isActive = false;
             });
