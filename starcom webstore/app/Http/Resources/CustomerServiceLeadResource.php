@@ -37,7 +37,7 @@ class CustomerServiceLeadResource extends JsonResource
                 'country_code' => $this->user->country_code,
                 'phone' => trim(($this->user->country_code ?: '') . ' ' . ($this->user->phone ?: '')),
                 'phone_plain' => $this->user->phone,
-                'address' => $this->user->address,
+                'address' => $this->user->display_address,
                 'city' => $this->user->city,
                 'area' => $this->user->area,
                 'distribution_route' => $this->user->distribution_route,

@@ -49,7 +49,10 @@ class AddressService
     public function store(AddressRequest $request)
     {
         try {
-            return Address::create($request->validated() + ['user_id' => Auth::user()->id]);
+            $address = Address::create($request->validated() + ['user_id' => Auth::user()->id]);
+            $this->syncUserAddressSnapshot(Auth::user());
+
+            return $address;
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
@@ -62,7 +65,10 @@ class AddressService
     public function update(AddressRequest $request, Address $address)
     {
         try {
-            return tap($address)->update($request->validated());
+            $address->update($request->validated());
+            $this->syncUserAddressSnapshot($address->user);
+
+            return $address;
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
@@ -75,10 +81,27 @@ class AddressService
     public function destroy(Address $address): void
     {
         try {
+            $user = $address->user;
             $address->delete();
+            if ($user) {
+                $this->syncUserAddressSnapshot($user);
+            }
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
         }
+    }
+
+    private function syncUserAddressSnapshot($user): void
+    {
+        if (!$user) {
+            return;
+        }
+
+        $latestAddress = $user->addresses()->latest('id')->first();
+
+        $user->forceFill([
+            'address' => $latestAddress?->address,
+        ])->save();
     }
 }

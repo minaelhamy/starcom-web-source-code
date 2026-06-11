@@ -134,6 +134,11 @@ class User extends Authenticatable implements HasMedia
         return $this->hasMany(Address::class);
     }
 
+    public function latestAddress(): HasOne
+    {
+        return $this->hasOne(Address::class)->latestOfMany();
+    }
+
     public function financialInstitutionProfile(): HasOne
     {
         return $this->hasOne(FinancialInstitutionProfile::class);
@@ -223,6 +228,22 @@ class User extends Authenticatable implements HasMedia
     {
         return $this->hasOne(Role::class, 'id', 'myrole');
     }
+
+    public function getDisplayAddressAttribute(): string
+    {
+        if ($this->relationLoaded('latestAddress') && !empty($this->latestAddress?->address)) {
+            return (string) $this->latestAddress->address;
+        }
+
+        if (!empty($this->address)) {
+            return (string) $this->address;
+        }
+
+        $latestAddress = $this->latestAddress()->first();
+
+        return (string) ($latestAddress?->address ?? '');
+    }
+
     public function returnOrders()
     {
         $this->hasMany(ReturnOrder::class, 'user_id', 'id');

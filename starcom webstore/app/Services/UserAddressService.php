@@ -54,6 +54,7 @@ class UserAddressService
         try {
             DB::transaction(function () use ($request, $user) {
                 $this->address = Address::create($request->validated() + ['user_id' => $user->id]);
+                $this->syncUserAddressSnapshot($user);
             });
             return $this->address;
         } catch (Exception $exception) {
@@ -69,7 +70,10 @@ class UserAddressService
     {
         try {
             if ($user->id == $address->user_id) {
-                return tap($address)->update($request->validated());
+                $address->update($request->validated());
+                $this->syncUserAddressSnapshot($user);
+
+                return $address;
             } else {
                 throw new Exception(trans('all.user_match'), 422);
             }
@@ -87,6 +91,7 @@ class UserAddressService
         try {
             if ($user->id == $address->user_id) {
                 $address->delete();
+                $this->syncUserAddressSnapshot($user);
             } else {
                 throw new Exception(trans('all.user_match'), 422);
             }
@@ -111,5 +116,14 @@ class UserAddressService
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
         }
+    }
+
+    private function syncUserAddressSnapshot(User $user): void
+    {
+        $latestAddress = $user->addresses()->latest('id')->first();
+
+        $user->forceFill([
+            'address' => $latestAddress?->address,
+        ])->save();
     }
 }
