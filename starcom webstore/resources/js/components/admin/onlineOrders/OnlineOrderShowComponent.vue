@@ -114,6 +114,13 @@
                     <OnlineOrderReceiptComponent :order="order" :orderProducts="orderProducts" :orderUser="orderUser"
                         :orderAddress="orderAddress" />
                 </div>
+                <div class="flex flex-wrap gap-3" v-if="permissionChecker('online-orders')">
+                    <button type="button" @click="destroyOrder"
+                        class="flex items-center justify-center gap-2 px-4 h-[38px] rounded shadow-db-card bg-red-600">
+                        <i class="lab lab-line-trash text-white"></i>
+                        <span class="text-sm capitalize text-white">{{ $t('button.delete') }}</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -428,6 +435,9 @@ export default {
         });
     },
     methods: {
+        permissionChecker: function (e) {
+            return appService.permissionChecker(e);
+        },
         statusClass: function (status) {
             return appService.statusClass(status);
         },
@@ -504,6 +514,21 @@ export default {
                 this.loading.isActive = false;
                 alertService.error(err.response.data.message);
             }
+        },
+        destroyOrder: function () {
+            appService.destroyConfirmation().then(() => {
+                this.loading.isActive = true;
+                this.$store.dispatch('onlineOrder/destroy', { id: this.$route.params.id }).then(() => {
+                    this.loading.isActive = false;
+                    alertService.successFlip(null, this.$t('menu.online_orders'));
+                    this.$router.push({ name: 'admin.order' });
+                }).catch((err) => {
+                    this.loading.isActive = false;
+                    alertService.error(err.response.data.message);
+                });
+            }).catch(() => {
+                this.loading.isActive = false;
+            });
         },
     }
 

@@ -12,10 +12,15 @@ use App\Models\Stock;
 use App\Models\Product;
 use App\Enums\OrderType;
 use App\Enums\PaymentGateway;
+use App\Models\OrderAddress;
+use App\Models\OrderCoupon;
+use App\Models\OrderOutletAddress;
 use App\Models\StockTax;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Models\CreditFacilityOrderAllocation;
 use App\Models\Transaction;
+use App\Models\WalletTransaction;
 use App\Events\SendOrderSms;
 use Illuminate\Http\Request;
 use App\Events\SendOrderMail;
@@ -404,13 +409,29 @@ class OrderService
     {
         try {
             DB::transaction(function () use ($order) {
-                if ($order?->orderProducts) {
-                    $stockIds = $order?->orderProducts->pluck('id');
-                    if (!blank($stockIds)) {
-                        StockTax::whereIn('stock_id', $stockIds)->delete();
-                    }
-                    $order?->orderProducts()->delete();
+                $order = Order::with(['paymentMethod', 'transaction', 'orderProducts', 'returnAndRefund'])
+                    ->lockForUpdate()
+                    ->findOrFail($order->id);
+
+                $walletDebit = app(WalletService::class)->getDebitedAmountForOrder($order);
+                $walletPaidAmount = (float)$order->wallet_paid_amount;
+                $usesWallet = $walletDebit > 0 || $walletPaidAmount > 0 || $order->paymentMethod?->slug === 'credit';
+
+                if ($usesWallet) {
+                    app(WalletService::class)->refundOrder(
+                        $order,
+                        'Refund for deleted order #' . $order->order_serial_no
+                    );
                 }
+
+                OrderCoupon::where('order_id', $order->id)->delete();
+                OrderAddress::where('order_id', $order->id)->delete();
+                OrderOutletAddress::where('order_id', $order->id)->delete();
+                $order->returnAndRefund()?->delete();
+                $this->deleteOrderProductStocks($order);
+                CreditFacilityOrderAllocation::where('order_id', $order->id)->delete();
+                WalletTransaction::where('order_id', $order->id)->delete();
+                Transaction::where('order_id', $order->id)->delete();
                 $order->delete();
             });
         } catch (Exception $exception) {

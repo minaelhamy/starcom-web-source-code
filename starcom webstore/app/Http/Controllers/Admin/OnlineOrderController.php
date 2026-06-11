@@ -28,7 +28,7 @@ class OnlineOrderController extends AdminController implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('permission:online-orders', only: ['index', 'show', 'update', 'export', 'changeStatus', 'changePaymentStatus']),
+            new Middleware('permission:online-orders', only: ['index', 'show', 'update', 'destroy', 'export', 'changeStatus', 'changePaymentStatus']),
         ];
     }
 
@@ -54,6 +54,16 @@ class OnlineOrderController extends AdminController implements HasMiddleware
     {
         try {
             return new OrderDetailsResource($this->orderService->onlineOrderUpdate($order, $request));
+        } catch (Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function destroy(Order $order): \Illuminate\Http\Response | \Illuminate\Contracts\Foundation\Application | \Illuminate\Contracts\Routing\ResponseFactory
+    {
+        try {
+            $this->orderService->destroy($order);
+            return response('', 202);
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

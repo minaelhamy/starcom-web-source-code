@@ -96,6 +96,11 @@
                         <i class="lab lab-line-edit lab-font-size-16 text-white"></i>
                         <span class="text-sm capitalize text-white">{{ $t('button.edit_invoice') }}</span>
                     </router-link>
+                    <button type="button" @click="destroyOrder"
+                        class="flex items-center justify-center gap-2 px-4 h-[38px] rounded shadow-db-card bg-red-600">
+                        <i class="lab lab-line-trash text-white"></i>
+                        <span class="text-sm capitalize text-white">{{ $t('button.delete') }}</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -342,6 +347,21 @@ export default {
                 this.loading.isActive = false;
                 alertService.error(err.response.data.message);
             }
+        },
+        destroyOrder: function () {
+            appService.destroyConfirmation().then(() => {
+                this.loading.isActive = true;
+                this.$store.dispatch('posOrder/destroy', { id: this.$route.params.id }).then(() => {
+                    this.loading.isActive = false;
+                    alertService.successFlip(null, this.$t('menu.pos_orders'));
+                    this.$router.push({ name: 'admin.pos.orders' });
+                }).catch((err) => {
+                    this.loading.isActive = false;
+                    alertService.error(err.response.data.message);
+                });
+            }).catch(() => {
+                this.loading.isActive = false;
+            });
         },
     },
 }

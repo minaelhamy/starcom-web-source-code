@@ -99,6 +99,18 @@ export const onlineOrder = {
                 });
             });
         },
+        destroy: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.delete(`admin/online-order/${payload.id}`).then((res) => {
+                    if (payload.search) {
+                        context.dispatch('lists', payload.search).then().catch();
+                    }
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
         changeStatus: function (context, payload) {
             return new Promise((resolve, reject) => {
                 axios.post(`admin/online-order/change-status/${payload.id}`,payload).then((res) => {
