@@ -274,6 +274,36 @@ class User extends Authenticatable implements HasMedia
         return (string) ($latestAddress?->city ?? '');
     }
 
+    public function getDisplayLatitudeAttribute(): string
+    {
+        if ($this->relationLoaded('latestAddress') && !empty($this->latestAddress?->latitude)) {
+            return (string) $this->latestAddress->latitude;
+        }
+
+        if (!empty($this->latitude)) {
+            return (string) $this->latitude;
+        }
+
+        $latestAddress = $this->latestAddress()->first();
+
+        return (string) ($latestAddress?->latitude ?? '');
+    }
+
+    public function getDisplayLongitudeAttribute(): string
+    {
+        if ($this->relationLoaded('latestAddress') && !empty($this->latestAddress?->longitude)) {
+            return (string) $this->latestAddress->longitude;
+        }
+
+        if (!empty($this->longitude)) {
+            return (string) $this->longitude;
+        }
+
+        $latestAddress = $this->latestAddress()->first();
+
+        return (string) ($latestAddress?->longitude ?? '');
+    }
+
     public function returnOrders()
     {
         $this->hasMany(ReturnOrder::class, 'user_id', 'id');

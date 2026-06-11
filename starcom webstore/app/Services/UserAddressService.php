@@ -122,10 +122,20 @@ class UserAddressService
     {
         $latestAddress = $user->addresses()->latest('id')->first();
 
-        $user->forceFill([
+        $payload = [
             'address' => $latestAddress?->address,
             'city' => $latestAddress?->state,
             'area' => $latestAddress?->city,
-        ])->save();
+        ];
+
+        if (!blank($latestAddress?->latitude)) {
+            $payload['latitude'] = $latestAddress->latitude;
+        }
+
+        if (!blank($latestAddress?->longitude)) {
+            $payload['longitude'] = $latestAddress->longitude;
+        }
+
+        $user->forceFill($payload)->save();
     }
 }

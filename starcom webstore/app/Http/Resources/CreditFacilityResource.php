@@ -44,6 +44,8 @@ class CreditFacilityResource extends JsonResource
                 'address' => $this->user->display_address,
                 'city' => $this->user->display_city,
                 'area' => $this->user->display_area,
+                'latitude' => $this->user->display_latitude,
+                'longitude' => $this->user->display_longitude,
             ] : null,
             'approved_currency' => AppLibrary::currencyAmountFormat($this->approved_amount),
             'available_currency'=> AppLibrary::currencyAmountFormat($this->available_amount),

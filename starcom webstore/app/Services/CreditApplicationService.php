@@ -76,6 +76,8 @@ class CreditApplicationService
     public function customerStore(CreditApplicationStoreRequest $request): CreditApplication
     {
         try {
+            $this->assertUserHasCoordinates(Auth::user());
+
             if (
                 CreditApplication::where('user_id', Auth::id())
                     ->whereIn('status', [
@@ -133,6 +135,7 @@ class CreditApplicationService
     {
         try {
             $actor = Auth::user();
+            $this->assertUserHasCoordinates($actor);
 
             if ((int)$creditApplication->user_id !== (int)$actor->id) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
@@ -995,6 +998,18 @@ class CreditApplicationService
         if ((int)$employee->financial_institution_owner_user_id !== (int)$institution->id) {
             $employee->financial_institution_owner_user_id = $institution->id;
             $employee->save();
+        }
+    }
+
+    protected function assertUserHasCoordinates(User $user): void
+    {
+        $user->loadMissing('latestAddress');
+
+        $latitude = trim((string)$user->display_latitude);
+        $longitude = trim((string)$user->display_longitude);
+
+        if ($latitude === '' || $longitude === '') {
+            throw new Exception('لا يمكن تقديم طلب اشتري بالآجل قبل تسجيل الموقع الجغرافي للعميل (خط العرض وخط الطول).', 422);
         }
     }
 

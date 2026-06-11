@@ -55,6 +55,8 @@ class CreditApplicationResource extends JsonResource
                 'address'         => $this->user->display_address,
                 'city'            => $this->user->display_city,
                 'area'            => $this->user->display_area,
+                'latitude'        => $this->user->display_latitude,
+                'longitude'       => $this->user->display_longitude,
                 'balance'         => (float)$this->user->balance,
                 'wallet_balance'  => AppLibrary::currencyAmountFormat($this->user->balance),
             ] : null,

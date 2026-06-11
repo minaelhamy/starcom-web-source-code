@@ -182,8 +182,16 @@ class CustomerServiceLeadService
         try {
             $actor = Auth::user();
             $lead = $this->guardLeadAccess($lead, $actor);
+            $lead->loadMissing('user.latestAddress');
 
             DB::transaction(function () use ($lead, $request, $actor) {
+                $latitude = trim((string)$lead->user?->display_latitude);
+                $longitude = trim((string)$lead->user?->display_longitude);
+
+                if ($latitude === '' || $longitude === '') {
+                    throw new Exception('لا يمكن تقديم طلب التمويل لهذا العميل قبل تسجيل خط العرض وخط الطول في بياناته.', 422);
+                }
+
                 $application = CreditApplication::where('user_id', $lead->user_id)
                     ->whereIn('status', [
                         CreditApplicationStatus::PENDING,

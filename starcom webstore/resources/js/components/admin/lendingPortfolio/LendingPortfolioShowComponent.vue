@@ -14,6 +14,8 @@
                         <div><span class="font-semibold">العنوان:</span> {{ facility.user?.address || "--" }}</div>
                         <div><span class="font-semibold">المدينة:</span> {{ facility.user?.city || "--" }}</div>
                         <div><span class="font-semibold">المنطقة:</span> {{ facility.user?.area || "--" }}</div>
+                        <div><span class="font-semibold">خط العرض:</span> {{ facility.user?.latitude || "--" }}</div>
+                        <div><span class="font-semibold">خط الطول:</span> {{ facility.user?.longitude || "--" }}</div>
                         <div><span class="font-semibold">الهاتف:</span> {{ facility.user?.phone || "--" }}</div>
                         <div><span class="font-semibold">المبلغ المعتمد:</span> {{ facility.approved_currency || "--" }}</div>
                         <div><span class="font-semibold">المتاح:</span> {{ facility.available_currency || "--" }}</div>
