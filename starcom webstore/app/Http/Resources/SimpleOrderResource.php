@@ -28,6 +28,7 @@ class SimpleOrderResource extends JsonResource
             "discount_amount_price"   => AppLibrary::flatAmountFormat($this->discount),
             "shipping_amount_price"   => AppLibrary::flatAmountFormat($this->shipping_charge),
             'payment_method'          => $this->payment_method,
+            'payment_method_slug'     => $this->paymentMethod?->slug,
             'payment_method_name'     => $isSplitPayment ? trans('all.label.pay_later_plus_cod') : $this?->paymentMethod?->name,
             'payment_status'          => $this->payment_status,
             'wallet_paid_amount'      => $walletPaidAmount,

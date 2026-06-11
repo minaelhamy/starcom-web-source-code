@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Exports\OrderExport;
 use App\Services\OrderService;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Http\Requests\OrderItemsUpdateRequest;
 use App\Http\Requests\PaginateRequest;
 use App\Http\Requests\OrderStatusRequest;
 use App\Http\Requests\PaymentStatusRequest;
@@ -27,7 +28,7 @@ class OnlineOrderController extends AdminController implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('permission:online-orders', only: ['index', 'show', 'export', 'changeStatus', 'changePaymentStatus']),
+            new Middleware('permission:online-orders', only: ['index', 'show', 'update', 'export', 'changeStatus', 'changePaymentStatus']),
         ];
     }
 
@@ -44,6 +45,15 @@ class OnlineOrderController extends AdminController implements HasMiddleware
     {
         try {
             return new OrderDetailsResource($this->orderService->show($order, false));
+        } catch (Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function update(Order $order, OrderItemsUpdateRequest $request): \Illuminate\Http\Response | OrderDetailsResource | \Illuminate\Contracts\Foundation\Application | \Illuminate\Contracts\Routing\ResponseFactory
+    {
+        try {
+            return new OrderDetailsResource($this->orderService->onlineOrderUpdate($order, $request));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

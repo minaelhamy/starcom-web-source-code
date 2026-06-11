@@ -93,6 +93,11 @@ export const posCart = {
             context.commit("taxCalculation");
             context.commit("subtotal");
         },
+        setCart: function (context, payload) {
+            context.commit("setCart", payload);
+            context.commit("taxCalculation");
+            context.commit("subtotal");
+        },
         resetCart: function (context) {
             context.commit('resetCart');
         },
@@ -140,6 +145,9 @@ export const posCart = {
         },
         remove: function (state, payload) {
             state.lists.splice(payload.id, 1);
+        },
+        setCart: function (state, payload) {
+            state.lists = Array.isArray(payload) ? payload : [];
         },
         discount: function (state, payload) {
             state.discount = Number(payload);

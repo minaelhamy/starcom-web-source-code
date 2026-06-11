@@ -1,6 +1,7 @@
 const OnlineOrderComponent = () => import("../../components/admin/onlineOrders/OnlineOrderComponent");
 const OnlineOrderListComponent = () => import("../../components/admin/onlineOrders/OnlineOrderListComponent");
 const OnlineOrderShowComponent = () => import("../../components/admin/onlineOrders/OnlineOrderShowComponent");
+const PosComponent = () => import("../../components/admin/pos/PosComponent");
 
 export default [
     {
@@ -35,6 +36,17 @@ export default [
                     auth: true,
                     permissionUrl: "online-orders",
                     breadcrumb: "view",
+                },
+            },
+            {
+                path: "edit/:id",
+                component: PosComponent,
+                name: "admin.order.edit",
+                meta: {
+                    isFrontend: false,
+                    auth: true,
+                    permissionUrl: "online-orders",
+                    breadcrumb: "edit",
                 },
             }
         ]

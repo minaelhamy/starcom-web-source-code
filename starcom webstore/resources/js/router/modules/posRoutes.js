@@ -11,4 +11,14 @@ export default [
             permissionUrl: "pos",
         },
     },
+    {
+        path: "/admin/pos/edit/:id",
+        component: PosComponent,
+        name: "admin.pos.edit",
+        meta: {
+            isFrontend: false,
+            auth: true,
+            permissionUrl: "pos-orders",
+        },
+    },
 ];

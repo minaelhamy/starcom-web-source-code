@@ -69,6 +69,15 @@ export const posOrder = {
                 });
             });
         },
+        update: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.post(`admin/pos-order/${payload.id}`, payload.form).then((res) => {
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
         show: function (context, payload) {
             return new Promise((resolve, reject) => {
                 axios.get(`admin/pos-order/show/${payload}`).then((res) => {
@@ -169,6 +178,9 @@ export const posOrder = {
         reset: function(state) {
             state.temp.temp_id = null;
             state.temp.isEditing = false;
+            state.show = {};
+            state.orderProducts = {};
+            state.orderUser = {};
         }
     },
 }

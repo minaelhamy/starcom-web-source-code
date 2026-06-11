@@ -54,6 +54,13 @@
 
                 <div class="flex flex-wrap gap-3" v-if="order.status === enums.orderStatusEnum.PENDING">
                     <OnlineOrderReasonComponent />
+                    <router-link
+                        v-if="canEditOrder"
+                        :to="{ name: 'admin.order.edit', params: { id: order.id } }"
+                        class="flex items-center justify-center gap-2 px-4 h-[38px] rounded shadow-db-card bg-[#1AB759]">
+                        <i class="lab lab-line-edit lab-font-size-16 text-white"></i>
+                        <span class="text-sm capitalize text-white">{{ $t('button.edit_invoice') }}</span>
+                    </router-link>
                     <button type="button" @click="changeStatus(enums.orderStatusEnum.CONFIRMED)"
                         class="flex items-center justify-center text-white gap-2 px-4 h-[38px] rounded shadow-db-card bg-[#2AC769]">
                         <i class="lab lab-fill-save"></i>
@@ -63,6 +70,14 @@
 
                 <div class="flex flex-wrap gap-3"
                     v-else-if="order.status !== enums.orderStatusEnum.REJECTED && order.status !== enums.orderStatusEnum.CANCELED">
+                    <router-link
+                        v-if="canEditOrder"
+                        :to="{ name: 'admin.order.edit', params: { id: order.id } }"
+                        class="flex items-center justify-center gap-2 px-4 h-[38px] rounded shadow-db-card bg-[#1AB759]">
+                        <i class="lab lab-line-edit lab-font-size-16 text-white"></i>
+                        <span class="text-sm capitalize text-white">{{ $t('button.edit_invoice') }}</span>
+                    </router-link>
+
                     <div class="relative">
                         <select v-model="payment_status" @change="changePaymentStatus($event)"
                             class="text-sm capitalize appearance-none pl-4 pr-10 h-[38px] rounded border border-primary bg-white text-primary">
@@ -392,6 +407,18 @@ export default {
                     [orderTypeEnum.DELIVERY]: this.$t("label.delivery"),
                     [orderTypeEnum.PICK_UP]: this.$t("label.pick_up")
                 }
+        },
+        canEditOrder: function () {
+            const status = parseInt(this.order.status);
+            const paymentSlug = this.order.payment_method_slug;
+            const walletPaidAmount = Number(this.order.wallet_paid_amount || 0);
+            const cashOnDeliveryAmount = Number(this.order.cash_on_delivery_amount || 0);
+
+            const isAllowedStatus = [orderStatusEnum.PENDING, orderStatusEnum.CONFIRMED].includes(status);
+            const isCashOnDelivery = paymentSlug === 'cashondelivery';
+            const isSplitPayLater = paymentSlug === 'credit' && walletPaidAmount > 0 && cashOnDeliveryAmount > 0;
+
+            return isAllowedStatus && (isCashOnDelivery || isSplitPayLater);
         }
     },
     mounted() {

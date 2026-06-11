@@ -6,6 +6,7 @@ use App\Enums\Ask;
 use App\Libraries\AppLibrary;
 use App\Models\ProductTax;
 use App\Models\ProductVariation;
+use App\Models\Product;
 use App\Models\Tax;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Dipokhalder\Settings\Facades\Settings;
@@ -42,6 +43,14 @@ class OrderProductResource extends JsonResource
             'total_currency_price'    => AppLibrary::currencyAmountFormat($this->total),
             'status'                  => (int) $this->status,
             'variation_names'         => $this->variation_names,
+            'taxes'                   => $this->stockTaxes->map(fn ($tax) => [
+                'id'         => (int) $tax->tax_id,
+                'name'       => $tax->name,
+                'code'       => $tax->code,
+                'tax_rate'   => (float) $tax->tax_rate,
+                'tax_amount' => (float) $tax->tax_amount,
+            ])->values(),
+            'stock'                   => $this->availableStockForEdit(),
             'product_user_review'     => $this?->product?->userReview ? true : false,
             'product_user_review_id'  => $this?->product?->userReview?->id,
             'is_refundable'           => $this?->product?->refundable === Ask::YES ? true : false,
@@ -64,5 +73,23 @@ class OrderProductResource extends JsonResource
                 ];
             })
             ->toArray();
+    }
+
+    protected function availableStockForEdit(): int
+    {
+        $item = $this->item;
+        $currentQuantity = abs((int) $this->quantity);
+
+        if (!$item || !method_exists($item, 'stockItems')) {
+            return $currentQuantity;
+        }
+
+        $availableStock = (int) $item->stockItems()->sum('quantity');
+
+        if ($this->item_type === Product::class && (int) ($this->product?->can_purchasable ?? Ask::YES) === Ask::NO) {
+            return max($currentQuantity, (int) env('NON_PURCHASE_QUANTITY', 999999));
+        }
+
+        return max(0, $availableStock) + $currentQuantity;
     }
 }

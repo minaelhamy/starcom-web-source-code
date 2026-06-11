@@ -11,9 +11,11 @@ use App\Models\Order;
 use App\Models\Stock;
 use App\Models\Product;
 use App\Enums\OrderType;
+use App\Enums\PaymentGateway;
 use App\Models\StockTax;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Models\Transaction;
 use App\Events\SendOrderSms;
 use Illuminate\Http\Request;
 use App\Events\SendOrderMail;
@@ -25,6 +27,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\PaginateRequest;
 use App\Http\Requests\PosOrderRequest;
+use App\Http\Requests\OrderItemsUpdateRequest;
 use App\Libraries\QueryExceptionLibrary;
 use App\Http\Requests\OrderStatusRequest;
 use App\Http\Requests\PaymentStatusRequest;
@@ -183,62 +186,84 @@ class OrderService
     {
         try {
             DB::transaction(function () use ($request) {
-                $this->order = Order::create(
-                    $request->validated() + [
-                        'user_id'        => $request->customer_id,
-                        'status'         => OrderStatus::CONFIRMED,
-                        'payment_status' => PaymentStatus::PAID,
-                        'order_datetime' => date('Y-m-d H:i:s'),
-                        'active'         => Ask::YES,
-                    ]
-                );
-
-                $products = json_decode($request->products);
-                if (!blank($products)) {
-                    app(OrderStockService::class)->assertProductsAvailable($products, true);
-
-                    foreach ($products as $product) {
-                        $stockId = Stock::create([
-                            'product_id'      => $product->product_id,
-                            'model_type'      => Order::class,
-                            'model_id'        => $this->order->id,
-                            'item_type'       => $product->variation_id > 0 ? ProductVariation::class : Product::class,
-                            'item_id'         => $product->variation_id > 0 ? $product->variation_id : $product->product_id,
-                            'variation_names' => $product->variation_names,
-                            'sku'             => $product->sku,
-                            'price'           => $product->price,
-                            'quantity'        => -$product->quantity,
-                            'discount'        => $product->discount,
-                            'tax'             => number_format($product->total_tax, env('CURRENCY_DECIMAL_POINT'), '.', ''),
-                            'subtotal'        => $product->subtotal,
-                            'total'           => $product->total,
-                            'status'          => Status::ACTIVE,
-                        ]);
-                        if ($product->taxes) {
-                            $j               = 0;
-                            $productTaxArray = [];
-                            foreach ($product->taxes as $tax) {
-                                $productTaxArray[$j] = [
-                                    'stock_id'   => $stockId->id,
-                                    'product_id' => $product->product_id,
-                                    'tax_id'     => $tax->id,
-                                    'name'       => $tax->name,
-                                    'code'       => $tax->code,
-                                    'tax_rate'   => $tax->tax_rate,
-                                    'tax_amount' => $tax->tax_amount,
-                                    'created_at' => now(),
-                                    'updated_at' => now()
-                                ];
-                                $j++;
-                            }
-                            StockTax::insert($productTaxArray);
-                        }
-                    }
-                }
+                $this->order = new Order();
+                $this->fillPosOrder($this->order, $request, true);
+                $this->order->save();
+                $this->syncPosOrderProducts($this->order, json_decode($request->products), true);
 
                 $this->order->order_serial_no = date('dmy') . $this->order->id;
                 $this->order->save();
             });
+            return $this->order;
+        } catch (Exception $exception) {
+            DB::rollBack();
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function posOrderUpdate(Order $order, PosOrderRequest $request): Order
+    {
+        try {
+            DB::transaction(function () use ($order, $request) {
+                $order = Order::query()->lockForUpdate()->findOrFail($order->id);
+
+                if ((int)$order->order_type !== OrderType::POS) {
+                    throw new Exception('يمكن تعديل فواتير نقاط البيع فقط.', 422);
+                }
+
+                if (in_array((int)$order->status, [OrderStatus::CANCELED, OrderStatus::REJECTED], true)) {
+                    throw new Exception('لا يمكن تعديل فاتورة ملغية أو مرفوضة.', 422);
+                }
+
+                app(OrderStockService::class)->releaseOrderStocks($order);
+                $this->deleteOrderProductStocks($order);
+                $this->fillPosOrder($order, $request, false, $order->user_id);
+                $this->syncPosOrderProducts($order, json_decode($request->products), true);
+                $order->save();
+
+                $this->order = $order->fresh();
+            });
+
+            return $this->order;
+        } catch (Exception $exception) {
+            DB::rollBack();
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function onlineOrderUpdate(Order $order, OrderItemsUpdateRequest $request): Order
+    {
+        try {
+            DB::transaction(function () use ($order, $request) {
+                $order = Order::with('paymentMethod', 'transaction')->lockForUpdate()->findOrFail($order->id);
+
+                $this->assertOnlineOrderCanBeEdited($order);
+
+                app(OrderStockService::class)->releaseOrderStocks($order);
+                $this->deleteOrderProductStocks($order);
+
+                $order->subtotal = $request->subtotal;
+                $order->discount = $request->discount ?? 0;
+                $order->tax = $request->tax;
+                $order->total = $request->total;
+                $order->save();
+
+                $stockStatus = (int)$order->active === Ask::YES ? Status::ACTIVE : Status::INACTIVE;
+                $this->syncPosOrderProducts($order, json_decode($request->products), true, $stockStatus);
+                $this->recalculateOnlineOrderPayments($order);
+
+                $order->save();
+                $this->order = $order->fresh();
+            });
+
             return $this->order;
         } catch (Exception $exception) {
             DB::rollBack();
@@ -446,6 +471,135 @@ class OrderService
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    protected function fillPosOrder(Order $order, PosOrderRequest $request, bool $isNew = false, ?int $userId = null): void
+    {
+        $order->fill($request->validated() + [
+            'user_id'                => $userId ?? $request->customer_id,
+            'payment_method'         => PaymentGateway::CASH_ON_DELIVERY,
+            'payment_status'         => PaymentStatus::PAID,
+            'wallet_paid_amount'     => 0,
+            'cash_on_delivery_amount'=> (float)$request->total,
+            'active'                 => Ask::YES,
+        ]);
+
+        if ($isNew) {
+            $order->status = OrderStatus::CONFIRMED;
+            $order->order_datetime = now();
+        }
+    }
+
+    protected function syncPosOrderProducts(Order $order, iterable $products, bool $lockStockRows = false, int $stockStatus = Status::ACTIVE): void
+    {
+        if (blank($products)) {
+            return;
+        }
+
+        app(OrderStockService::class)->assertProductsAvailable($products, $lockStockRows);
+
+        foreach ($products as $product) {
+            $stock = Stock::create([
+                'product_id'      => $product->product_id,
+                'model_type'      => Order::class,
+                'model_id'        => $order->id,
+                'item_type'       => $product->variation_id > 0 ? ProductVariation::class : Product::class,
+                'item_id'         => $product->variation_id > 0 ? $product->variation_id : $product->product_id,
+                'variation_names' => $product->variation_names,
+                'sku'             => $product->sku,
+                'price'           => $product->price,
+                'quantity'        => -$product->quantity,
+                'discount'        => $product->discount,
+                'tax'             => number_format($product->total_tax, env('CURRENCY_DECIMAL_POINT'), '.', ''),
+                'subtotal'        => $product->subtotal,
+                'total'           => $product->total,
+                'status'          => $stockStatus,
+            ]);
+
+            if ($product->taxes) {
+                $productTaxArray = [];
+                foreach ($product->taxes as $index => $tax) {
+                    $productTaxArray[$index] = [
+                        'stock_id'   => $stock->id,
+                        'product_id' => $product->product_id,
+                        'tax_id'     => $tax->id,
+                        'name'       => $tax->name,
+                        'code'       => $tax->code,
+                        'tax_rate'   => $tax->tax_rate,
+                        'tax_amount' => $tax->tax_amount,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ];
+                }
+                StockTax::insert($productTaxArray);
+            }
+        }
+    }
+
+    protected function deleteOrderProductStocks(Order $order): void
+    {
+        if (!$order->orderProducts || $order->orderProducts->isEmpty()) {
+            return;
+        }
+
+        $stockIds = $order->orderProducts->pluck('id');
+        if ($stockIds->isNotEmpty()) {
+            StockTax::whereIn('stock_id', $stockIds)->delete();
+        }
+        $order->orderProducts()->delete();
+    }
+
+    protected function assertOnlineOrderCanBeEdited(Order $order): void
+    {
+        if ((int)$order->order_type === OrderType::POS) {
+            throw new Exception('هذه العملية مخصصة للطلبات أونلاين فقط.', 422);
+        }
+
+        if (in_array((int)$order->status, [OrderStatus::ON_THE_WAY, OrderStatus::DELIVERED, OrderStatus::CANCELED, OrderStatus::REJECTED], true)) {
+            throw new Exception('لا يمكن تعديل طلب تم شحنه أو تسليمه أو إلغاؤه.', 422);
+        }
+
+        $paymentSlug = $order->paymentMethod?->slug;
+        $isCashOnDelivery = $paymentSlug === 'cashondelivery';
+        $isSplitPayLater = $paymentSlug === 'credit'
+            && (float)$order->wallet_paid_amount > 0
+            && (float)$order->cash_on_delivery_amount > 0;
+
+        if (!$isCashOnDelivery && !$isSplitPayLater) {
+            throw new Exception('يمكن تعديل الطلبات الدفع عند الاستلام أو اشتري بالآجل مع المتبقي كاش فقط.', 422);
+        }
+    }
+
+    protected function recalculateOnlineOrderPayments(Order $order): void
+    {
+        $paymentSlug = $order->paymentMethod?->slug;
+
+        if ($paymentSlug === 'cashondelivery') {
+            $order->wallet_paid_amount = 0;
+            $order->cash_on_delivery_amount = (float)$order->total;
+            $order->payment_status = PaymentStatus::UNPAID;
+            return;
+        }
+
+        if ($paymentSlug === 'credit') {
+            $existingWalletDebit = app(WalletService::class)->getDebitedAmountForOrder($order);
+            if ($existingWalletDebit > 0 || (float)$order->wallet_paid_amount > 0) {
+                app(WalletService::class)->refundOrder($order, 'Refund for edited order #' . $order->order_serial_no);
+            }
+
+            $walletUsed = app(WalletService::class)->debitUpToForOrder($order, (float)$order->total);
+            $cashOnDeliveryAmount = max(0, (float)$order->total - $walletUsed);
+
+            $order->wallet_paid_amount = $walletUsed;
+            $order->cash_on_delivery_amount = $cashOnDeliveryAmount;
+            $order->payment_status = $cashOnDeliveryAmount > 0 ? PaymentStatus::UNPAID : PaymentStatus::PAID;
+
+            $transaction = Transaction::where(['order_id' => $order->id, 'type' => 'payment'])->first();
+            if ($transaction) {
+                $transaction->amount = $walletUsed;
+                $transaction->save();
+            }
         }
     }
 }

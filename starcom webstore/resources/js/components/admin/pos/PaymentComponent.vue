@@ -202,6 +202,18 @@ export default {
     name: "PaymentComponent",
     props: {
         total: String,
+        initialPaymentMethod: {
+            type: Number,
+            default: posPaymentMethodEnum.CASH,
+        },
+        initialPaymentNote: {
+            type: String,
+            default: "",
+        },
+        initialReceivedAmount: {
+            type: [Number, String],
+            default: null,
+        },
     },
     data() {
         return {
@@ -224,8 +236,25 @@ export default {
     },
     mounted() {
         this.$store.dispatch("company/lists").then().catch();
+        this.applyInitialState();
+    },
+    watch: {
+        initialPaymentMethod() {
+            this.applyInitialState();
+        },
+        initialPaymentNote() {
+            this.applyInitialState();
+        },
+        initialReceivedAmount() {
+            this.applyInitialState();
+        }
     },
     methods: {
+        applyInitialState: function () {
+            this.pos_payment_method = this.initialPaymentMethod ?? posPaymentMethodEnum.CASH;
+            this.pos_payment_note = this.initialPaymentNote ?? '';
+            this.pos_received_amount = this.initialReceivedAmount ?? null;
+        },
         reset: function () {
             this.pos_payment_note = '';
             this.pos_received_amount = null;

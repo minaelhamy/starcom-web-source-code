@@ -35,6 +35,7 @@ class OrderDetailsResource extends JsonResource
             'order_time'                     => AppLibrary::time($this->order_datetime),
             'order_datetime'                 => AppLibrary::datetime($this->order_datetime),
             'payment_method'                 => $this->payment_method,
+            'payment_method_slug'            => $this->paymentMethod?->slug,
             'payment_method_name'            => $isSplitPayment ? trans('all.label.pay_later_plus_cod') : $this->paymentMethod?->name,
             'payment_status'                 => $this->payment_status,
             'wallet_paid_amount'             => $walletPaidAmount,

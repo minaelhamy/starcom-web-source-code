@@ -64,10 +64,11 @@
         <vue-select
           class="db-field-control  w-full flex-auto text-sm rounded-lg appearance-none cursor-pointer text-heading border-[#D9DBE9]"
           id="customer" v-model="checkoutProps.form.customer_id" :options="customers" label-by="name" value-by="id"
+          :disabled="isEditMode"
           :closeOnSelect="true" :searchable="true" :clearOnClose="true" :placeholder="$t('label.select_customer')"
           :search-placeholder="$t('label.search_customer')" />
 
-        <button @click="addCustomer" type="button"
+        <button v-if="!isEditMode" @click="addCustomer" type="button"
           class="flex items-center justify-center gap-1.5 px-3 h-10 rounded-lg text-white bg-primary">
           <i class="lab lab-add-circle-line"></i>
           <span class="capitalize text-sm font-bold">{{ $t('button.add') }}</span>
@@ -197,7 +198,7 @@
         </button>
         <button @click.prevent="orderPayment"
           class="capitalize text-sm font-medium leading-6 font-client w-full text-center rounded-3xl py-2 text-white bg-[#1AB759]">
-          {{ $t('button.order') }}
+          {{ isEditMode ? $t('button.save_invoice_changes') : $t('button.order') }}
         </button>
       </div>
     </div>
@@ -216,6 +217,9 @@
 
   <ReceiptComponent :order="order" />
   <PaymentComponent v-on:orderSubmit="orderSubmit"
+    :initialPaymentMethod="checkoutProps.form.pos_payment_method"
+    :initialPaymentNote="checkoutProps.form.pos_payment_note"
+    :initialReceivedAmount="checkoutProps.form.pos_payment_receive_amount"
     :total="currencyFormat((subtotal + totalTax) - posDiscount, setting.site_digit_after_decimal_point, setting.site_default_currency_symbol, setting.site_currency_position)" />
 </template>
 <script>
@@ -235,6 +239,7 @@ import PaymentComponent from "./PaymentComponent";
 import PoscustomerComponent from './PosCustomerComponent';
 import posPaymentMethodEnum from "../../../enums/modules/posPaymentMethodEnum";
 import BarcodeProductComponent from "./BarcodeProductComponent.vue";
+import _ from "lodash";
 
 export default {
   name: "PosComponent",
@@ -296,6 +301,15 @@ export default {
     }
   },
   computed: {
+    isOnlineEditMode: function () {
+      return this.$route.name === 'admin.order.edit';
+    },
+    isPosEditMode: function () {
+      return this.$route.name === 'admin.pos.edit';
+    },
+    isEditMode: function () {
+      return this.isOnlineEditMode || this.isPosEditMode;
+    },
     setting: function () {
       return this.$store.getters['frontendSetting/lists'];
     },
@@ -333,26 +347,33 @@ export default {
       return this.$store.getters['posCart/discount'];
     }
   },
-  mounted() {
+  async mounted() {
     this.productCategories();
     this.productBrands();
     this.productList();
     try {
-      this.customerList();
-
+      await this.customerList();
       this.loading.isActive = true;
-      this.$store.dispatch("company/lists").then((res) => {
+      await this.$store.dispatch("company/lists").then((res) => {
         this.company.name = res.data.data.company_name;
         this.company.email = res.data.data.company_email;
         this.company.phone = res.data.data.company_phone;
         this.company.address = res.data.data.company_address;
-        this.loading.isActive = false;
-      }).catch((err) => {
-        this.loading.isActive = false;
       });
+
+      if (this.isEditMode) {
+        await this.loadOrderForEdit();
+      }
     } catch (err) {
+    } finally {
       this.loading.isActive = false;
     }
+  },
+  beforeUnmount() {
+    this.$store.dispatch('posCart/resetCart').then().catch(() => {
+    });
+    this.$store.dispatch('posOrder/reset');
+    this.$store.dispatch('onlineOrder/reset');
   },
   methods: {
     hideTarget: function (id, cClass) {
@@ -517,10 +538,87 @@ export default {
       }).catch();
       if (this.carts.length === 0) {
         this.checkoutProps.form.pos_payment_method = posPaymentMethodEnum.CASH;
+        this.checkoutProps.form.pos_payment_receive_amount = 0;
         this.checkoutProps.form.pos_payment_note = "";
         this.discountErrorMessage = "";
 
       }
+    },
+    loadOrderForEdit: function () {
+      this.loading.isActive = true;
+      const action = this.isOnlineEditMode
+        ? this.$store.dispatch('onlineOrder/show', this.$route.params.id)
+        : this.$store.dispatch('posOrder/show', this.$route.params.id);
+
+      return action.then((res) => {
+        const order = res.data.data;
+        this.order = order;
+        this.checkoutProps.form.customer_id = order.user_id;
+        this.checkoutProps.form.pos_payment_method = order.pos_payment_method ?? posPaymentMethodEnum.CASH;
+        this.checkoutProps.form.pos_payment_note = order.pos_payment_note ?? '';
+        this.checkoutProps.form.pos_payment_receive_amount = order.pos_received_amount ?? 0;
+        this.discount = parseFloat(order.discount || 0);
+        this.discountType = discountTypeEnum.FIXED;
+
+        this.$store.dispatch('posCart/setCart', this.mapOrderProductsToCart(order.order_products)).then().catch();
+        this.$store.dispatch('posCart/discount', parseFloat(order.discount || 0)).then().catch();
+      }).finally(() => {
+        this.loading.isActive = false;
+      });
+    },
+    submitOnlineOrderEdit: function () {
+      this.loading.isActive = true;
+      this.form = {
+        customer_id: this.checkoutProps.form.customer_id,
+        subtotal: this.subtotal,
+        discount: parseFloat(this.posCartDiscount),
+        tax: this.totalTax,
+        total: this.total,
+        products: JSON.stringify(this.posCartProducts)
+      };
+
+      this.$store.dispatch('onlineOrder/update', { id: this.$route.params.id, form: this.form }).then((orderResponse) => {
+        alertService.success(this.$t('message.pos_order_updated'));
+        this.loading.isActive = false;
+        this.$router.push({ name: 'admin.order.show', params: { id: orderResponse.data.data.id } });
+      }).catch((err) => {
+        this.loading.isActive = false;
+        if (typeof err.response?.data?.errors === 'object') {
+          _.forEach(err.response.data.errors, (error) => {
+            alertService.error(error[0]);
+          });
+        } else if (err.response?.data?.message) {
+          alertService.error(err.response.data.message);
+        }
+      });
+    },
+    mapOrderProductsToCart: function (products) {
+      return (products || []).map((product) => {
+        return {
+          name: product.product_name,
+          product_id: product.product_id,
+          image: product.product_image,
+          variation_names: product.variation_names ?? '',
+          variation_id: product.variation_id ? parseInt(product.variation_id) : null,
+          sku: product.sku,
+          stock: parseInt(product.stock ?? product.quantity),
+          taxes: (product.taxes || []).map((tax) => ({
+            id: tax.id,
+            name: tax.name,
+            code: tax.code,
+            tax_rate: parseFloat(tax.tax_rate),
+            tax_amount: parseFloat(tax.tax_amount),
+          })),
+          quantity: parseInt(product.quantity),
+          discount: parseFloat(product.discount),
+          price: parseFloat(product.price),
+          old_price: parseFloat(product.price) + parseFloat(product.discount),
+          total_tax: parseFloat(product.tax),
+          subtotal: parseFloat(product.subtotal),
+          total: parseFloat(product.total),
+          total_price: parseFloat(product.total)
+        };
+      });
     },
     orderSubmit: function (data) {
       this.loading.isActive = true;
@@ -538,34 +636,61 @@ export default {
         pos_received_amount: data.pos_received_amount,
         products: JSON.stringify(this.posCartProducts)
       }
-      this.$store.dispatch('posOrder/save', this.form).then(orderResponse => {
-        this.$store.dispatch('posCart/resetCart').then(res => {
-          this.checkoutProps.form.pos_payment_method = posPaymentMethodEnum.CASH;
-          this.checkoutProps.form.pos_payment_note = "";
-          this.discount = null;
-          this.discountErrorMessage = "";
-          this.loading.isActive = false;
-        }).catch();
-        alertService.success(this.$t('message.pos_order'));
-        this.$store.dispatch('posOrder/show', orderResponse.data.data.id).then(res => {
+      const action = this.isPosEditMode
+        ? this.$store.dispatch('posOrder/update', { id: this.$route.params.id, form: this.form })
+        : this.$store.dispatch('posOrder/save', this.form);
+
+      action.then(orderResponse => {
+        const orderId = orderResponse.data.data.id;
+
+        if (!this.isPosEditMode) {
+          this.$store.dispatch('posCart/resetCart').then(() => {
+            this.checkoutProps.form.pos_payment_method = posPaymentMethodEnum.CASH;
+            this.checkoutProps.form.pos_payment_note = "";
+            this.checkoutProps.form.pos_payment_receive_amount = 0;
+            this.discount = null;
+            this.discountErrorMessage = "";
+          }).catch();
+        }
+
+        alertService.success(this.$t(this.isPosEditMode ? 'message.pos_order_updated' : 'message.pos_order'));
+        this.$store.dispatch('posOrder/show', orderId).then(res => {
           this.order = res.data.data;
+
+          if (this.isPosEditMode) {
+            this.checkoutProps.form.pos_payment_method = this.order.pos_payment_method;
+            this.checkoutProps.form.pos_payment_note = this.order.pos_payment_note ?? '';
+            this.checkoutProps.form.pos_payment_receive_amount = this.order.pos_received_amount ?? 0;
+            this.discount = parseFloat(this.order.discount || 0);
+            this.$store.dispatch('posCart/setCart', this.mapOrderProductsToCart(this.order.order_products)).then().catch();
+            this.$store.dispatch('posCart/discount', parseFloat(this.order.discount || 0)).then().catch();
+          }
+
           this.loading.isActive = false;
         }).catch((error) => {
           this.loading.isActive = false;
           alertService.error(error.response.data.message);
         });
         appService.modalHide('#orderPayment');
-        appService.modalShow('#posReceiptModal');
+        if (!this.isPosEditMode) {
+          appService.modalShow('#posReceiptModal');
+        }
       }).catch((err) => {
         this.loading.isActive = false;
         if (typeof err.response.data.errors === 'object') {
           _.forEach(err.response.data.errors, (error) => {
             alertService.error(error[0]);
           });
+        } else if (err.response?.data?.message) {
+          alertService.error(err.response.data.message);
         }
       });
     },
     orderPayment: function () {
+      if (this.isOnlineEditMode) {
+        this.submitOnlineOrderEdit();
+        return;
+      }
       appService.modalShow('#orderPayment');
     },
     totalProducts: function () {

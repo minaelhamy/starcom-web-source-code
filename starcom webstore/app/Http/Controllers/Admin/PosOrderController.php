@@ -9,6 +9,7 @@ use App\Services\OrderService;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Resources\OrderResource;
 use App\Http\Requests\PaginateRequest;
+use App\Http\Requests\PosOrderRequest;
 use App\Http\Requests\OrderStatusRequest;
 use App\Http\Requests\PaymentStatusRequest;
 use App\Http\Resources\OrderDetailsResource;
@@ -30,7 +31,7 @@ class PosOrderController extends AdminController implements HasMiddleware
     {
         return [
             new Middleware('permission:pos-orders|pos', only: ['show']),
-            new Middleware('permission:pos-orders|pos', only: ['index', 'destroy', 'export', 'changeStatus', 'changePaymentStatus']),
+            new Middleware('permission:pos-orders|pos', only: ['index', 'update', 'destroy', 'export', 'changeStatus', 'changePaymentStatus']),
         ];
     }
 
@@ -47,6 +48,15 @@ class PosOrderController extends AdminController implements HasMiddleware
     {
         try {
             return new OrderDetailsResource($this->orderService->show($order, false));
+        } catch (Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function update(Order $order, PosOrderRequest $request): \Illuminate\Http\Response | OrderDetailsResource | \Illuminate\Contracts\Foundation\Application | \Illuminate\Contracts\Routing\ResponseFactory
+    {
+        try {
+            return new OrderDetailsResource($this->orderService->posOrderUpdate($order, $request));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

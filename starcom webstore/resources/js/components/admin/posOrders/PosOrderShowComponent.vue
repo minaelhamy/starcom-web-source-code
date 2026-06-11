@@ -89,6 +89,13 @@
                         <i class="lab lab-line-printer lab-font-size-16 text-white"></i>
                         <span class="text-sm capitalize text-white">{{ $t('button.print_invoice') }}</span>
                     </button>
+                    <router-link
+                        v-if="permissionChecker('pos-orders') && parseInt(order.status) !== parseInt(enums.orderStatusEnum.CANCELED) && parseInt(order.status) !== parseInt(enums.orderStatusEnum.REJECTED)"
+                        :to="{ name: 'admin.pos.edit', params: { id: order.id } }"
+                        class="flex items-center justify-center gap-2 px-4 h-[38px] rounded shadow-db-card bg-[#1AB759]">
+                        <i class="lab lab-line-edit lab-font-size-16 text-white"></i>
+                        <span class="text-sm capitalize text-white">{{ $t('button.edit_invoice') }}</span>
+                    </router-link>
                 </div>
             </div>
         </div>
@@ -282,6 +289,9 @@ export default {
         }
     },
     methods: {
+        permissionChecker: function (e) {
+            return appService.permissionChecker(e);
+        },
         statusClass: function (status) {
             return appService.statusClass(status);
         },

@@ -739,6 +739,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
     Route::prefix('online-order')->name('onlineOrder.')->group(function () {
         Route::get('/', [OnlineOrderController::class, 'index']);
         Route::get('/show/{order}', [OnlineOrderController::class, 'show']);
+        Route::match(['post', 'put', 'patch'], '/{order}', [OnlineOrderController::class, 'update']);
         Route::delete('/{order}', [OnlineOrderController::class, 'destroy']);
         Route::get('/export', [OnlineOrderController::class, 'export']);
         Route::post('/change-status/{order}', [OnlineOrderController::class, 'changeStatus']);
@@ -755,6 +756,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
     Route::prefix('pos-order')->name('posOrder.')->group(function () {
         Route::get('/', [PosOrderController::class, 'index']);
         Route::get('show/{order}', [PosOrderController::class, 'show']);
+        Route::match(['post', 'put', 'patch'], '/{order}', [PosOrderController::class, 'update']);
         Route::delete('/{order}', [PosOrderController::class, 'destroy']);
         Route::get('/export', [PosOrderController::class, 'export']);
         Route::post('/change-status/{order}', [PosOrderController::class, 'changeStatus']);
