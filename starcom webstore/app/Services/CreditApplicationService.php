@@ -26,6 +26,7 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
 use App\Models\WalletTransaction;
 
@@ -551,6 +552,53 @@ class CreditApplicationService
             foreach ($request->file('contract_documents', []) as $contractDocument) {
                 $creditFacility->addMedia($contractDocument)->toMediaCollection('facility_contract_documents');
             }
+
+            return $creditFacility->load([
+                'user',
+                'user.latestAddress',
+                'application.user',
+                'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
+                'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
+                'application.facilities.institution.financialInstitutionProfile',
+                'application.facilities.employee',
+                'institution.financialInstitutionProfile',
+                'employee',
+            ]);
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    public function deleteFacilityContract(CreditFacility $creditFacility, int $mediaId): CreditFacility
+    {
+        try {
+            $actor = Auth::user();
+
+            if (
+                !$actor->hasRole(EnumRole::ADMIN) &&
+                !$actor->hasRole(EnumRole::MANAGER) &&
+                !$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if (
+                $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                (int) $creditFacility->financial_institution_user_id !== (int) $this->resolveInstitutionUserId($actor)
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            $media = $creditFacility
+                ->getMedia('facility_contract_documents')
+                ->firstWhere('id', (int) $mediaId);
+
+            if (!$media instanceof Media) {
+                throw new Exception('العقد المطلوب غير موجود.', 422);
+            }
+
+            $media->delete();
 
             return $creditFacility->load([
                 'user',

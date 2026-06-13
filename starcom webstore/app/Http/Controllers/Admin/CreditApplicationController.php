@@ -33,7 +33,7 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
             new Middleware('permission:credit-requests_show', only: ['show']),
             new Middleware('permission:credit-requests_review', only: ['approve', 'decline', 'markPendingApproval', 'resetApproval', 'assignmentOptions', 'addFacilityNote', 'updateIdentity']),
             new Middleware('permission:lending-portfolio', only: ['portfolio']),
-            new Middleware('permission:lending-portfolio_show', only: ['showFacility', 'assignFacility', 'uploadFacilityContracts']),
+            new Middleware('permission:lending-portfolio_show', only: ['showFacility', 'assignFacility', 'uploadFacilityContracts', 'deleteFacilityContract']),
         ];
     }
 
@@ -171,6 +171,19 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
                 'status' => true,
                 'message' => 'تم رفع العقود بنجاح.',
                 'data' => new CreditFacilityResource($this->creditApplicationService->uploadFacilityContracts($creditFacility, $request)),
+            ]);
+        } catch (\Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function deleteFacilityContract(CreditFacility $creditFacility, int $mediaId): CreditFacilityResource|Response|Application|ResponseFactory
+    {
+        try {
+            return response([
+                'status' => true,
+                'message' => 'تم حذف العقد بنجاح.',
+                'data' => new CreditFacilityResource($this->creditApplicationService->deleteFacilityContract($creditFacility, $mediaId)),
             ]);
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);

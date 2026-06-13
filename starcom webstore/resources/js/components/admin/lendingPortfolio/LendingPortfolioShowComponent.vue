@@ -126,16 +126,27 @@
                     <div class="db-card p-4 h-full">
                         <h4 class="font-semibold mb-3">العقود المرفوعة</h4>
                         <div class="flex flex-col gap-2">
-                            <a
+                            <div
                                 v-for="(document, index) in facility.contract_documents || []"
                                 :key="document.id || index"
-                                :href="document.url"
-                                target="_blank"
-                                download
-                                class="db-btn py-2 text-white bg-primary"
+                                class="flex flex-wrap gap-2"
                             >
-                                تحميل العقد {{ index + 1 }}
-                            </a>
+                                <a
+                                    :href="document.url"
+                                    target="_blank"
+                                    download
+                                    class="db-btn py-2 text-white bg-primary"
+                                >
+                                    تحميل العقد {{ index + 1 }}
+                                </a>
+                                <button
+                                    v-if="canManageContracts"
+                                    class="db-btn py-2 text-white bg-red-500"
+                                    @click="deleteContract(document.id)"
+                                >
+                                    حذف العقد
+                                </button>
+                            </div>
                             <span v-if="!(facility.contract_documents || []).length" class="text-sm text-text">لا توجد عقود مرفوعة بعد.</span>
                         </div>
                     </div>
@@ -390,6 +401,23 @@ export default {
                 this.contractErrors = err.response?.data?.errors || {};
                 alertService.error(err.response?.data?.message || "تعذر رفع العقود.");
             }).finally(() => {
+                this.loading.isActive = false;
+            });
+        },
+        deleteContract: function (mediaId) {
+            appService.destroyConfirmation().then(() => {
+                this.loading.isActive = true;
+                this.$store.dispatch("creditApplicationReview/deleteFacilityContract", {
+                    id: this.facility.id,
+                    mediaId: mediaId,
+                }).then((res) => {
+                    alertService.success(res.data.message || "تم حذف العقد بنجاح.");
+                }).catch((err) => {
+                    alertService.error(err.response?.data?.message || "تعذر حذف العقد.");
+                }).finally(() => {
+                    this.loading.isActive = false;
+                });
+            }).catch(() => {
                 this.loading.isActive = false;
             });
         },
