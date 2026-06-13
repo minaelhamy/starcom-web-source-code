@@ -41,6 +41,14 @@
                                 search-placeholder="--"
                             />
                         </div>
+                        <div class="col-12 sm:col-6 md:col-4 xl:col-3">
+                            <label class="db-field-title after:hidden">الدور داخل جهة التمويل</label>
+                            <select v-model="props.search.financial_institution_role" class="db-field-control">
+                                <option value="">--</option>
+                                <option value="manager">مدير</option>
+                                <option value="employee">موظف</option>
+                            </select>
+                        </div>
                         <div class="col-12">
                             <div class="flex flex-wrap gap-3 mt-4">
                                 <button class="db-btn py-2 text-white bg-primary">
@@ -63,6 +71,7 @@
                         <tr class="db-table-head-tr">
                             <th class="db-table-head-th">الموظف</th>
                             <th class="db-table-head-th">جهة التمويل</th>
+                            <th class="db-table-head-th">الدور</th>
                             <th class="db-table-head-th">البريد</th>
                             <th class="db-table-head-th">الهاتف</th>
                             <th class="db-table-head-th">الحالة</th>
@@ -73,6 +82,7 @@
                         <tr class="db-table-body-tr" v-for="employee in employees" :key="employee.id">
                             <td class="db-table-body-td">{{ employee.name }}</td>
                             <td class="db-table-body-td">{{ employee.financial_institution_owner?.company_name || "--" }}</td>
+                            <td class="db-table-body-td">{{ employee.financial_institution_role_name || "--" }}</td>
                             <td class="db-table-body-td">{{ employee.email }}</td>
                             <td class="db-table-body-td">{{ employee.country_code }} {{ employee.phone }}</td>
                             <td class="db-table-body-td">
@@ -91,7 +101,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="6">لا يوجد موظفون مرتبطون بجهات التمويل حتى الآن.</td>
+                            <td class="db-table-body-td text-center" colspan="7">لا يوجد موظفون مرتبطون بجهات التمويل حتى الآن.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -155,6 +165,7 @@ export default {
                     country_code: "",
                     role_id: roleEnum.FINANCIAL_INSTITUTION,
                     financial_institution_owner_user_id: null,
+                    financial_institution_role: "employee",
                     status: statusEnum.ACTIVE,
                 },
                 search: {
@@ -169,6 +180,7 @@ export default {
                     role_id: roleEnum.FINANCIAL_INSTITUTION,
                     financial_institution_employee_only: 1,
                     financial_institution_owner_user_id: null,
+                    financial_institution_role: "",
                 },
                 flag: "",
             },
@@ -220,6 +232,7 @@ export default {
                 role_id: roleEnum.FINANCIAL_INSTITUTION,
                 financial_institution_employee_only: 1,
                 financial_institution_owner_user_id: null,
+                financial_institution_role: "",
             };
             this.list();
         },
@@ -234,6 +247,7 @@ export default {
                 country_code: employee.country_code || "+20",
                 role_id: roleEnum.FINANCIAL_INSTITUTION,
                 financial_institution_owner_user_id: employee.financial_institution_owner_user_id,
+                financial_institution_role: employee.financial_institution_role || "employee",
                 status: employee.status,
             };
             this.props.defaultFinancialInstitutionOwnerId = employee.financial_institution_owner_user_id;

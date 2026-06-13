@@ -5,6 +5,7 @@ namespace App\Services;
 use Exception;
 use App\Enums\Ask;
 use App\Models\User;
+use App\Enums\FinancialInstitutionUserRole;
 use App\Enums\Role as EnumRole;
 use App\Services\CustomerServiceLeadService;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,7 @@ class EmployeeService
     public $user;
     public $phoneFilter = ['phone'];
     public $roleFilter = ['role_id'];
-    public $userFilter = ['name', 'email', 'username', 'status', 'phone', 'financial_institution_owner_user_id'];
+    public $userFilter = ['name', 'email', 'username', 'status', 'phone', 'financial_institution_owner_user_id', 'financial_institution_role'];
     public $blockRoles = [EnumRole::ADMIN, EnumRole::CUSTOMER];
 
 
@@ -99,6 +100,7 @@ class EmployeeService
                         'email_verified_at' => now(),
                         'country_code'      => $request->country_code,
                         'financial_institution_owner_user_id' => $this->resolveFinancialInstitutionOwnerId($request->role_id, $request->financial_institution_owner_user_id),
+                        'financial_institution_role' => $this->resolveFinancialInstitutionRole($request->role_id, $request->financial_institution_role),
                         'is_guest'          => Ask::NO,
                     ]);
 
@@ -135,6 +137,7 @@ class EmployeeService
                     $this->user->status       = $request->status;
                     $this->user->country_code = $request->country_code;
                     $this->user->financial_institution_owner_user_id = $this->resolveFinancialInstitutionOwnerId($request->role_id, $request->financial_institution_owner_user_id);
+                    $this->user->financial_institution_role = $this->resolveFinancialInstitutionRole($request->role_id, $request->financial_institution_role);
                     if ($request->password) {
                         $this->user->password = Hash::make($request->password);
                     }
@@ -219,6 +222,23 @@ class EmployeeService
         }
 
         return $owner->id;
+    }
+
+    private function resolveFinancialInstitutionRole(int $roleId, mixed $financialInstitutionRole): ?string
+    {
+        if ($roleId !== EnumRole::FINANCIAL_INSTITUTION) {
+            return null;
+        }
+
+        $resolvedRole = (string)$financialInstitutionRole;
+        if (!in_array($resolvedRole, [
+            FinancialInstitutionUserRole::MANAGER,
+            FinancialInstitutionUserRole::EMPLOYEE,
+        ], true)) {
+            throw new Exception('يرجى اختيار دور الموظف داخل جهة التمويل.', 422);
+        }
+
+        return $resolvedRole;
     }
 
     private function syncCustomerServiceAutomation(User $user, int $roleId): void

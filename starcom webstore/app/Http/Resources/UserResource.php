@@ -26,6 +26,12 @@ class UserResource extends JsonResource
             "currency_balance" => AppLibrary::currencyAmountFormat($this->balance),
             "image"            => $this->thumb,
             "role_id"          => $this->myRole,
+            "financial_institution_role" => $this->financial_institution_role,
+            "financial_institution_role_name" => match ($this->financial_institution_role) {
+                'manager' => 'مدير',
+                'employee' => 'موظف',
+                default => null,
+            },
             "country_code"     => $this->country_code,
             "order"            => $this->orders->count(),
             'create_date'      => AppLibrary::date($this->created_at),

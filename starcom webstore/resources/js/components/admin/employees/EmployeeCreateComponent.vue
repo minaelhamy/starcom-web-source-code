@@ -157,6 +157,23 @@
                         </small>
                     </div>
 
+                    <div v-if="showInstitutionField" class="form-col-12 sm:form-col-6">
+                        <label for="financial_institution_role" class="db-field-title required">الدور داخل جهة التمويل</label>
+                        <select
+                            id="financial_institution_role"
+                            v-model="props.form.financial_institution_role"
+                            class="db-field-control"
+                            :class="errors.financial_institution_role ? 'invalid' : ''"
+                        >
+                            <option value="">--</option>
+                            <option value="manager">مدير</option>
+                            <option value="employee">موظف</option>
+                        </select>
+                        <small class="db-field-alert" v-if="errors.financial_institution_role">
+                            {{ errors.financial_institution_role[0] }}
+                        </small>
+                    </div>
+
                     <div class="form-col-12">
                         <div class="flex flex-wrap gap-3 mt-4">
                             <button type="submit" class="db-btn py-2 text-white bg-primary">
@@ -277,6 +294,7 @@ export default {
                     role_id: this.financialInstitutionEmployeeOnly ? this.roleEnum.FINANCIAL_INSTITUTION : null,
                     country_code: this.calling_code,
                     financial_institution_owner_user_id: this.financialInstitutionEmployeeOnly ? (this.props.defaultFinancialInstitutionOwnerId || null) : null,
+                    financial_institution_role: this.financialInstitutionEmployeeOnly ? "employee" : "",
                 };
 
             this.$props.props.form.country_code = this.calling_code;
@@ -302,6 +320,7 @@ export default {
                             role_id: this.financialInstitutionEmployeeOnly ? this.roleEnum.FINANCIAL_INSTITUTION : null,
                             country_code: this.calling_code,
                             financial_institution_owner_user_id: this.financialInstitutionEmployeeOnly ? (this.props.defaultFinancialInstitutionOwnerId || null) : null,
+                            financial_institution_role: this.financialInstitutionEmployeeOnly ? "employee" : "",
                         };
                         this.$props.props.flag = this.flag;
                         this.errors = {};

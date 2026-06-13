@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\FinancialInstitutionUserRole;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use App\Enums\Role as EnumRole;
@@ -57,6 +58,10 @@ class EmployeeRequest extends FormRequest
             'role_id'               => ['required', 'numeric'],
             'country_code'          => ['required', 'string', 'max:20'],
             'financial_institution_owner_user_id' => ['nullable', 'integer', Rule::exists('users', 'id')->whereNull('deleted_at')],
+            'financial_institution_role' => ['nullable', Rule::in([
+                FinancialInstitutionUserRole::MANAGER,
+                FinancialInstitutionUserRole::EMPLOYEE,
+            ])],
         ];
     }
 
@@ -70,6 +75,14 @@ class EmployeeRequest extends FormRequest
             $ownerId = (int)$this->input('financial_institution_owner_user_id');
             if ($ownerId <= 0) {
                 $validator->errors()->add('financial_institution_owner_user_id', 'يرجى اختيار جهة التمويل التابع لها الموظف.');
+                return;
+            }
+
+            if (!in_array((string)$this->input('financial_institution_role'), [
+                FinancialInstitutionUserRole::MANAGER,
+                FinancialInstitutionUserRole::EMPLOYEE,
+            ], true)) {
+                $validator->errors()->add('financial_institution_role', 'يرجى اختيار دور الموظف داخل جهة التمويل.');
                 return;
             }
 

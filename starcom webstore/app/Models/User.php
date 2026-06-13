@@ -48,6 +48,7 @@ class User extends Authenticatable implements HasMedia
         'longitude',
         'distribution_route',
         'financial_institution_owner_user_id',
+        'financial_institution_role',
         'is_guest',
         'status',
         'email_verified_at'
@@ -84,6 +85,7 @@ class User extends Authenticatable implements HasMedia
         'longitude'         => 'string',
         'distribution_route'=> 'string',
         'financial_institution_owner_user_id' => 'integer',
+        'financial_institution_role' => 'string',
         'is_guest'          => 'integer',
         'status'            => 'integer',
         'email_verified_at' => 'datetime',

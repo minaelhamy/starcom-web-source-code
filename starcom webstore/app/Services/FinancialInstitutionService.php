@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\Ask;
+use App\Enums\FinancialInstitutionUserRole;
 use App\Enums\Role as EnumRole;
 use App\Enums\Status;
 use App\Http\Requests\FinancialInstitutionRequest;
@@ -70,6 +71,7 @@ class FinancialInstitutionService
                     'status'            => $request->status,
                     'email_verified_at' => now(),
                     'country_code'      => $request->country_code,
+                    'financial_institution_role' => FinancialInstitutionUserRole::MANAGER,
                     'is_guest'          => Ask::NO,
                 ]);
                 $user->assignRole(EnumRole::FINANCIAL_INSTITUTION);
@@ -99,6 +101,7 @@ class FinancialInstitutionService
                 $financialInstitution->phone = $request->phone;
                 $financialInstitution->country_code = $request->country_code;
                 $financialInstitution->status = $request->status;
+                $financialInstitution->financial_institution_role = $financialInstitution->financial_institution_role ?: FinancialInstitutionUserRole::MANAGER;
                 if ($request->password) {
                     $financialInstitution->password = Hash::make($request->password);
                 }
