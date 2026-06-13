@@ -43,6 +43,14 @@
                             placeholder="اكتب الاسم أو الرقم القومي أو رقم الهاتف"
                         />
                     </div>
+                    <div class="w-full md:w-56">
+                        <label class="db-field-title after:hidden">حالة العقود</label>
+                        <select v-model="searchForm.has_contracts" class="db-field-control">
+                            <option value="">الكل</option>
+                            <option value="1">لديه عقد مرفوع</option>
+                            <option value="0">لا يوجد عقد مرفوع</option>
+                        </select>
+                    </div>
                     <div class="flex gap-2">
                         <button type="button" class="db-btn py-2 text-white bg-primary" @click="submitSearch">
                             <i class="lab lab-line-search lab-font-size-16"></i>
@@ -70,6 +78,7 @@
                             <th class="db-table-head-th">الموظف المسؤول</th>
                             <th class="db-table-head-th">بداية المدة</th>
                             <th class="db-table-head-th">تاريخ الاستحقاق</th>
+                            <th class="db-table-head-th">العقود</th>
                             <th class="db-table-head-th">الملف</th>
                         </tr>
                     </thead>
@@ -90,13 +99,21 @@
                             <td class="db-table-body-td">{{ item.starts_at || "--" }}</td>
                             <td class="db-table-body-td">{{ item.due_at || "--" }}</td>
                             <td class="db-table-body-td">
+                                <span
+                                    class="db-table-badge"
+                                    :class="item.has_contract_documents ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100'"
+                                >
+                                    {{ item.has_contract_documents ? `مرفوع (${item.contract_documents_count || 0})` : "غير مرفوع" }}
+                                </span>
+                            </td>
+                            <td class="db-table-body-td">
                                 <router-link :to="{ name: 'admin.lendingPortfolio.show', params: { id: item.id } }" class="text-primary font-semibold">فتح الملف</router-link>
                             </td>
                         </tr>
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="12">{{ emptyStateText }}</td>
+                            <td class="db-table-body-td text-center" colspan="13">{{ emptyStateText }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -120,8 +137,10 @@ export default {
             activeTab: "approved",
             searchForm: {
                 term: "",
+                has_contracts: "",
             },
             appliedTerm: "",
+            appliedHasContracts: "",
             tabs: [
                 { value: "approved", label: "المعتمدة" },
                 { value: "declined", label: "المرفوضة" },
@@ -203,17 +222,21 @@ export default {
             this.$store.dispatch("creditApplicationReview/portfolio", {
                 paginate: 0,
                 term: this.appliedTerm,
+                has_contracts: this.appliedHasContracts,
             }).finally(() => {
                 this.loading.isActive = false;
             });
         },
         submitSearch: function () {
             this.appliedTerm = this.searchForm.term.trim();
+            this.appliedHasContracts = this.searchForm.has_contracts;
             this.list();
         },
         clearSearch: function () {
             this.searchForm.term = "";
+            this.searchForm.has_contracts = "";
             this.appliedTerm = "";
+            this.appliedHasContracts = "";
             this.list();
         },
         normalizeSearchValue: function (value) {

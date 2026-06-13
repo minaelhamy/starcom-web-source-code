@@ -284,6 +284,7 @@ class CreditApplicationService
         $method = $request->get('paginate', 0) == 1 ? 'paginate' : 'get';
         $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
         $term = trim((string) $request->get('term', ''));
+        $hasContracts = $request->get('has_contracts');
 
         $query = $this->portfolioQuery($actor);
 
@@ -304,6 +305,20 @@ class CreditApplicationService
                         ->orWhere('national_id_number', 'like', '%' . $normalizedTerm . '%');
                 });
             });
+        }
+
+        if ($hasContracts !== null && $hasContracts !== '') {
+            $hasContracts = filter_var($hasContracts, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+            if ($hasContracts === true) {
+                $query->whereHas('media', function ($mediaQuery) {
+                    $mediaQuery->where('collection_name', 'facility_contract_documents');
+                });
+            } elseif ($hasContracts === false) {
+                $query->whereDoesntHave('media', function ($mediaQuery) {
+                    $mediaQuery->where('collection_name', 'facility_contract_documents');
+                });
+            }
         }
 
         return $query->latest()->$method($methodValue);
