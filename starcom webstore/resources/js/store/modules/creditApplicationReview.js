@@ -202,6 +202,16 @@ export const creditApplicationReview = {
                 });
             });
         },
+        updateFacilityDates: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.post(`admin/credit-application/portfolio/dates/${payload.id}`, payload.form).then((res) => {
+                    context.commit("portfolioShow", res.data.data);
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
         deleteFacilityContract: function (context, payload) {
             return new Promise((resolve, reject) => {
                 axios.delete(`admin/credit-application/portfolio/contracts/${payload.id}/${payload.mediaId}`).then((res) => {

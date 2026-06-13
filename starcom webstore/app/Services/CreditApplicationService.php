@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Enums\CreditApplicationStatus;
 use App\Enums\CreditFacilityStatus;
+use App\Enums\FinancialInstitutionUserRole;
 use App\Enums\Role as EnumRole;
 use App\Http\Requests\CreditApplicationDecisionRequest;
 use App\Http\Requests\CreditApplicationIdentityRequest;
 use App\Http\Requests\CreditApplicationNoteRequest;
 use App\Http\Requests\CreditFacilityAssignmentRequest;
 use App\Http\Requests\CreditFacilityContractRequest;
+use App\Http\Requests\CreditFacilityDatesRequest;
 use App\Http\Requests\CreditApplicationStoreRequest;
 use App\Http\Requests\CreditApplicationUpdateRequest;
 use App\Http\Requests\PaginateRequest;
@@ -26,6 +28,7 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Carbon;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
 use App\Models\WalletTransaction;
@@ -555,7 +558,10 @@ class CreditApplicationService
 
             if (
                 $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
-                (int) $creditFacility->financial_institution_user_id !== (int) $this->resolveInstitutionUserId($actor)
+                (
+                    !$this->isFinancialInstitutionManager($actor) ||
+                    (int) $creditFacility->financial_institution_user_id !== (int) $this->resolveInstitutionUserId($actor)
+                )
             ) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
@@ -600,7 +606,10 @@ class CreditApplicationService
 
             if (
                 $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
-                (int) $creditFacility->financial_institution_user_id !== (int) $this->resolveInstitutionUserId($actor)
+                (
+                    !$this->isFinancialInstitutionManager($actor) ||
+                    (int) $creditFacility->financial_institution_user_id !== (int) $this->resolveInstitutionUserId($actor)
+                )
             ) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
@@ -614,6 +623,56 @@ class CreditApplicationService
             }
 
             $media->delete();
+
+            return $creditFacility->load([
+                'user',
+                'user.latestAddress',
+                'application.user',
+                'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
+                'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
+                'application.facilities.institution.financialInstitutionProfile',
+                'application.facilities.employee',
+                'institution.financialInstitutionProfile',
+                'employee',
+            ]);
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    public function updateFacilityDates(CreditFacility $creditFacility, CreditFacilityDatesRequest $request): CreditFacility
+    {
+        try {
+            $actor = Auth::user();
+
+            if (
+                !$actor->hasRole(EnumRole::ADMIN) &&
+                !$actor->hasRole(EnumRole::MANAGER) &&
+                !$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if (
+                $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                (
+                    !$this->isFinancialInstitutionManager($actor) ||
+                    (int) $creditFacility->financial_institution_user_id !== (int) $this->resolveInstitutionUserId($actor)
+                )
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if ($creditFacility->status !== CreditFacilityStatus::APPROVED) {
+                throw new Exception('يمكن تعديل بداية المدة فقط للتمويل المعتمد.', 422);
+            }
+
+            $startsAt = Carbon::parse($request->starts_at)->startOfDay();
+
+            $creditFacility->starts_at = $startsAt;
+            $creditFacility->due_at = (clone $startsAt)->addDays((int) $creditFacility->duration_days);
+            $creditFacility->save();
 
             return $creditFacility->load([
                 'user',
@@ -1005,6 +1064,12 @@ class CreditApplicationService
     protected function resolveInstitutionUserId(User $actor): int
     {
         return (int)($actor->resolvedFinancialInstitutionUserId() ?: $actor->id);
+    }
+
+    protected function isFinancialInstitutionManager(User $actor): bool
+    {
+        return $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)
+            && (string)$actor->financial_institution_role === FinancialInstitutionUserRole::MANAGER;
     }
 
     protected function resolveAssignmentActors(User $actor, CreditApplicationDecisionRequest $request, bool $requireInstitutionForAdmin = true): array

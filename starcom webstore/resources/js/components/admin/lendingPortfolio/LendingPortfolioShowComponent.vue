@@ -171,6 +171,26 @@
             </div>
         </div>
 
+        <div v-if="canManageFacilityDates" class="db-card mb-4">
+            <div class="db-card-header border-none">
+                <h3 class="db-card-title">تعديل بداية المدة</h3>
+            </div>
+            <div class="row p-4">
+                <div class="col-12 md:col-6">
+                    <label class="db-field-title required">بداية المدة</label>
+                    <input v-model="dateForm.starts_at" type="date" class="db-field-control" />
+                    <small class="db-field-alert" v-if="dateErrors.starts_at">{{ dateErrors.starts_at[0] }}</small>
+                </div>
+                <div class="col-12 md:col-6">
+                    <label class="db-field-title">تاريخ الاستحقاق المتوقع</label>
+                    <input :value="expectedDueDate" type="text" class="db-field-control" disabled />
+                </div>
+                <div class="col-12 mt-3">
+                    <button class="db-btn py-2 text-white bg-primary" @click="updateFacilityDates">حفظ بداية المدة</button>
+                </div>
+            </div>
+        </div>
+
         <div class="db-card mb-4">
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">Starcom Intelligence</h3>
@@ -257,6 +277,10 @@ export default {
                 contract_documents: [],
             },
             contractErrors: {},
+            dateForm: {
+                starts_at: "",
+            },
+            dateErrors: {},
             identityForm: {
                 full_name: "",
                 national_id_number: "",
@@ -286,6 +310,10 @@ export default {
         isAdminLike: function () {
             return this.authInfo.role_id === roleEnum.ADMIN || this.authInfo.role_id === roleEnum.MANAGER;
         },
+        isFinancialInstitutionManager: function () {
+            return this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION &&
+                this.authInfo.financial_institution_role === "manager";
+        },
         canManageIdentity: function () {
             return this.isAdminLike;
         },
@@ -298,9 +326,32 @@ export default {
             return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) && this.facility.id;
         },
         canManageContracts: function () {
-            return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) &&
+            return (this.isAdminLike || this.isFinancialInstitutionManager) &&
                 this.facility.id &&
                 this.facility.status === "approved";
+        },
+        canManageFacilityDates: function () {
+            return (this.isAdminLike || this.isFinancialInstitutionManager) &&
+                this.facility.id &&
+                this.facility.status === "approved";
+        },
+        expectedDueDate: function () {
+            if (!this.dateForm.starts_at) {
+                return this.facility.due_at || "--";
+            }
+
+            const durationDays = Number(this.facility.duration_days || 0);
+            if (!durationDays) {
+                return "--";
+            }
+
+            const startsAt = new Date(`${this.dateForm.starts_at}T00:00:00`);
+            if (Number.isNaN(startsAt.getTime())) {
+                return "--";
+            }
+
+            startsAt.setDate(startsAt.getDate() + durationDays);
+            return startsAt.toISOString().slice(0, 10);
         },
     },
     mounted() {
@@ -311,6 +362,7 @@ export default {
         ]).finally(() => {
             this.syncAssignmentForm();
             this.syncIdentityForm();
+            this.syncDateForm();
             this.loading.isActive = false;
         });
     },
@@ -325,6 +377,10 @@ export default {
             this.identityForm.full_name = this.facility.full_name || "";
             this.identityForm.national_id_number = this.facility.national_id_number || "";
             this.identityErrors = {};
+        },
+        syncDateForm: function () {
+            this.dateForm.starts_at = this.facility.starts_at || "";
+            this.dateErrors = {};
         },
         setContractFiles: function (event) {
             this.contractForm.contract_documents = Array.from(event.target.files || []);
@@ -400,6 +456,22 @@ export default {
             }).catch((err) => {
                 this.contractErrors = err.response?.data?.errors || {};
                 alertService.error(err.response?.data?.message || "تعذر رفع العقود.");
+            }).finally(() => {
+                this.loading.isActive = false;
+            });
+        },
+        updateFacilityDates: function () {
+            this.loading.isActive = true;
+            this.$store.dispatch("creditApplicationReview/updateFacilityDates", {
+                id: this.facility.id,
+                form: this.dateForm,
+            }).then((res) => {
+                alertService.success(res.data.message || "تم تحديث بداية المدة وتاريخ الاستحقاق بنجاح.");
+                this.dateErrors = {};
+                this.syncDateForm();
+            }).catch((err) => {
+                this.dateErrors = err.response?.data?.errors || {};
+                alertService.error(err.response?.data?.message || "تعذر تحديث بداية المدة.");
             }).finally(() => {
                 this.loading.isActive = false;
             });
