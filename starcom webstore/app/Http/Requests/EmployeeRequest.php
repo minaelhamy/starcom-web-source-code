@@ -27,24 +27,28 @@ class EmployeeRequest extends FormRequest
      */
     public function rules()
     {
+        $employeeId = $this->route('employee') instanceof User
+            ? $this->route('employee')->id
+            : $this->route('employee');
+
         return [
             'name'                  => ['required', 'string', 'max:190'],
             'email'                 => [
                 'required',
                 'email',
                 'max:190',
-                Rule::unique("users", "email")->ignore($this->route('employee.id'))
+                Rule::unique("users", "email")->ignore($employeeId)
             ],
             'password'              => [
-                $this->route('employee.id') ? 'nullable' : 'required',
+                $employeeId ? 'nullable' : 'required',
                 'string',
                 'min:6'
             ],
-            'password_confirmation' => [$this->route('employee.id') ? 'nullable' : 'required', 'string', 'min:6', 'same:password'],
+            'password_confirmation' => [$employeeId ? 'nullable' : 'required', 'string', 'min:6', 'same:password'],
             'username'              => [
                 'nullable',
                 'max:190',
-                Rule::unique("users", "username")->ignore($this->route('employee.id'))
+                Rule::unique("users", "username")->ignore($employeeId)
             ],
             'device_token'          => ['nullable', 'string'],
             'web_token'             => ['nullable', 'string'],
@@ -52,7 +56,7 @@ class EmployeeRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:20',
-                Rule::unique("users", "phone")->ignore($this->route('employee.id'))
+                Rule::unique("users", "phone")->ignore($employeeId)
             ],
             'status'                => ['required', 'numeric', 'max:24'],
             'role_id'               => ['required', 'numeric'],

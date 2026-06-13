@@ -115,22 +115,14 @@
                         }}</small>
                     </div>
 
-                    <div class="form-col-12 sm:form-col-6">
+                    <div v-if="!financialInstitutionEmployeeOnly" class="form-col-12 sm:form-col-6">
                         <label for="role_id" class="db-field-title required">{{
                             $t("label.role")
                         }}</label>
                         <vue-select class="db-field-control f-b-custom-select" id="role_id"
-                            v-if="!financialInstitutionEmployeeOnly"
                             v-bind:class="errors.role_id ? 'invalid' : ''" v-model="props.form.role_id" :options="roles"
                             label-by="name" value-by="id" :closeOnSelect="true" :searchable="true" :clearOnClose="true"
                             placeholder="--" search-placeholder="--" />
-                        <input
-                            v-else
-                            type="text"
-                            class="db-field-control"
-                            value="موظف جهة تمويل"
-                            disabled
-                        />
                         <small class="db-field-alert" v-if="errors.role_id">{{
                             errors.role_id[0]
                         }}</small>
@@ -158,7 +150,7 @@
                     </div>
 
                     <div v-if="showInstitutionField" class="form-col-12 sm:form-col-6">
-                        <label for="financial_institution_role" class="db-field-title required">الدور داخل جهة التمويل</label>
+                        <label for="financial_institution_role" class="db-field-title required">الصلاحية داخل جهة التمويل</label>
                         <select
                             id="financial_institution_role"
                             v-model="props.form.financial_institution_role"
@@ -172,6 +164,7 @@
                         <small class="db-field-alert" v-if="errors.financial_institution_role">
                             {{ errors.financial_institution_role[0] }}
                         </small>
+                        <small class="text-xs text-text">حدد هل هذا الحساب مدير داخل جهة التمويل أو موظف عادي.</small>
                     </div>
 
                     <div class="form-col-12">
