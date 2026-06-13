@@ -117,7 +117,7 @@
             </div>
         </div>
 
-        <div v-if="canManageContracts || (facility.contract_documents || []).length" class="db-card mb-4">
+        <div v-if="canUploadContracts || (facility.contract_documents || []).length" class="db-card mb-4">
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">عقود التمويل</h3>
             </div>
@@ -140,7 +140,7 @@
                                     تحميل العقد {{ index + 1 }}
                                 </a>
                                 <button
-                                    v-if="canManageContracts"
+                                    v-if="canDeleteContracts"
                                     class="db-btn py-2 text-white bg-red-500"
                                     @click="deleteContract(document.id)"
                                 >
@@ -151,7 +151,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-12 lg:col-6" v-if="canManageContracts">
+                <div class="col-12 lg:col-6" v-if="canUploadContracts">
                     <div class="db-card p-4 h-full">
                         <h4 class="font-semibold mb-3">رفع عقود جديدة</h4>
                         <input
@@ -325,7 +325,12 @@ export default {
         canAddNote: function () {
             return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) && this.facility.id;
         },
-        canManageContracts: function () {
+        canUploadContracts: function () {
+            return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) &&
+                this.facility.id &&
+                this.facility.status === "approved";
+        },
+        canDeleteContracts: function () {
             return (this.isAdminLike || this.isFinancialInstitutionManager) &&
                 this.facility.id &&
                 this.facility.status === "approved";

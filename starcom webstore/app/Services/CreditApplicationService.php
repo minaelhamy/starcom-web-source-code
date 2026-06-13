@@ -558,10 +558,7 @@ class CreditApplicationService
 
             if (
                 $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
-                (
-                    !$this->isFinancialInstitutionManager($actor) ||
-                    (int) $creditFacility->financial_institution_user_id !== (int) $this->resolveInstitutionUserId($actor)
-                )
+                (int) $creditFacility->financial_institution_user_id !== (int) $this->resolveInstitutionUserId($actor)
             ) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
