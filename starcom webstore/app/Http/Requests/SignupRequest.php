@@ -32,6 +32,9 @@ class SignupRequest extends FormRequest
             'email'        => ['nullable', 'string', 'email', 'max:255', Rule::unique("users", "email")->where('is_guest', Ask::NO)],
             'phone'        => ['required', 'string', 'max:20'],
             'country_code' => ['required', 'string', 'max:10'],
+            'address'      => ['required', 'string', 'max:500'],
+            'latitude'     => ['required', 'numeric', 'between:-90,90'],
+            'longitude'    => ['required', 'numeric', 'between:-180,180'],
             'password'     => ['required', 'string', 'min:6'],
         ];
     }

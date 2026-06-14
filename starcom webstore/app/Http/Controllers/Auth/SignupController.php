@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use Exception;
 use App\Enums\Ask;
+use App\Models\Address;
 use App\Models\User;
 use App\Enums\Activity;
 use Illuminate\Support\Str;
@@ -117,18 +118,36 @@ class SignupController extends Controller
             }
         }
 
+        $user = DB::transaction(function () use ($request) {
+            $user = User::create([
+                'name' => $request->post('name'),
+                'username' => Str::slug($request->post('name')) . rand(1, 500),
+                'email' => null,
+                'phone' => $request->post('phone'),
+                'country_code' => $request->post('country_code'),
+                'address' => $request->post('address'),
+                'latitude' => (string) $request->post('latitude'),
+                'longitude' => (string) $request->post('longitude'),
+                'email_verified_at' => null,
+                'is_guest' => Ask::NO,
+                'password' => Hash::make($request->post('password'))
+            ]);
 
-        $user = User::create([
-            'name' => $request->post('name'),
-            'username' => Str::slug($request->post('name')) . rand(1, 500),
-            'email' => null,
-            'phone' => $request->post('phone'),
-            'country_code' => $request->post('country_code'),
-            'email_verified_at' => null,
-            'is_guest' => Ask::NO,
-            'password' => Hash::make($request->post('password'))
-        ]);
-        $user->assignRole(EnumRole::CUSTOMER);
+            $user->assignRole(EnumRole::CUSTOMER);
+
+            Address::create([
+                'user_id' => $user->id,
+                'full_name' => $request->post('name'),
+                'country_code' => $request->post('country_code'),
+                'phone' => $request->post('phone'),
+                'address' => $request->post('address'),
+                'latitude' => (string) $request->post('latitude'),
+                'longitude' => (string) $request->post('longitude'),
+            ]);
+
+            return $user;
+        });
+
         if ($user) {
             return response(['status' => true, 'message' => trans('all.message.register_successfully')]);
         } else {

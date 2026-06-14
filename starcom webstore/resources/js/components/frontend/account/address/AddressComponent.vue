@@ -71,6 +71,8 @@ export default {
                     city: null,
                     zip_code: "",
                     address: "",
+                    latitude: "",
+                    longitude: "",
                 },
                 search: {
                     paginate: 0,
@@ -146,6 +148,8 @@ export default {
                         city: address.city,
                         zip_code: address.zip_code,
                         address: address.address,
+                        latitude: address.latitude || "",
+                        longitude: address.longitude || "",
                     };
 
                     if (address.state === "") {

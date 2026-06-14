@@ -43,6 +43,45 @@
             </div>
 
             <div class="mb-6">
+                <label for="formAddress" class="text-sm font-medium mb-1 field-title required">العنوان</label>
+                <input
+                    v-model="form.address"
+                    :class="errors.address ? 'invalid' : ''"
+                    id="formAddress"
+                    type="text"
+                    class="w-full h-12 px-4 rounded-lg text-base border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500"
+                />
+                <small class="db-field-alert" v-if="errors.address">{{ errors.address[0] }}</small>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label for="formLatitude" class="text-sm font-medium mb-1 field-title required">خط العرض</label>
+                    <input
+                        v-model="form.latitude"
+                        :class="errors.latitude ? 'invalid' : ''"
+                        id="formLatitude"
+                        type="text"
+                        inputmode="decimal"
+                        class="w-full h-12 px-4 rounded-lg text-base border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500"
+                    />
+                    <small class="db-field-alert" v-if="errors.latitude">{{ errors.latitude[0] }}</small>
+                </div>
+                <div>
+                    <label for="formLongitude" class="text-sm font-medium mb-1 field-title required">خط الطول</label>
+                    <input
+                        v-model="form.longitude"
+                        :class="errors.longitude ? 'invalid' : ''"
+                        id="formLongitude"
+                        type="text"
+                        inputmode="decimal"
+                        class="w-full h-12 px-4 rounded-lg text-base border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500"
+                    />
+                    <small class="db-field-alert" v-if="errors.longitude">{{ errors.longitude[0] }}</small>
+                </div>
+            </div>
+
+            <div class="mb-6">
                 <label for="formPassword" class="text-sm font-medium capitalize mb-1 field-title required">{{
                     $t('label.password') }}</label>
                 <input v-model="form.password" :class="errors.password ? 'invalid' : ''" id="formPassword" type="password"
@@ -82,6 +121,9 @@ export default {
                 name: "",
                 phone: "",
                 country_code: "",
+                address: "",
+                latitude: "",
+                longitude: "",
                 password: ""
             },
             flag: "",
@@ -159,6 +201,9 @@ export default {
                                 name: "",
                                 phone: "",
                                 country_code: "",
+                                address: "",
+                                latitude: "",
+                                longitude: "",
                                 password: ""
                             };
                             this.errors = {};

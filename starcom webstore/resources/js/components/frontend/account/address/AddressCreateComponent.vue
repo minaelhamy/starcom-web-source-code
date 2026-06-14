@@ -124,6 +124,39 @@
                         </small>
                     </div>
                     <div class="form-col-12 sm:form-col-6">
+                        <label class="text-sm font-medium mb-1 field-title" for="latitude">خط العرض</label>
+                        <input
+                            type="text"
+                            id="latitude"
+                            v-model="props.form.latitude"
+                            :class="errors.latitude ? 'invalid' : ''"
+                            inputmode="decimal"
+                            class="w-full h-12 px-4 rounded-lg text-base border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500"
+                        >
+                        <small class="db-field-alert" v-if="errors.latitude">
+                            {{ errors.latitude[0] }}
+                        </small>
+                    </div>
+                    <div class="form-col-12 sm:form-col-6">
+                        <label class="text-sm font-medium mb-1 field-title" for="longitude">خط الطول</label>
+                        <input
+                            type="text"
+                            id="longitude"
+                            v-model="props.form.longitude"
+                            :class="errors.longitude ? 'invalid' : ''"
+                            inputmode="decimal"
+                            class="w-full h-12 px-4 rounded-lg text-base border border-[#D9DBE9] hover:border-primary/30 focus-within:border-primary/30 transition-all duration-500"
+                        >
+                        <small class="db-field-alert" v-if="errors.longitude">
+                            {{ errors.longitude[0] }}
+                        </small>
+                    </div>
+                    <div class="form-col-12">
+                        <p class="text-xs text-text">
+                            أضف خط العرض وخط الطول الآن حتى تتمكن من التقديم على خدمة اشتري بالآجل لاحقاً.
+                        </p>
+                    </div>
+                    <div class="form-col-12 sm:form-col-6">
                         <div class="flex flex-wrap gap-6 mt-2"><button type="submit"
                                 class="font-bold text-center h-12 leading-12 px-8 rounded-full whitespace-nowrap bg-primary text-white capitalize">{{
                                     $t('button.add_address')
@@ -247,6 +280,8 @@ export default {
                 city: null,
                 zip_code: "",
                 address: "",
+                latitude: "",
+                longitude: "",
             };
             this.$props.props.flag = this.flag;
             this.$props.props.states = [];
@@ -270,6 +305,8 @@ export default {
                         city: null,
                         zip_code: "",
                         address: "",
+                        latitude: "",
+                        longitude: "",
                     };
                     this.$props.props.flag = this.flag;
                     this.$props.props.states = [];

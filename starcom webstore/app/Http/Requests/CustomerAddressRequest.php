@@ -34,6 +34,8 @@ class CustomerAddressRequest extends FormRequest
             'city'         => ['required', 'string', 'max:100'],
             'zip_code'     => ['nullable', 'string'],
             'address'      => ['required', 'string', 'max:500'],
+            'latitude'     => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude'    => ['nullable', 'numeric', 'between:-180,180'],
         ];
     }
 
