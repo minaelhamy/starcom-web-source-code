@@ -171,9 +171,16 @@ export default {
                 {
                     title: "فرص التمويل",
                     displayValue: this.summary.opportunities_count ?? 0,
-                    note: "عدد الطلبات المتاحة الآن للمراجعة",
+                    note: "عدد الطلبات قيد المراجعة المتاحة الآن",
                     className: "bg-admin-orange",
                     icon: "lab-fill-document text-admin-orange text-2xl lab-font-size-24",
+                },
+                {
+                    title: "طلبات قيد التعديل",
+                    displayValue: this.summary.pending_approval_count ?? 0,
+                    note: "طلبات تحتاج استكمال بيانات أو مستندات",
+                    className: "bg-admin-blue",
+                    icon: "lab-fill-edit text-admin-blue text-2xl lab-font-size-24",
                 },
                 {
                     title: "العملاء الممولون",

@@ -158,7 +158,11 @@ class DashboardController extends AdminController implements HasMiddleware
                 return response(['status' => false, 'message' => trans('all.message.permission_denied')], 403);
             }
 
-            $opportunitiesQuery = $this->creditApplicationService->lenderOpportunitiesQuery($actor);
+            $lenderQueueQuery = $this->creditApplicationService->lenderOpportunitiesQuery($actor);
+            $opportunitiesQuery = (clone $lenderQueueQuery)
+                ->where('credit_applications.status', CreditApplicationStatus::PENDING);
+            $pendingApprovalQuery = (clone $lenderQueueQuery)
+                ->where('credit_applications.status', CreditApplicationStatus::PENDING_APPROVAL);
 
             $approvedFacilitiesQuery = $this->creditApplicationService->portfolioQuery($actor)
                 ->where('status', CreditFacilityStatus::APPROVED);
@@ -166,6 +170,7 @@ class DashboardController extends AdminController implements HasMiddleware
             $reviewedFacilitiesQuery = $this->creditApplicationService->portfolioQuery($actor);
 
             $opportunitiesCount = (clone $opportunitiesQuery)->count();
+            $pendingApprovalCount = (clone $pendingApprovalQuery)->count();
             $approvedAmount = (float)(clone $approvedFacilitiesQuery)->sum('approved_amount');
             $availableAmount = (float)(clone $approvedFacilitiesQuery)->sum('available_amount');
             $utilizedAmount = (float)(clone $approvedFacilitiesQuery)->sum('utilized_amount');
@@ -234,6 +239,7 @@ class DashboardController extends AdminController implements HasMiddleware
             return [
                 'data' => [
                     'opportunities_count'                => $opportunitiesCount,
+                    'pending_approval_count'             => $pendingApprovalCount,
                     'active_customers_count'             => $activeCustomersCount,
                     'active_facilities_count'            => $activeFacilitiesCount,
                     'reviewed_requests_count'            => $reviewedRequestsCount,
