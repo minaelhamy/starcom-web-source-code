@@ -1065,8 +1065,7 @@ class CreditApplicationService
 
     protected function isFinancialInstitutionManager(User $actor): bool
     {
-        return $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)
-            && (string)$actor->financial_institution_role === FinancialInstitutionUserRole::MANAGER;
+        return $actor->isFinancialInstitutionManager();
     }
 
     protected function resolveAssignmentActors(User $actor, CreditApplicationDecisionRequest $request, bool $requireInstitutionForAdmin = true): array

@@ -220,6 +220,28 @@ class User extends Authenticatable implements HasMedia
         return $this->financial_institution_owner_user_id ?: $this->id;
     }
 
+    public function normalizedFinancialInstitutionRole(): ?string
+    {
+        if (!$this->hasRole(\App\Enums\Role::FINANCIAL_INSTITUTION)) {
+            return null;
+        }
+
+        if (!empty($this->financial_institution_role)) {
+            return (string) $this->financial_institution_role;
+        }
+
+        if (empty($this->financial_institution_owner_user_id) && $this->financialInstitutionProfile()->exists()) {
+            return \App\Enums\FinancialInstitutionUserRole::MANAGER;
+        }
+
+        return null;
+    }
+
+    public function isFinancialInstitutionManager(): bool
+    {
+        return $this->normalizedFinancialInstitutionRole() === \App\Enums\FinancialInstitutionUserRole::MANAGER;
+    }
+
 
     public function getMyRoleAttribute()
     {

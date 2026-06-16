@@ -29,8 +29,8 @@ class EmployeeResource extends JsonResource
             "image"        => $this->image,
             "country_code" => $this->country_code,
             "financial_institution_owner_user_id" => $this->financial_institution_owner_user_id,
-            "financial_institution_role" => $this->financial_institution_role,
-            "financial_institution_role_name" => match ($this->financial_institution_role) {
+            "financial_institution_role" => $this->normalizedFinancialInstitutionRole(),
+            "financial_institution_role_name" => match ($this->normalizedFinancialInstitutionRole()) {
                 'manager' => 'مدير',
                 'employee' => 'موظف',
                 default => null,
