@@ -289,6 +289,7 @@ class CreditApplicationService
         $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
         $term = trim((string) $request->get('term', ''));
         $hasContracts = $request->get('has_contracts');
+        $hasSignedContracts = $request->get('has_signed_contracts');
 
         $query = $this->portfolioQuery($actor);
 
@@ -321,6 +322,20 @@ class CreditApplicationService
             } elseif ($hasContracts === false) {
                 $query->whereDoesntHave('media', function ($mediaQuery) {
                     $mediaQuery->where('collection_name', 'facility_contract_documents');
+                });
+            }
+        }
+
+        if ($hasSignedContracts !== null && $hasSignedContracts !== '') {
+            $hasSignedContracts = filter_var($hasSignedContracts, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+            if ($hasSignedContracts === true) {
+                $query->whereHas('media', function ($mediaQuery) {
+                    $mediaQuery->where('collection_name', 'facility_signed_contract_documents');
+                });
+            } elseif ($hasSignedContracts === false) {
+                $query->whereDoesntHave('media', function ($mediaQuery) {
+                    $mediaQuery->where('collection_name', 'facility_signed_contract_documents');
                 });
             }
         }

@@ -51,6 +51,14 @@
                             <option value="0">لا يوجد عقد مرفوع</option>
                         </select>
                     </div>
+                    <div class="w-full md:w-56">
+                        <label class="db-field-title after:hidden">حالة العقد الموقع</label>
+                        <select v-model="searchForm.has_signed_contracts" class="db-field-control">
+                            <option value="">الكل</option>
+                            <option value="1">لديه عقد موقع مرفوع</option>
+                            <option value="0">لا يوجد عقد موقع</option>
+                        </select>
+                    </div>
                     <div class="flex gap-2">
                         <button type="button" class="db-btn py-2 text-white bg-primary" @click="submitSearch">
                             <i class="lab lab-line-search lab-font-size-16"></i>
@@ -79,6 +87,7 @@
                             <th class="db-table-head-th">بداية المدة</th>
                             <th class="db-table-head-th">تاريخ الاستحقاق</th>
                             <th class="db-table-head-th">العقود</th>
+                            <th class="db-table-head-th">العقد الموقع</th>
                             <th class="db-table-head-th">الملف</th>
                         </tr>
                     </thead>
@@ -107,13 +116,21 @@
                                 </span>
                             </td>
                             <td class="db-table-body-td">
+                                <span
+                                    class="db-table-badge"
+                                    :class="item.has_signed_contract_documents ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100'"
+                                >
+                                    {{ item.has_signed_contract_documents ? `مرفوع (${item.signed_contract_documents_count || 0})` : "غير مرفوع" }}
+                                </span>
+                            </td>
+                            <td class="db-table-body-td">
                                 <router-link :to="{ name: 'admin.lendingPortfolio.show', params: { id: item.id } }" class="text-primary font-semibold">فتح الملف</router-link>
                             </td>
                         </tr>
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="13">{{ emptyStateText }}</td>
+                            <td class="db-table-body-td text-center" colspan="14">{{ emptyStateText }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -138,9 +155,11 @@ export default {
             searchForm: {
                 term: "",
                 has_contracts: "",
+                has_signed_contracts: "",
             },
             appliedTerm: "",
             appliedHasContracts: "",
+            appliedHasSignedContracts: "",
             tabs: [
                 { value: "approved", label: "المعتمدة" },
                 { value: "declined", label: "المرفوضة" },
@@ -223,6 +242,7 @@ export default {
                 paginate: 0,
                 term: this.appliedTerm,
                 has_contracts: this.appliedHasContracts,
+                has_signed_contracts: this.appliedHasSignedContracts,
             }).finally(() => {
                 this.loading.isActive = false;
             });
@@ -230,13 +250,16 @@ export default {
         submitSearch: function () {
             this.appliedTerm = this.searchForm.term.trim();
             this.appliedHasContracts = this.searchForm.has_contracts;
+            this.appliedHasSignedContracts = this.searchForm.has_signed_contracts;
             this.list();
         },
         clearSearch: function () {
             this.searchForm.term = "";
             this.searchForm.has_contracts = "";
+            this.searchForm.has_signed_contracts = "";
             this.appliedTerm = "";
             this.appliedHasContracts = "";
+            this.appliedHasSignedContracts = "";
             this.list();
         },
         normalizeSearchValue: function (value) {
