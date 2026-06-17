@@ -223,4 +223,231 @@ class WalletService
             }
         });
     }
+
+    public function refundOrderAmounts(
+        Order $order,
+        float $facilityRefundAmount,
+        float $directWalletRefundAmount,
+        float $cashRefundAmount,
+        string $description,
+        array $meta = []
+    ): array {
+        return DB::transaction(function () use (
+            $order,
+            $facilityRefundAmount,
+            $directWalletRefundAmount,
+            $cashRefundAmount,
+            $description,
+            $meta
+        ) {
+            $user = User::lockForUpdate()->findOrFail($order->user_id);
+            $runningBalance = (float) $user->balance;
+            $remainingFacilityRefund = round($facilityRefundAmount, 6);
+            $facilityRefunds = [];
+
+            if ($remainingFacilityRefund > 0) {
+                $allocations = CreditFacilityOrderAllocation::with('facility')
+                    ->where('order_id', $order->id)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($allocations as $allocation) {
+                    if ($remainingFacilityRefund <= 0) {
+                        break;
+                    }
+
+                    $refundAmount = min($remainingFacilityRefund, (float) $allocation->amount);
+                    if ($refundAmount <= 0) {
+                        continue;
+                    }
+
+                    $facility = $allocation->facility;
+                    if ($facility) {
+                        $facility->available_amount = (float) $facility->available_amount + $refundAmount;
+                        $facility->utilized_amount = max(0, (float) $facility->utilized_amount - $refundAmount);
+                        $facility->save();
+                    }
+
+                    WalletTransaction::create([
+                        'user_id'                       => $user->id,
+                        'financial_institution_user_id' => $facility?->financial_institution_user_id,
+                        'credit_application_id'         => $facility?->credit_application_id,
+                        'credit_facility_id'            => $facility?->id,
+                        'order_id'                      => $order->id,
+                        'type'                          => 'pay_later_refund',
+                        'direction'                     => 'credit',
+                        'amount'                        => $refundAmount,
+                        'balance_before'                => $runningBalance,
+                        'balance_after'                 => $runningBalance + $refundAmount,
+                        'description'                   => $description,
+                        'meta'                          => $meta,
+                    ]);
+
+                    $runningBalance += $refundAmount;
+                    $remainingFacilityRefund -= $refundAmount;
+
+                    $facilityRefunds[] = [
+                        'credit_facility_id'            => $facility?->id,
+                        'financial_institution_user_id' => $facility?->financial_institution_user_id,
+                        'credit_application_id'         => $facility?->credit_application_id,
+                        'amount'                        => $refundAmount,
+                    ];
+
+                    $allocation->amount = (float) $allocation->amount - $refundAmount;
+                    if ((float) $allocation->amount <= 0.000001) {
+                        $allocation->delete();
+                    } else {
+                        $allocation->save();
+                    }
+                }
+            }
+
+            $directWalletRefundAmount = round($directWalletRefundAmount, 6);
+            if ($directWalletRefundAmount > 0) {
+                WalletTransaction::create([
+                    'user_id'        => $user->id,
+                    'order_id'       => $order->id,
+                    'type'           => 'wallet_purchase_refund',
+                    'direction'      => 'credit',
+                    'amount'         => $directWalletRefundAmount,
+                    'balance_before' => $runningBalance,
+                    'balance_after'  => $runningBalance + $directWalletRefundAmount,
+                    'description'    => $description,
+                    'meta'           => $meta,
+                ]);
+
+                $runningBalance += $directWalletRefundAmount;
+            }
+
+            $cashRefundAmount = round($cashRefundAmount, 6);
+            if ($cashRefundAmount > 0) {
+                WalletTransaction::create([
+                    'user_id'        => $user->id,
+                    'order_id'       => $order->id,
+                    'type'           => 'cash_payment_wallet_refund',
+                    'direction'      => 'credit',
+                    'amount'         => $cashRefundAmount,
+                    'balance_before' => $runningBalance,
+                    'balance_after'  => $runningBalance + $cashRefundAmount,
+                    'description'    => $description,
+                    'meta'           => $meta,
+                ]);
+
+                $runningBalance += $cashRefundAmount;
+            }
+
+            if ($facilityRefundAmount > 0 || $directWalletRefundAmount > 0 || $cashRefundAmount > 0) {
+                $user->balance = $runningBalance;
+                $user->save();
+            }
+
+            return [
+                'facility_refunds'             => $facilityRefunds,
+                'direct_wallet_refund_amount'  => $directWalletRefundAmount,
+                'cash_wallet_refund_amount'    => $cashRefundAmount,
+            ];
+        });
+    }
+
+    public function reverseReturnRefund(Order $order, array $refundMeta, string $description, array $meta = []): void
+    {
+        DB::transaction(function () use ($order, $refundMeta, $description, $meta) {
+            $totalReversalAmount = round(
+                collect($refundMeta['facility_refunds'] ?? [])->sum('amount')
+                + (float) ($refundMeta['direct_wallet_refund_amount'] ?? 0)
+                + (float) ($refundMeta['cash_wallet_refund_amount'] ?? 0),
+                6
+            );
+
+            if ($totalReversalAmount <= 0) {
+                return;
+            }
+
+            $user = User::lockForUpdate()->findOrFail($order->user_id);
+            $runningBalance = (float) $user->balance;
+
+            if ($runningBalance + 0.000001 < $totalReversalAmount) {
+                throw new Exception('لا يمكن تعديل أو حذف المرتجع لأن رصيد المحفظة الحالي لا يكفي لعكس مبلغ الاسترداد.');
+            }
+
+            foreach ($refundMeta['facility_refunds'] ?? [] as $facilityRefund) {
+                $amount = round((float) ($facilityRefund['amount'] ?? 0), 6);
+                if ($amount <= 0) {
+                    continue;
+                }
+
+                $facility = CreditFacility::lockForUpdate()->find($facilityRefund['credit_facility_id'] ?? null);
+                if ($facility) {
+                    if ((float) $facility->available_amount + 0.000001 < $amount) {
+                        throw new Exception('لا يمكن عكس استرداد التمويل لأن الرصيد المتاح في المحفظة الممولة لم يعد كافياً.');
+                    }
+
+                    $facility->available_amount = (float) $facility->available_amount - $amount;
+                    $facility->utilized_amount = (float) $facility->utilized_amount + $amount;
+                    $facility->save();
+
+                    CreditFacilityOrderAllocation::create([
+                        'credit_facility_id' => $facility->id,
+                        'order_id'           => $order->id,
+                        'amount'             => $amount,
+                    ]);
+                }
+
+                WalletTransaction::create([
+                    'user_id'                       => $user->id,
+                    'financial_institution_user_id' => $facilityRefund['financial_institution_user_id'] ?? null,
+                    'credit_application_id'         => $facilityRefund['credit_application_id'] ?? null,
+                    'credit_facility_id'            => $facilityRefund['credit_facility_id'] ?? null,
+                    'order_id'                      => $order->id,
+                    'type'                          => 'pay_later_return_reversal',
+                    'direction'                     => 'debit',
+                    'amount'                        => $amount,
+                    'balance_before'                => $runningBalance,
+                    'balance_after'                 => $runningBalance - $amount,
+                    'description'                   => $description,
+                    'meta'                          => $meta,
+                ]);
+
+                $runningBalance -= $amount;
+            }
+
+            $directWalletRefundAmount = round((float) ($refundMeta['direct_wallet_refund_amount'] ?? 0), 6);
+            if ($directWalletRefundAmount > 0) {
+                WalletTransaction::create([
+                    'user_id'        => $user->id,
+                    'order_id'       => $order->id,
+                    'type'           => 'wallet_purchase_refund_reversal',
+                    'direction'      => 'debit',
+                    'amount'         => $directWalletRefundAmount,
+                    'balance_before' => $runningBalance,
+                    'balance_after'  => $runningBalance - $directWalletRefundAmount,
+                    'description'    => $description,
+                    'meta'           => $meta,
+                ]);
+
+                $runningBalance -= $directWalletRefundAmount;
+            }
+
+            $cashRefundAmount = round((float) ($refundMeta['cash_wallet_refund_amount'] ?? 0), 6);
+            if ($cashRefundAmount > 0) {
+                WalletTransaction::create([
+                    'user_id'        => $user->id,
+                    'order_id'       => $order->id,
+                    'type'           => 'cash_payment_wallet_refund_reversal',
+                    'direction'      => 'debit',
+                    'amount'         => $cashRefundAmount,
+                    'balance_before' => $runningBalance,
+                    'balance_after'  => $runningBalance - $cashRefundAmount,
+                    'description'    => $description,
+                    'meta'           => $meta,
+                ]);
+
+                $runningBalance -= $cashRefundAmount;
+            }
+
+            $user->balance = $runningBalance;
+            $user->save();
+        });
+    }
 }

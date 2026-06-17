@@ -14,24 +14,32 @@ class ReturnOrder extends Model implements HasMedia
 
     protected $fillable = [
         'user_id',
+        'order_id',
         'date',
         'reference_no',
+        'order_serial_no',
         'subtotal',
         'tax',
         'discount',
         'total',
+        'refund_amount',
+        'refund_meta',
         'reason'
     ];
 
     protected $casts = [
         'id'            => 'integer',
         'user_id'       => 'integer',
+        'order_id'      => 'integer',
         'date'          => 'datetime',
         'reference_no'  => 'string',
+        'order_serial_no' => 'string',
         'subtotal'      => 'decimal:6',
         'tax'           => 'decimal:6',
         'discount'      => 'decimal:6',
         'total'         => 'decimal:6',
+        'refund_amount' => 'decimal:6',
+        'refund_meta'   => 'array',
         'reason'        => 'string',
     ];
 
@@ -42,6 +50,11 @@ class ReturnOrder extends Model implements HasMedia
     public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
        return $this->belongsTo(User::class, 'user_id', 'id')->withTrashed();
+    }
+
+    public function order(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Order::class);
     }
     public function creator()
     {

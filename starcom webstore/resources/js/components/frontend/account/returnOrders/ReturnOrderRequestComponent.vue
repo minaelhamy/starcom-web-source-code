@@ -52,12 +52,12 @@
 
                                 <div class="flex items-center gap-1 w-20 p-1 rounded-full bg-[#F7F7FC]">
                                     <button @click.prevent="quantityDecrement(index, product)" type="button"
-                                        :class="product.quantity === 1 ? 'cursor-not-allowed text-[#A0A3BD]' : 'text-primary'"
+                                        :class="product.quantity <= 0.01 ? 'cursor-not-allowed text-[#A0A3BD]' : 'text-primary'"
                                         class="lab-fill-circle-minus text-lg leading-none">
                                     </button>
                                     <input type="number" :id="'quantityInput' + index"
                                         v-on:keyup="quantityUp($event, index, product)"
-                                        v-on:keypress="onlyNumber($event)" v-model="product.quantity"
+                                        step="0.01" min="0.01" v-model="product.quantity"
                                         class="text-center w-full h-5 text-sm font-medium">
                                     <button @click.prevent="quantityIncrement(index, product)" type="button"
                                         :class="product.quantity === product.order_quantity ? 'cursor-not-allowed text-[#A0A3BD]' : 'text-primary'"
@@ -171,6 +171,21 @@ export default {
         },
         onlyNumber: function (e) {
             return appService.onlyNumber(e);
+        },
+        normalizeQuantity(value, maxQuantity) {
+            let quantity = Number.parseFloat(value);
+
+            if (Number.isNaN(quantity) || quantity <= 0) {
+                quantity = 0.01;
+            }
+
+            quantity = Math.round(quantity * 100) / 100;
+
+            if (quantity > maxQuantity) {
+                quantity = maxQuantity;
+            }
+
+            return quantity;
         },
         close: function () {
             this.errors.products = ""
@@ -289,7 +304,7 @@ export default {
                 );
 
                 if (product.quantity < this.qty[quantityIndex].max_quantity) {
-                    product.quantity += 1;
+                    product.quantity = this.normalizeQuantity(product.quantity + 0.01, this.qty[quantityIndex].max_quantity);
                 } else {
                     product.quantity = this.qty[quantityIndex].max_quantity;
                 }
@@ -316,8 +331,8 @@ export default {
                 quantity: product.quantity,
                 max_quantity: product.order_quantity
             }
-            if (product.quantity > 1) {
-                product.quantity -= 1;
+            if (product.quantity > 0.01) {
+                product.quantity = this.normalizeQuantity(product.quantity - 0.01, product.order_quantity);
             }
             let quantityExist = this.qty.find(p =>
                 p.product_id === product.product_id
@@ -328,8 +343,8 @@ export default {
 
             if (!quantityExist) {
                 quantity = product.quantity;
-                if (quantity === 0) {
-                    quantity = 1;
+                if (quantity <= 0) {
+                    quantity = 0.01;
                 }
                 quantityData.quantity = quantity;
                 this.qty.push(quantityData);
@@ -338,8 +353,8 @@ export default {
                     p.product_id === product.product_id
                 );
 
-                if (quantity === 0) {
-                    quantity = 1;
+                if (quantity <= 0) {
+                    quantity = 0.01;
                 }
                 this.qty[quantityIndex].quantity = quantity;
             }
@@ -365,17 +380,9 @@ export default {
                 max_quantity: product.order_quantity
             }
 
-            let quantity = parseInt(e.target.value);
+            let quantity = this.normalizeQuantity(e.target.value, product.order_quantity);
             let quantityIndex = null;
-
-            if (quantity === 0 || quantity < 0) {
-                quantity = 1;
-                product.quantity = quantity;
-            }
-            if (quantity > product.order_quantity) {
-                quantity = product.order_quantity
-                product.quantity = product.order_quantity
-            }
+            product.quantity = quantity;
 
             let quantityExist = this.qty.find(p =>
                 p.product_id === product.product_id

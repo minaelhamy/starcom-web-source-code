@@ -9,7 +9,9 @@ use App\Services\ReturnOrderService;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Requests\PaginateRequest;
 use App\Http\Requests\ReturnOrderRequest;
+use App\Http\Resources\OrderDetailsResource;
 use App\Http\Resources\ReturnOrderResource;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use App\Http\Resources\ReturnOrderDetailsResource;
@@ -36,6 +38,8 @@ class ReturnOrderController extends AdminController implements HasMiddleware
             new Middleware('permission:return_order_edit', only: ['update']),
             new Middleware('permission:return_order_delete', only: ['destroy']),
             new Middleware('permission:return_order_show', only: ['show']),
+            new Middleware('permission:return_order_create', only: ['invoice']),
+            new Middleware('permission:return_order_edit', only: ['invoice']),
         ];
     }
 
@@ -100,6 +104,20 @@ class ReturnOrderController extends AdminController implements HasMiddleware
     {
         try {
             return $this->returnOrderService->downloadAttachment($returnOrder);
+        } catch (Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function invoice(Request $request, string $invoiceNumber): \Illuminate\Http\Response | OrderDetailsResource | \Illuminate\Contracts\Foundation\Application | \Illuminate\Contracts\Routing\ResponseFactory
+    {
+        try {
+            $returnOrder = null;
+            if ($request->filled('return_order_id')) {
+                $returnOrder = ReturnOrder::with('stocks')->find($request->integer('return_order_id'));
+            }
+
+            return new OrderDetailsResource($this->returnOrderService->invoiceLookup($invoiceNumber, $returnOrder));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

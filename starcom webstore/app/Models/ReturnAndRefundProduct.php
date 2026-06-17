@@ -14,7 +14,7 @@ class ReturnAndRefundProduct extends Model
         'product_id'           => 'integer',
         'variation_id'         => 'integer',
         'variation_names'      => 'string',
-        'quantity'             => 'integer',
+        'quantity'             => 'decimal:2',
         'price'                => 'decimal:6',
         'total'                => 'decimal:6',
         'return_price'         => 'decimal:6',

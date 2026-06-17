@@ -720,6 +720,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
 
     Route::prefix('return-order')->name('return-order.')->group(function () {
         Route::get('/', [ReturnOrderController::class, 'index']);
+        Route::get('/invoice/{invoiceNumber}', [ReturnOrderController::class, 'invoice']);
         Route::post('/', [ReturnOrderController::class, 'store']);
         Route::get('/show/{returnOrder}', [ReturnOrderController::class, 'show']);
         Route::get('/edit/{returnOrder}', [ReturnOrderController::class, 'edit']);

@@ -38,4 +38,31 @@ class ReturnAndRefundRequest extends FormRequest
             "return_reason_id.required" => "The return reason field is required."
         ];
     }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $products = json_decode($this->products, true);
+
+            if (!is_array($products) || count($products) === 0) {
+                $validator->errors()->add('products', trans('all.message.product_invalid'));
+                return;
+            }
+
+            foreach ($products as $product) {
+                $quantity = round((float) ($product['quantity'] ?? 0), 2);
+                $maxQuantity = round((float) ($product['order_quantity'] ?? 0), 2);
+
+                if ($quantity <= 0) {
+                    $validator->errors()->add('products', trans('all.message.product_quantity_invalid'));
+                    return;
+                }
+
+                if ($maxQuantity > 0 && $quantity - $maxQuantity > 0.00001) {
+                    $validator->errors()->add('products', trans('all.message.product_quantity_invalid'));
+                    return;
+                }
+            }
+        });
+    }
 }

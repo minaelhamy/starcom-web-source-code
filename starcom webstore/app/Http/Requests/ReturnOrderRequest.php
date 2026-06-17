@@ -23,7 +23,8 @@ class ReturnOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user_id'       => ['required','not_in:0','not_in:null'],
+            'user_id'       => ['nullable', 'numeric'],
+            'order_id'      => ['required', 'numeric', 'exists:orders,id'],
             'subtotal'      => ['required', 'numeric'],
             'date'          => ['required','string'],
             'total'         => ['required', 'numeric'],
@@ -41,13 +42,17 @@ class ReturnOrderRequest extends FormRequest
             $products = json_decode($this->products, true);
             if (is_array($products) && count($products)) {
                 foreach ($products as $product) {
-                    if ($product['quantity'] < 1 || !is_numeric($product['quantity']) || !is_int((int) $product['quantity'])) {
+                    $quantity = round((float) ($product['quantity'] ?? 0), 2);
+                    if ($quantity <= 0 || !is_numeric($product['quantity'] ?? null)) {
                         $status = true;
                         $message = trans('all.message.product_quantity_invalid');
-                    } else if (!is_numeric($product['price']) || !is_double((float) $product['price']) || $product['price'] == 0 || $product['price'] < 0) {
+                    } else if (empty($product['order_stock_id']) || !is_numeric($product['order_stock_id'])) {
+                        $status = true;
+                        $message = trans('all.message.product_invalid');
+                    } else if (!is_numeric($product['price']) || (float) $product['price'] <= 0) {
                         $status = true;
                         $message = trans('all.message.product_price_invalid');
-                    } else if (!is_numeric($product['total']) || !is_double((float) $product['total'])) {
+                    } else if (!is_numeric($product['total'])) {
                         $status = true;
                         $message = trans('all.message.product_price_total_invalid');
                     }

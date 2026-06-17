@@ -9,214 +9,152 @@
                 <div class="db-card-body">
                     <div class="row">
                         <div class="form-col-12 sm:form-col-6">
-                            <label class="db-field-title required">{{
-                                $t("label.date")
-                            }}</label>
-                            <Datepicker hideInputIcon autoApply v-model="props.form.date" :enableTimePicker="true"
-                                :is24="false" :monthChangeOnScroll="false" utc="false"
-                                :input-class-name="errors.date ? 'invalid' : ''">
+                            <label class="db-field-title required">{{ $t("label.date") }}</label>
+                            <Datepicker
+                                hideInputIcon
+                                autoApply
+                                v-model="props.form.date"
+                                :enableTimePicker="true"
+                                :is24="false"
+                                :monthChangeOnScroll="false"
+                                utc="false"
+                                :input-class-name="errors.date ? 'invalid' : ''"
+                            >
                                 <template #am-pm-button="{ toggle, value }">
                                     <button @click="toggle">{{ value }}</button>
                                 </template>
                             </Datepicker>
-
-                            <small class="db-field-alert" v-if="errors.date">{{
-                                errors.date[0]
-                            }}</small>
+                            <small class="db-field-alert" v-if="errors.date">{{ errors.date[0] }}</small>
                         </div>
+
                         <div class="form-col-12 sm:form-col-6">
-                            <label class="db-field-title ">{{
-                                $t("label.reference_no")
-                            }}</label>
-                            <input name="reference_no" v-model="props.form.reference_no" type="text"
-                                class="db-field-control" />
+                            <label class="db-field-title">{{ $t("label.reference_no") }}</label>
+                            <input name="reference_no" v-model="props.form.reference_no" type="text" class="db-field-control" />
                             <small class="db-field-alert" v-if="errors.reference_no">{{ errors.reference_no[0] }}</small>
                         </div>
-                        <div class="form-col-12 sm:form-col-6">
-                            <label class="db-field-title required">{{ $t("label.customer") }}</label>
 
-                            <vue-select v-model="props.form.user_id" class="db-field-control f-b-custom-select"
-                                :options="users" label-by="name" value-by="id" :closeOnSelect="true" :searchable="true"
-                                :clearOnClose="true" placeholder="--" search-placeholder="--" />
-
-                            <small class="db-field-alert" v-if="errors.user_id">{{ errors.user_id[0] }}</small>
-                        </div>
-                        <div class="form-col-12 sm:form-col-6">
-                            <label class="db-field-title ">{{
-                                $t("label.attachments")
-                            }}</label>
-                            <input @change="changeFile" v-bind:class="errors.file ? 'invalid' : ''" type="file"
-                                ref="fileProperty" accept="image/png , image/jpeg, image/jpg , application/pdf "
-                                class="db-field-control cursor-pointer" id="image" />
-                            <small class="db-field-alert" v-if="errors.file">{{
-                                errors.file[0]
-                            }}</small>
-                        </div>
                         <div class="form-col-12">
                             <div class="rounded-lg border border-amber-100">
                                 <h4 class="w-full px-4 py-3 font-medium rounded-t-lg bg-amber-100 text-amber-600">
-                                    {{ $t("message.selection_message") }}
+                                    {{ $t("label.order_serial_no") }}
                                 </h4>
-                                <div class="row p-5">
-                                    <div class="form-col-12 ">
-                                        <label class="db-field-title required">{{
-                                            $t("label.add_products")
-                                        }}</label>
-                                        <div class="relative w-full h-12">
-                                            <button type="button"
-                                                class="lab-line-qrcode absolute top-1/2 -translate-y-1/2 left-4 z-10 cursor-pointer"></button>
-                                            <vue-select class="h-full pr-4 pl-11" v-model="productId" :options="products"
-                                                label-by="name" value-by="id" :closeOnSelect="true" :searchable="true"
-                                                :clearOnClose="true" :placeholder="$t('label.select_one')
-                                                    " search-placeholder="--"
-                                                @update:modelValue="selectProduct($event)" />
+                                <div class="p-5">
+                                    <div class="flex flex-wrap items-end gap-3">
+                                        <div class="flex-1 min-w-[260px]">
+                                            <label class="db-field-title required">{{ $t("label.order_serial_no") }}</label>
+                                            <input
+                                                v-model="invoiceNumber"
+                                                type="text"
+                                                class="db-field-control"
+                                                :class="errors.order_id ? 'invalid' : ''"
+                                                :placeholder="$t('label.order_serial_no')"
+                                            />
+                                            <small class="db-field-alert" v-if="errors.order_id">{{ errors.order_id[0] }}</small>
                                         </div>
-                                        <small class="db-field-alert" v-if="errors.products">{{ errors.products[0]
-                                        }}</small>
+                                        <button type="button" class="db-btn text-white bg-primary" @click="fetchInvoice">
+                                            <i class="fa-solid fa-magnifying-glass"></i>
+                                            <span class="tracking-wide">{{ $t("button.search") }}</span>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="form-col-12">
-                            <label class="db-field-title">{{
-                                $t("label.products")
-                            }}</label>
+                        <div class="form-col-12" v-if="invoice">
                             <div class="db-table-responsive border rounded-md">
                                 <table class="db-table">
-                                    <thead class="db-table-head border-t-0">
-                                        <tr class="db-table-head-tr">
-                                            <th class="db-table-head-th">
-                                                {{ $t("label.product") }}
-                                            </th>
-                                            <th class="db-table-head-th">
-                                                {{ $t("label.unit_cost") }}
-                                            </th>
-                                            <th class="db-table-head-th">
-                                                {{ $t("label.quantity") }}
-                                            </th>
-                                            <th class="db-table-head-th">
-                                                {{ $t("label.discount") }}
-                                            </th>
-                                            <th class="db-table-head-th">
-                                                {{ $t("label.taxes") }}
-                                            </th>
-                                            <th class="db-table-head-th">
-                                                {{ $t("label.sub_total") }}
-                                            </th>
-                                            <th class="db-table-head-th">
-                                                {{ $t("label.actions") }}
-                                            </th>
-                                        </tr>
-                                    </thead>
                                     <tbody class="db-table-body">
-                                        <tr v-for="(
-                                                    item, index
-                                                ) of datatable" :key="index" class="db-table-body-tr">
-                                            <td class="db-table-body-td font-medium">
-                                                {{ item.name }}
-                                                <span v-if="item.variation_names">
-                                                    ( {{ $t('label.variation') }} : {{ item.variation_names }})
-                                                </span>
-                                            </td>
-                                            <td class="db-table-body-td">
-                                                {{
-                                                    floatFormat(item.price)
-                                                }}
-                                            </td>
-                                            <td class="db-table-body-td">
-                                                <input v-on:keypress="
-                                                    onlyNumber($event)
-                                                    " @keyup="updateQuantity(index)" v-model="item.quantity"
-                                                    @click=" $event.target.select()" type="number" min="1"
-                                                    class="db-field-control" />
-                                            </td>
-                                            <td class="db-table-body-td">
-                                                {{ Number(item.total_discount) === 0 ? "" : "-" }}
-                                                {{ floatFormat(item.total_discount) }}
-                                            </td>
-                                            <td class="db-table-body-td">
-                                                {{
-                                                    floatFormat(
-                                                        item.total_tax
-                                                    )
-                                                }}
-                                                ({{
-                                                    floatFormat(item.total_tax_rate)
-                                                }}
-                                                %)
-                                            </td>
-                                            <td class="db-table-body-td">
-                                                {{
-                                                    floatFormat(item.total)
-                                                }}
-                                            </td>
-                                            <td class="db-table-body-td">
-                                                <SmIconSidebarModalEditComponent @click.prevent="editDatatable(index)" />
-                                                <SmIconDeleteComponent @click.prevent="removeProduct(index)" />
-                                            </td>
+                                        <tr class="db-table-body-tr">
+                                            <td class="db-table-body-td font-medium">{{ $t("label.order_serial_no") }}</td>
+                                            <td class="db-table-body-td">#{{ invoice.order_serial_no }}</td>
+                                            <td class="db-table-body-td font-medium">{{ $t("label.customer") }}</td>
+                                            <td class="db-table-body-td">{{ invoice.user?.name }}</td>
                                         </tr>
-                                        <tr>
-                                            <th class="db-table-body-td" colspan="2">
-                                                {{ $t("label.total") }}
-                                            </th>
-                                            <th class="db-table-body-td">
-                                                <span class="pl-3">
-                                                    {{
-                                                        Number.isInteger(
-                                                            totalQuantity
-                                                        )
-                                                        ? totalQuantity
-                                                        : 0
-                                                    }}
-                                                </span>
-                                            </th>
-                                            <th class="db-table-body-td">
-                                                {{
-                                                    floatFormat(
-                                                        totalDiscount
-                                                    )
-                                                }}
-                                            </th>
-                                            <th class="db-table-body-td">
-                                                {{ floatFormat(totalTax) }}
-                                            </th>
-                                            <th class="db-table-body-td">
-                                                {{
-                                                    floatFormat(totalPrice)
-                                                }}
-                                            </th>
-                                            <th class="db-table-body-td"></th>
+                                        <tr class="db-table-body-tr">
+                                            <td class="db-table-body-td font-medium">{{ $t("label.payment_status") }}</td>
+                                            <td class="db-table-body-td">{{ invoice.payment_status === 5 ? "مدفوع" : "غير مدفوع" }}</td>
+                                            <td class="db-table-body-td font-medium">{{ $t("label.total") }}</td>
+                                            <td class="db-table-body-td">{{ invoice.total_currency_price }}</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <ProductModalComponent :item="selectedProduct" :modal="modal" v-on:submitItem="modalSubmit"
-                            ref="productModal" />
+                        <div class="form-col-12 sm:form-col-6">
+                            <label class="db-field-title">{{ $t("label.attachments") }}</label>
+                            <input
+                                @change="changeFile"
+                                :class="errors.file ? 'invalid' : ''"
+                                type="file"
+                                ref="fileProperty"
+                                accept="image/png , image/jpeg, image/jpg , application/pdf "
+                                class="db-field-control cursor-pointer"
+                            />
+                            <small class="db-field-alert" v-if="errors.file">{{ errors.file[0] }}</small>
+                        </div>
+
+                        <div class="form-col-12">
+                            <label class="db-field-title">{{ $t("label.products") }}</label>
+                            <div class="db-table-responsive border rounded-md">
+                                <table class="db-table">
+                                    <thead class="db-table-head border-t-0">
+                                        <tr class="db-table-head-tr">
+                                            <th class="db-table-head-th">{{ $t("label.product") }}</th>
+                                            <th class="db-table-head-th">{{ $t("label.unit_cost") }}</th>
+                                            <th class="db-table-head-th">الكمية الحالية بالفاتورة</th>
+                                            <th class="db-table-head-th">كمية المرتجع</th>
+                                            <th class="db-table-head-th">{{ $t("label.sub_total") }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="db-table-body">
+                                        <tr v-for="(item, index) in datatable" :key="index" class="db-table-body-tr">
+                                            <td class="db-table-body-td font-medium">
+                                                {{ item.name }}
+                                                <span v-if="item.variation_names">
+                                                    ( {{ $t('label.variation') }} : {{ item.variation_names }})
+                                                </span>
+                                            </td>
+                                            <td class="db-table-body-td">{{ floatFormat(item.price) }}</td>
+                                            <td class="db-table-body-td">{{ floatFormat(item.max_quantity) }}</td>
+                                            <td class="db-table-body-td">
+                                                <input
+                                                    v-model="item.quantity"
+                                                    @input="updateQuantity(index)"
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    class="db-field-control"
+                                                />
+                                            </td>
+                                            <td class="db-table-body-td">{{ floatFormat(item.total) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="db-table-body-td" colspan="2">{{ $t("label.total") }}</th>
+                                            <th class="db-table-body-td">{{ floatFormat(invoiceRemainingQuantity) }}</th>
+                                            <th class="db-table-body-td">{{ floatFormat(totalQuantity) }}</th>
+                                            <th class="db-table-body-td">{{ floatFormat(totalPrice) }}</th>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <small class="db-field-alert" v-if="errors.products">{{ errors.products[0] }}</small>
+                        </div>
                     </div>
+
                     <div class="row pt-5">
                         <div class="form-col-12">
-                            <div :class="errors.note
-                                ? 'invalid textarea-error-box-style'
-                                : ''
-                                ">
-                                <label class="db-field-title">{{
-                                    $t("label.reason")
-                                }}</label>
+                            <div :class="errors.note ? 'invalid textarea-error-box-style' : ''">
+                                <label class="db-field-title">{{ $t("label.reason") }}</label>
                                 <quill-editor v-model:value="props.form.reason" class="!h-40 textarea-border-radius" />
                                 <small class="db-field-alert" v-if="errors.reason">{{ errors.reason[0] }}</small>
                             </div>
                         </div>
                         <div class="form-col-12">
                             <div class="flex flex-wrap gap-3">
-                                <button v-if="permissionChecker('return_order_create')" type="submit"
-                                    class="db-btn text-white bg-primary">
+                                <button v-if="permissionChecker('return_order_create') || permissionChecker('return_order_edit')" type="submit" class="db-btn text-white bg-primary">
                                     <i class="fa-solid fa-circle-check"></i>
-                                    <span class="tracking-wide">{{
-                                        $t("button.save")
-                                    }}</span>
+                                    <span class="tracking-wide">{{ $t("button.save") }}</span>
                                 </button>
                             </div>
                         </div>
@@ -228,36 +166,29 @@
 </template>
 
 <script lang="js">
+import axios from "axios";
 import LoadingComponent from "../components/LoadingComponent";
 import Datepicker from "@vuepic/vue-datepicker";
-import { quillEditor } from 'vue3-quill'
+import { quillEditor } from "vue3-quill";
 import alertService from "../../../services/alertService";
-import ProductModalComponent from "../components/product/ProductModalComponent"
-import appService from '../../../services/appService';
-import SmIconDeleteComponent from "../components/buttons/SmIconDeleteComponent.vue";
-import SmIconSidebarModalEditComponent from "../components/buttons/SmIconSidebarModalEditComponent";
+import appService from "../../../services/appService";
 
 export default {
-    name: 'ReturnOrderCreateAndEditComponent',
+    name: "ReturnOrderCreateAndEditComponent",
     components: {
         quillEditor,
         LoadingComponent,
         Datepicker,
-        ProductModalComponent,
-        SmIconDeleteComponent,
-        SmIconSidebarModalEditComponent
     },
     data() {
         return {
             file: "",
-            productId: null,
             errors: {},
             datatable: [],
+            invoice: null,
+            invoiceNumber: "",
             loading: {
-                isActive: false
-            },
-            modal: {
-                isShowModal: false
+                isActive: false,
             },
             props: {
                 form: {
@@ -265,330 +196,242 @@ export default {
                     date: "",
                     total: null,
                     user_id: null,
+                    order_id: null,
+                    order_serial_no: "",
                     reference_no: "",
                     reason: "",
-                    products: []
-                }
+                    products: [],
+                },
             },
-            selectedProduct: {
-                name: "",
-                quantity: 0,
-                tax_id: [],
-                price: 0,
-                discount: 0,
-                variation_id: 0,
-                variation_names: "",
-                product_id: 0,
-                sku: "",
-                is_variation: false,
-                mode: 'add'
-            },
-            dataTableIndex: null
-        }
+            existingReturnProducts: [],
+        };
     },
     mounted() {
-        this.productList();
-        this.$store.dispatch('user/lists', { vuex: true, order_type: 'asc' });
         this.returnOrderInfo();
     },
     computed: {
-        setting: function () {
-            return this.$store.getters['frontendSetting/lists']
+        setting() {
+            return this.$store.getters["frontendSetting/lists"];
         },
-        products: function () {
-            return this.$store.getters['product/simpleList'];
+        totalPrice() {
+            return this.datatable.reduce((sum, item) => sum + Number(item.total || 0), 0);
         },
-        subtotal: function () {
-            return this.datatable.reduce((sum, item) => {
-                return sum + +item.subtotal;
-            }, 0);
+        totalQuantity() {
+            return this.datatable.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
         },
-        users: function () {
-            return this.$store.getters['user/lists'];
-        },
-        totalPrice: function () {
-            return this.datatable.reduce((sum, item) => {
-                return sum + +item.total;
-            }, 0);
-        },
-        totalQuantity: function () {
-            return this.datatable.reduce((sum, item) => {
-                return sum + +item.quantity;
-            }, 0);
-        },
-        totalDiscount: function () {
-            return this.datatable.reduce((sum, item) => {
-                return sum + +item.total_discount;
-            }, 0);
-        },
-        totalTax: function () {
-            return this.datatable.reduce((sum, item) => {
-                return sum + +item.total_tax;
-            }, 0);
+        invoiceRemainingQuantity() {
+            return this.datatable.reduce((sum, item) => sum + Number(item.max_quantity || 0), 0);
         },
     },
     methods: {
         permissionChecker(e) {
             return appService.permissionChecker(e);
         },
-        changeFile: function (e) {
+        changeFile(e) {
             this.file = e.target.files[0];
         },
-        floatFormat: function (num) {
+        floatFormat(num) {
             return appService.floatFormat(num, this.setting.site_digit_after_decimal_point);
         },
-        onlyNumber: function (e) {
-            return appService.onlyNumber(e);
-        },
-        taxRateById(id) {
-            return this.$refs.productModal.taxRateById(id);
-        },
-        selectProduct: function (id) {
-            const product = this.products.find(product => product.id === id);
-            if (product) {
-                this.selectedProduct = {
-                    name: product.name,
-                    quantity: 1,
-                    sku: product.sku,
-                    tax_id: product.taxes,
-                    price: product.buying_price,
-                    discount: 0,
-                    variation_id: 0,
-                    variation_names: '',
-                    product_id: product.id,
-                    is_variation: product.is_variation,
-                    mode: 'add'
-                }
-
-                if (product.is_variation) {
-                    this.loadInitialVariations(product.id);
-                    this.modal.isShowModal = true;
-                } else {
-                    this.productCheck();
-                }
-
-            }
-        },
-        modalSubmit: function () {
-            this.productCheck();
-            this.modal.isShowModal = false;
-            this.productId = null;
-        },
-        productCheck: function () {
-            let productExist = null;
-            let oldQuantity = null;
-            if (this.selectedProduct.mode === 'edit') {
-                productExist = this.datatable[this.dataTableIndex];
-            } else {
-                if (this.datatable.length > 0) {
-                    productExist = this.datatable.find(p =>
-                        p.product_id === this.selectedProduct.product_id && p.variation_id === this.selectedProduct.variation_id
-                    );
-                }
+        normalizeQuantity(value, maxQuantity) {
+            let quantity = Number.parseFloat(value);
+            if (Number.isNaN(quantity) || quantity < 0) {
+                quantity = 0;
             }
 
-            if (productExist) {
-                oldQuantity = this.selectedProduct.mode === 'edit' ? 0 : productExist.quantity;
+            quantity = Math.round(quantity * 100) / 100;
+            if (quantity > maxQuantity) {
+                quantity = maxQuantity;
             }
 
-            let tax = 0;
-            let total_tax = 0;
-            let total_tax_rate = 0;
-            let totalDiscount = this.selectedProduct.discount * this.selectedProduct.quantity;
-            if (this.selectedProduct.tax_id.length > 0) {
-                for (let i = 0; i < this.selectedProduct.tax_id.length; i++) {
-                    const id = this.selectedProduct.tax_id[i];
-                    const tax_rate = this.taxRateById(id);
-                    tax += +((this.selectedProduct.price * tax_rate) / 100);
-                    total_tax_rate += +tax_rate;
-                }
-                total_tax = tax * this.selectedProduct.quantity;
-            }
-
-            let finalItem = {
-                mode: this.selectedProduct.mode,
-                name: this.selectedProduct.name,
-                quantity: this.selectedProduct.quantity + oldQuantity,
-                tax_id: this.selectedProduct.tax_id,
-                price: +this.selectedProduct.price,
-                discount: this.selectedProduct.discount,
-                variation_id: this.selectedProduct.variation_id,
-                variation_names: this.selectedProduct.variation_names,
-                product_id: this.selectedProduct.product_id,
-                is_variation: this.selectedProduct.is_variation,
-                tax: tax,
-                total_tax: total_tax,
-                total_tax_rate: total_tax_rate,
-                total_discount: totalDiscount,
-                subtotal: this.selectedProduct.quantity * this.selectedProduct.price,
-                total: (+(this.selectedProduct.quantity * this.selectedProduct.price) + (+total_tax) - (+totalDiscount)).toFixed(2),
-                sku: this.selectedProduct.sku,
-                item_id: this.selectedProduct.is_variation ? this.selectedProduct.variation_id : this.selectedProduct.product_id
-            }
-
-            if (!productExist) {
-                this.datatable.push(finalItem);
-            } else {
-                productExist.quantity = finalItem.quantity;
-                productExist.tax_id = finalItem.tax_id;
-                productExist.price = finalItem.price;
-                productExist.discount = finalItem.discount;
-                productExist.tax = finalItem.tax;
-                productExist.total_tax = finalItem.total_tax;
-                productExist.total_tax_rate = finalItem.total_tax_rate;
-                productExist.total_discount = finalItem.total_discount;
-                productExist.subtotal = finalItem.subtotal;
-                productExist.total = finalItem.total;
-                productExist.sku = finalItem.sku;
-                productExist.item_id = finalItem.is_variation ? finalItem.variation_id : finalItem.product_id;
-                productExist.variation_names = finalItem.variation_names;
-                productExist.variation_id = finalItem.variation_id;
-            }
+            return quantity;
         },
-        editDatatable: function (index) {
-            const product = this.datatable[index];
-            this.selectedProduct = {
-                name: product.name,
-                quantity: product.quantity,
-                tax_id: product.tax_id.length === 0 ? [] : product.tax_id,
-                price: product.price,
-                discount: product.discount,
-                variation_id: product.variation_id,
-                variation_names: product.variation_names,
-                product_id: product.product_id,
-                is_variation: product.is_variation,
-                sku: product.sku,
-                mode: 'edit'
-            }
-            this.dataTableIndex = index;
-            this.loadInitialVariations(product.product_id);
-            this.modal.isShowModal = true;
+        updateQuantity(index) {
+            const item = this.datatable[index];
+            item.quantity = this.normalizeQuantity(item.quantity, item.max_quantity);
+            item.total_discount = Number((item.discount_per_unit * item.quantity).toFixed(6));
+            item.total_tax = Number((item.tax_per_unit * item.quantity).toFixed(6));
+            item.subtotal = Number((item.price * item.quantity).toFixed(6));
+            item.total = Number((item.subtotal + item.total_tax - item.total_discount).toFixed(6));
         },
-        save: function () {
+        async fetchInvoice() {
+            if (!this.invoiceNumber) {
+                alertService.error("يرجى إدخال رقم الفاتورة أولاً.");
+                return;
+            }
+
+            this.loading.isActive = true;
             try {
+                const query = this.props.form.return_order_id
+                    ? `?return_order_id=${this.props.form.return_order_id}`
+                    : "";
+                const res = await axios.get(`admin/return-order/invoice/${this.invoiceNumber}${query}`);
+                this.bindInvoice(res.data.data);
+            } catch (err) {
+                this.invoice = null;
+                this.datatable = [];
+                alertService.error(err.response?.data?.message || "تعذر تحميل الفاتورة.");
+            } finally {
+                this.loading.isActive = false;
+            }
+        },
+        bindInvoice(order) {
+            this.invoice = order;
+            this.invoiceNumber = order.order_serial_no;
+            this.props.form.user_id = order.user_id;
+            this.props.form.order_id = order.id;
+            this.props.form.order_serial_no = order.order_serial_no;
+
+            const existingReturnsByItem = {};
+            this.existingReturnProducts.forEach((product) => {
+                existingReturnsByItem[`${product.item_id}`] = product;
+            });
+
+            this.datatable = order.order_products.map((product) => {
+                const existingReturn = existingReturnsByItem[`${product.has_variation ? product.variation_id : product.product_id}`]
+                    || existingReturnsByItem[`${product.has_variation ? product.variation_id : product.product_id}:${product.id}`];
+
+                const quantity = existingReturn ? Number(existingReturn.quantity) : 0;
+                const orderQuantity = Number(product.quantity || 0);
+                const safeQuantity = this.normalizeQuantity(quantity, orderQuantity);
+                const discountPerUnit = orderQuantity > 0 ? Number(product.discount || 0) / orderQuantity : 0;
+                const taxPerUnit = orderQuantity > 0 ? Number(product.tax || 0) / orderQuantity : 0;
+                const subtotal = Number((Number(product.price) * safeQuantity).toFixed(6));
+                const totalDiscount = Number((discountPerUnit * safeQuantity).toFixed(6));
+                const totalTax = Number((taxPerUnit * safeQuantity).toFixed(6));
+
+                return {
+                    order_stock_id: product.id,
+                    product_id: product.product_id,
+                    item_id: product.has_variation ? product.variation_id : product.product_id,
+                    variation_id: product.has_variation ? product.variation_id : 0,
+                    is_variation: product.has_variation,
+                    variation_names: product.variation_names,
+                    name: product.product_name,
+                    sku: product.sku,
+                    price: Number(product.price),
+                    max_quantity: orderQuantity,
+                    quantity: safeQuantity,
+                    subtotal,
+                    total_discount: totalDiscount,
+                    total_tax: totalTax,
+                    total: Number((subtotal + totalTax - totalDiscount).toFixed(6)),
+                    discount_per_unit: discountPerUnit,
+                    tax_per_unit: taxPerUnit,
+                };
+            });
+        },
+        async returnOrderInfo() {
+            if (isNaN(this.$route.params.id)) {
+                return;
+            }
+
+            this.loading.isActive = true;
+            try {
+                const res = await this.$store.dispatch("returnOrder/edit", this.$route.params.id);
+                this.getReturnOrder(res.data.data);
+                await this.fetchInvoice();
+            } finally {
+                this.loading.isActive = false;
+            }
+        },
+        getReturnOrder(order) {
+            this.props.form.return_order_id = order.id;
+            this.props.form.date = order.date;
+            this.props.form.user_id = order.user_id;
+            this.props.form.order_id = order.order_id;
+            this.props.form.order_serial_no = order.order_serial_no || "";
+            this.props.form.reference_no = order.reference_no || "";
+            this.props.form.total = order.total;
+            this.props.form.reason = order.reason;
+            this.invoiceNumber = order.order_serial_no || "";
+            this.existingReturnProducts = order.products.map((product) => ({
+                item_id: product.item_id,
+                quantity: Number(product.quantity || 0),
+            }));
+        },
+        buildProductsPayload() {
+            return this.datatable
+                .filter((item) => Number(item.quantity) > 0)
+                .map((item) => ({
+                    order_stock_id: item.order_stock_id,
+                    product_id: item.product_id,
+                    item_id: item.item_id,
+                    variation_id: item.variation_id,
+                    is_variation: item.is_variation,
+                    variation_names: item.variation_names,
+                    sku: item.sku,
+                    price: item.price,
+                    quantity: Number(item.quantity),
+                    subtotal: item.subtotal,
+                    total_discount: item.total_discount,
+                    total_tax: item.total_tax,
+                    total: item.total,
+                }));
+        },
+        save() {
+            try {
+                const products = this.buildProductsPayload();
                 const fd = new FormData();
-                fd.append('user_id', this.props.form.user_id ?? "");
-                fd.append('date', this.props.form.date ? this.props.form.date : '');
-                fd.append('reference_no', this.props.form.reference_no);
-                fd.append('subtotal', this.subtotal);
-                fd.append('tax', this.totalTax);
-                fd.append('discount', this.totalDiscount);
-                fd.append('total', this.totalPrice);
-                fd.append('reason', this.props.form.reason);
-                fd.append('products', JSON.stringify(this.datatable));
+                fd.append("user_id", this.props.form.user_id ?? "");
+                fd.append("order_id", this.props.form.order_id ?? "");
+                fd.append("date", this.props.form.date ? this.props.form.date : "");
+                fd.append("reference_no", this.props.form.reference_no);
+                fd.append("subtotal", products.reduce((sum, item) => sum + Number(item.subtotal || 0), 0));
+                fd.append("tax", products.reduce((sum, item) => sum + Number(item.total_tax || 0), 0));
+                fd.append("discount", products.reduce((sum, item) => sum + Number(item.total_discount || 0), 0));
+                fd.append("total", products.reduce((sum, item) => sum + Number(item.total || 0), 0));
+                fd.append("reason", this.props.form.reason);
+                fd.append("products", JSON.stringify(products));
                 if (this.file) {
-                    fd.append('file', this.file);
+                    fd.append("file", this.file);
                 }
+
                 this.loading.isActive = true;
-                const tempId = this.$store.getters['returnOrder/temp'].temp_id;
-                this.$store.dispatch('returnOrder/save', { form: fd })
-                    .then((res) => {
+                const tempId = this.$store.getters["returnOrder/temp"].temp_id;
+                this.$store.dispatch("returnOrder/save", { form: fd })
+                    .then(() => {
                         this.loading.isActive = false;
-                        alertService.successFlip((tempId === null ? 0 : 1), this.$t('menu.return_orders'));
+                        alertService.successFlip(tempId === null ? 0 : 1, this.$t("menu.return_orders"));
                         this.reset();
-                        this.$router.push({ name: 'admin.return-order.list' });
+                        this.$router.push({ name: "admin.return-order.list" });
                     })
                     .catch((err) => {
                         this.loading.isActive = false;
-                        this.errors = err.response.data.errors;
-                        if (this.errors.global) {
+                        this.errors = err.response.data.errors || {};
+                        if (err.response?.data?.message) {
+                            alertService.error(err.response.data.message);
+                        } else if (this.errors.global) {
                             alertService.error(this.errors.global[0]);
                         }
-                    })
-            }
-            catch (err) {
+                    });
+            } catch (err) {
                 this.loading.isActive = false;
                 alertService.error(err);
             }
         },
-        removeProduct: function (productIndex) {
-            this.datatable.splice(productIndex, 1);
-        },
-        updateQuantity: function (i) {
-            const tax = this.datatable[i].tax > 0 ? this.datatable[i].tax : 0;
-            this.datatable[i].total_tax = tax * this.datatable[i].quantity;
-            this.datatable[i].total_discount = this.datatable[i].discount * this.datatable[i].quantity;
-            this.datatable[i].subtotal = (Number(this.datatable[i].quantity) * Number(this.datatable[i].price)).toFixed(2);
-            this.datatable[i].total = (+(this.datatable[i].quantity * this.datatable[i].price) + (+this.datatable[i].total_tax) - (+this.datatable[i].total_discount)).toFixed(2);
-        },
-        productList: function () {
-            this.loading.isActive = true;
-            this.$store.dispatch('product/getSimpleProduct').then(res => {
-                this.loading.isActive = false;
-            }).catch((err) => {
-                this.loading.isActive = false;
-            });
-        },
-        loadInitialVariations: function (product_id) {
-            this.loading.isActive = true;
-            this.$store.commit('productVariation/initialVariation', []);
-            this.$store.dispatch("productVariation/initialVariation", product_id).then(() => {
-                this.loading.isActive = false;
-            }).catch((err) => {
-                this.loading.isActive = false;
-            });
-        },
-        returnOrderInfo: function () {
-            if (!isNaN(this.$route.params.id)) {
-                this.$store.dispatch('returnOrder/edit', this.$route.params.id)
-                    .then((res) => {
-                        this.getReturnOrder(res.data.data);
-                    })
-            }
-        },
-        getReturnOrder: function (order) {
-            this.props.form.return_order_id = order.id;
-            this.props.form.date = order.date;
-            this.props.form.user_id = order.user_id;
-            this.props.form.reference_no = order.reference_no ? order.reference_no : '';
-            this.props.form.total = order.total;
-            this.props.form.reason = order.reason;
-            const products = [];
-            for (let i = 0; i < order.products.length; i++) {
-                const product = order.products[i];
-                const tax_id = [];
-                let total_tax_rate = 0;
-                if (product.taxes) {
-                    for (let j = 0; j < product.taxes.length; j++) {
-                        const tax = product.taxes[j];
-                        tax_id.push(tax.tax_id);
-                        total_tax_rate = total_tax_rate + +tax.tax_rate;
-                    }
-                }
-                products.push({
-                    product_id: product.product_id,
-                    item_id: product.item_id,
-                    variation_names: product.variation_names,
-                    sku: product.sku,
-                    name: product.product_name,
-                    price: this.floatFormat(product.price),
-                    quantity: product.quantity,
-                    discount: product.discount > 0 ? product.discount / product.quantity : 0,
-                    total_discount: +product.discount,
-                    tax: product.tax > 0 ? product.tax / product.quantity : 0,
-                    total_tax: product.tax,
-                    total_tax_rate: total_tax_rate,
-                    tax_id: tax_id,
-                    subtotal: product.subtotal,
-                    total: product.total,
-                    is_variation: !!product.product_variation,
-                    variation_id: product.product_variation ? product.item_id : 0
-                });
-            }
-            this.datatable = products;
-        },
-        reset: function () {
-            this.props.form.user_id = null;
-            this.props.form.date = "";
-            this.props.form.reference_no = '';
-            this.props.form.total = null;
-            this.props.form.reason = "";
-            this.props.form.products = [];
+        reset() {
+            this.props.form = {
+                return_order_id: 0,
+                date: "",
+                total: null,
+                user_id: null,
+                order_id: null,
+                order_serial_no: "",
+                reference_no: "",
+                reason: "",
+                products: [],
+            };
             this.datatable = [];
+            this.invoice = null;
+            this.invoiceNumber = "";
             this.file = "";
-            this.$refs["fileProperty"].value = "";
-            this.errors = {}
-        }
-    }
-}
+            this.existingReturnProducts = [];
+            if (this.$refs.fileProperty) {
+                this.$refs.fileProperty.value = "";
+            }
+            this.errors = {};
+        },
+    },
+};
 </script>
