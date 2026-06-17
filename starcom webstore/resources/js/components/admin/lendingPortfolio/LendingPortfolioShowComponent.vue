@@ -171,6 +171,60 @@
             </div>
         </div>
 
+        <div v-if="canManageSignedContracts || (facility.signed_contract_documents || []).length" class="db-card mb-4">
+            <div class="db-card-header border-none">
+                <h3 class="db-card-title">العقود الموقعة</h3>
+            </div>
+            <div class="row p-4">
+                <div class="col-12 lg:col-6">
+                    <div class="db-card p-4 h-full">
+                        <h4 class="font-semibold mb-3">العقود الموقعة المرفوعة</h4>
+                        <div class="flex flex-col gap-2">
+                            <div
+                                v-for="(document, index) in facility.signed_contract_documents || []"
+                                :key="document.id || index"
+                                class="flex flex-wrap gap-2"
+                            >
+                                <a
+                                    :href="document.url"
+                                    target="_blank"
+                                    download
+                                    class="db-btn py-2 text-white bg-primary"
+                                >
+                                    تحميل العقد الموقع {{ index + 1 }}
+                                </a>
+                                <button
+                                    v-if="canManageSignedContracts"
+                                    class="db-btn py-2 text-white bg-red-500"
+                                    @click="deleteSignedContract(document.id)"
+                                >
+                                    حذف العقد الموقع
+                                </button>
+                            </div>
+                            <span v-if="!(facility.signed_contract_documents || []).length" class="text-sm text-text">لا توجد عقود موقعة مرفوعة بعد.</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 lg:col-6" v-if="canManageSignedContracts">
+                    <div class="db-card p-4 h-full">
+                        <h4 class="font-semibold mb-3">رفع عقود موقعة جديدة</h4>
+                        <input
+                            type="file"
+                            multiple
+                            class="db-field-control"
+                            accept=".jpg,.jpeg,.png,.pdf"
+                            @change="setSignedContractFiles"
+                        />
+                        <small class="db-field-alert" v-if="signedContractErrors.signed_contract_documents">{{ signedContractErrors.signed_contract_documents[0] }}</small>
+                        <small class="db-field-alert" v-if="signedContractErrors['signed_contract_documents.0']">{{ signedContractErrors['signed_contract_documents.0'][0] }}</small>
+                        <div class="mt-3">
+                            <button class="db-btn py-2 text-white bg-primary" @click="uploadSignedContracts">رفع العقود الموقعة</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div v-if="canManageFacilityDates" class="db-card mb-4">
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">تعديل بداية المدة</h3>
@@ -277,6 +331,10 @@ export default {
                 contract_documents: [],
             },
             contractErrors: {},
+            signedContractForm: {
+                signed_contract_documents: [],
+            },
+            signedContractErrors: {},
             dateForm: {
                 starts_at: "",
             },
@@ -327,6 +385,11 @@ export default {
         },
         canUploadContracts: function () {
             return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) &&
+                this.facility.id &&
+                this.facility.status === "approved";
+        },
+        canManageSignedContracts: function () {
+            return this.isAdminLike &&
                 this.facility.id &&
                 this.facility.status === "approved";
         },
@@ -389,6 +452,9 @@ export default {
         },
         setContractFiles: function (event) {
             this.contractForm.contract_documents = Array.from(event.target.files || []);
+        },
+        setSignedContractFiles: function (event) {
+            this.signedContractForm.signed_contract_documents = Array.from(event.target.files || []);
         },
         handleInstitutionChange: function () {
             const selectedEmployeeId = Number(this.assignmentForm.financial_institution_employee_user_id || 0);
@@ -465,6 +531,32 @@ export default {
                 this.loading.isActive = false;
             });
         },
+        uploadSignedContracts: function () {
+            if (!this.signedContractForm.signed_contract_documents.length) {
+                alertService.error("يرجى اختيار عقد موقع واحد على الأقل.");
+                return;
+            }
+
+            this.loading.isActive = true;
+            const form = new FormData();
+            this.signedContractForm.signed_contract_documents.forEach((file) => {
+                form.append("signed_contract_documents[]", file);
+            });
+
+            this.$store.dispatch("creditApplicationReview/uploadSignedFacilityContracts", {
+                id: this.facility.id,
+                form,
+            }).then((res) => {
+                alertService.success(res.data.message || "تم رفع العقود الموقعة بنجاح.");
+                this.signedContractErrors = {};
+                this.signedContractForm.signed_contract_documents = [];
+            }).catch((err) => {
+                this.signedContractErrors = err.response?.data?.errors || {};
+                alertService.error(err.response?.data?.message || "تعذر رفع العقود الموقعة.");
+            }).finally(() => {
+                this.loading.isActive = false;
+            });
+        },
         updateFacilityDates: function () {
             this.loading.isActive = true;
             this.$store.dispatch("creditApplicationReview/updateFacilityDates", {
@@ -491,6 +583,23 @@ export default {
                     alertService.success(res.data.message || "تم حذف العقد بنجاح.");
                 }).catch((err) => {
                     alertService.error(err.response?.data?.message || "تعذر حذف العقد.");
+                }).finally(() => {
+                    this.loading.isActive = false;
+                });
+            }).catch(() => {
+                this.loading.isActive = false;
+            });
+        },
+        deleteSignedContract: function (mediaId) {
+            appService.destroyConfirmation().then(() => {
+                this.loading.isActive = true;
+                this.$store.dispatch("creditApplicationReview/deleteSignedFacilityContract", {
+                    id: this.facility.id,
+                    mediaId: mediaId,
+                }).then((res) => {
+                    alertService.success(res.data.message || "تم حذف العقد الموقع بنجاح.");
+                }).catch((err) => {
+                    alertService.error(err.response?.data?.message || "تعذر حذف العقد الموقع.");
                 }).finally(() => {
                     this.loading.isActive = false;
                 });

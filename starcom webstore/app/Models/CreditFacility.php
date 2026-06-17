@@ -85,4 +85,15 @@ class CreditFacility extends Model implements HasMedia
             ];
         })->values()->all();
     }
+
+    public function getSignedContractDocumentsAttribute(): array
+    {
+        return $this->getMedia('facility_signed_contract_documents')->map(function ($media) {
+            return [
+                'id' => $media->id,
+                'name' => $media->file_name,
+                'url' => $media->getUrl(),
+            ];
+        })->values()->all();
+    }
 }

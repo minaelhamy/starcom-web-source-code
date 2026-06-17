@@ -607,6 +607,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::post('/portfolio/dates/{creditFacility}', [CreditApplicationController::class, 'updateFacilityDates']);
         Route::post('/portfolio/contracts/{creditFacility}', [CreditApplicationController::class, 'uploadFacilityContracts']);
         Route::delete('/portfolio/contracts/{creditFacility}/{mediaId}', [CreditApplicationController::class, 'deleteFacilityContract']);
+        Route::post('/portfolio/signed-contracts/{creditFacility}', [CreditApplicationController::class, 'uploadSignedFacilityContracts']);
+        Route::delete('/portfolio/signed-contracts/{creditFacility}/{mediaId}', [CreditApplicationController::class, 'deleteSignedFacilityContract']);
         Route::get('/portfolio', [CreditApplicationController::class, 'portfolio']);
         Route::get('/portfolio/show/{creditFacility}', [CreditApplicationController::class, 'showFacility']);
     });

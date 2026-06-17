@@ -8,6 +8,7 @@ use App\Http\Requests\CreditApplicationNoteRequest;
 use App\Http\Requests\CreditFacilityAssignmentRequest;
 use App\Http\Requests\CreditFacilityContractRequest;
 use App\Http\Requests\CreditFacilityDatesRequest;
+use App\Http\Requests\CreditFacilitySignedContractRequest;
 use App\Http\Requests\PaginateRequest;
 use App\Http\Resources\CreditApplicationResource;
 use App\Http\Resources\CreditFacilityResource;
@@ -34,7 +35,7 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
             new Middleware('permission:credit-requests_show', only: ['show']),
             new Middleware('permission:credit-requests_review', only: ['approve', 'decline', 'markPendingApproval', 'resetApproval', 'assignmentOptions', 'addFacilityNote', 'updateIdentity']),
             new Middleware('permission:lending-portfolio', only: ['portfolio']),
-            new Middleware('permission:lending-portfolio_show', only: ['showFacility', 'assignFacility', 'uploadFacilityContracts', 'deleteFacilityContract', 'updateFacilityDates']),
+            new Middleware('permission:lending-portfolio_show', only: ['showFacility', 'assignFacility', 'uploadFacilityContracts', 'deleteFacilityContract', 'uploadSignedFacilityContracts', 'deleteSignedFacilityContract', 'updateFacilityDates']),
         ];
     }
 
@@ -185,6 +186,32 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
                 'status' => true,
                 'message' => 'تم حذف العقد بنجاح.',
                 'data' => new CreditFacilityResource($this->creditApplicationService->deleteFacilityContract($creditFacility, $mediaId)),
+            ]);
+        } catch (\Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function uploadSignedFacilityContracts(CreditFacility $creditFacility, CreditFacilitySignedContractRequest $request): CreditFacilityResource|Response|Application|ResponseFactory
+    {
+        try {
+            return response([
+                'status' => true,
+                'message' => 'تم رفع العقود الموقعة بنجاح.',
+                'data' => new CreditFacilityResource($this->creditApplicationService->uploadSignedFacilityContracts($creditFacility, $request)),
+            ]);
+        } catch (\Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function deleteSignedFacilityContract(CreditFacility $creditFacility, int $mediaId): CreditFacilityResource|Response|Application|ResponseFactory
+    {
+        try {
+            return response([
+                'status' => true,
+                'message' => 'تم حذف العقد الموقع بنجاح.',
+                'data' => new CreditFacilityResource($this->creditApplicationService->deleteSignedFacilityContract($creditFacility, $mediaId)),
             ]);
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);

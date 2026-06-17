@@ -85,6 +85,9 @@ class CreditFacilityResource extends JsonResource
             'has_contract_documents' => count($this->contract_documents) > 0,
             'contract_documents_count' => count($this->contract_documents),
             'contract_documents' => $this->contract_documents,
+            'has_signed_contract_documents' => count($this->signed_contract_documents) > 0,
+            'signed_contract_documents_count' => count($this->signed_contract_documents),
+            'signed_contract_documents' => $this->signed_contract_documents,
         ];
     }
 
