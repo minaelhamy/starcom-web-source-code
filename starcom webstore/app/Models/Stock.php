@@ -39,7 +39,7 @@ class Stock extends Model
         'item_id'       => 'integer',
         'variation_names'=> 'string',
         'price'         => 'decimal:6',
-        'quantity'      => 'integer',
+        'quantity'      => 'float',
         'discount'      => 'decimal:6',
         'tax'           => 'decimal:6',
         'sku'           => 'string',

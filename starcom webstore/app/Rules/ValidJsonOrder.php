@@ -25,12 +25,32 @@ class ValidJsonOrder implements Rule
      */
     public function passes($attribute, $value): bool
     {
-
         $requestItems = json_decode($value);
-        if (count($requestItems) == 0) {
+        if (!is_array($requestItems) || count($requestItems) == 0) {
             $this->message = 'This :attribute must be json.';
             return false;
         }
+
+        foreach ($requestItems as $index => $item) {
+            $quantity = $item->quantity ?? null;
+
+            if (!is_numeric($quantity)) {
+                $this->message = 'الكمية في أحد المنتجات غير صحيحة.';
+                return false;
+            }
+
+            $quantity = (float) $quantity;
+            if ($quantity <= 0) {
+                $this->message = 'يجب أن تكون الكمية أكبر من صفر.';
+                return false;
+            }
+
+            if (round($quantity, 2) != $quantity) {
+                $this->message = 'يمكن إدخال الكمية حتى منزلتين عشريتين فقط.';
+                return false;
+            }
+        }
+
         return true;
     }
 

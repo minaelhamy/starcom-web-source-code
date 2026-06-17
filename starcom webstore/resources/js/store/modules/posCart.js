@@ -1,5 +1,14 @@
 import _ from "lodash";
 
+const normalizeQuantity = (quantity) => {
+    const parsed = parseFloat(quantity);
+    if (!Number.isFinite(parsed)) {
+        return 1;
+    }
+
+    return Math.max(0.01, Math.round(parsed * 100) / 100);
+};
+
 export const posCart = {
     namespaced: true,
     state: {
@@ -38,8 +47,9 @@ export const posCart = {
                         _.forEach(context.state.lists, (list, listKey) => {
                             if (list.product_id === payload.product_id && list.variation_id === payload.variation_id) {
                                 productMatch = true;
-                                if ((payload.quantity + list.quantity) <= list.stock) {
-                                    context.state.lists[listKey].quantity += payload.quantity;
+                                const incomingQuantity = normalizeQuantity(payload.quantity);
+                                if ((incomingQuantity + list.quantity) <= list.stock) {
+                                    context.state.lists[listKey].quantity = normalizeQuantity(list.quantity + incomingQuantity);
                                 } else {
                                     reject({
                                         message: "stockOut",
@@ -66,7 +76,7 @@ export const posCart = {
                             stock: payload.stock,
                             taxes: payload.taxes,
                             shipping: payload.shipping,
-                            quantity: payload.quantity,
+                            quantity: normalizeQuantity(payload.quantity),
                             discount: payload.discount,
                             price: payload.price,
                             old_price: payload.old_price,
@@ -132,13 +142,13 @@ export const posCart = {
         },
         quantity: function (state, payload) {
             if (payload.status === "increment") {
-                state.lists[payload.id].quantity++;
+                state.lists[payload.id].quantity = normalizeQuantity(state.lists[payload.id].quantity + 1);
             } else if (payload.status === "decrement") {
-                if (state.lists[payload.id].quantity !== 1) {
-                    state.lists[payload.id].quantity--;
+                if (state.lists[payload.id].quantity > 0.01) {
+                    state.lists[payload.id].quantity = normalizeQuantity(state.lists[payload.id].quantity - 1);
                 }
             } else {
-                state.lists[payload.id].quantity = payload.status;
+                state.lists[payload.id].quantity = normalizeQuantity(payload.status);
             }
 
             state.lists[payload.id].total_price = state.lists[payload.id].price * state.lists[payload.id].quantity;

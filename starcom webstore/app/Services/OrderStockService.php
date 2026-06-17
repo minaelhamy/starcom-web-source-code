@@ -17,8 +17,8 @@ class OrderStockService
         $aggregatedItems = [];
 
         foreach ($products as $product) {
-            $quantity = (int) ($product->quantity ?? 0);
-            if ($quantity < 1) {
+            $quantity = $this->normalizeQuantity($product->quantity ?? 0);
+            if ($quantity <= 0) {
                 throw new Exception('الكمية المطلوبة غير صحيحة.');
             }
 
@@ -53,9 +53,9 @@ class OrderStockService
                     'product_name' => $productModel->name,
                     'item_type' => $itemType,
                     'item_id' => $itemId,
-                    'requested_quantity' => 0,
+                    'requested_quantity' => 0.0,
                     'can_purchasable' => (int) $productModel->can_purchasable,
-                    'maximum_purchase_quantity' => (int) $productModel->maximum_purchase_quantity,
+                    'maximum_purchase_quantity' => (float) $productModel->maximum_purchase_quantity,
                 ];
             }
 
@@ -70,8 +70,8 @@ class OrderStockService
         $aggregatedItems = [];
 
         foreach ($order->orderProducts()->where('status', Status::INACTIVE)->get() as $stock) {
-            $quantity = abs((int) $stock->quantity);
-            if ($quantity < 1) {
+            $quantity = abs($this->normalizeQuantity($stock->quantity));
+            if ($quantity <= 0) {
                 continue;
             }
 
@@ -81,9 +81,9 @@ class OrderStockService
                     'product_name' => $stock->product?->name ?: 'المنتج',
                     'item_type' => $stock->item_type,
                     'item_id' => (int) $stock->item_id,
-                    'requested_quantity' => 0,
+                    'requested_quantity' => 0.0,
                     'can_purchasable' => (int) ($stock->product?->can_purchasable ?? Ask::YES),
-                    'maximum_purchase_quantity' => (int) ($stock->product?->maximum_purchase_quantity ?? 0),
+                    'maximum_purchase_quantity' => (float) ($stock->product?->maximum_purchase_quantity ?? 0),
                 ];
             }
 
@@ -122,24 +122,24 @@ class OrderStockService
     protected function assertAggregatedItemsAvailable(array $aggregatedItems, bool $lockStockRows): void
     {
         foreach ($aggregatedItems as $item) {
-            $requestedQuantity = (int) $item['requested_quantity'];
-            $maximumPurchaseQuantity = (int) $item['maximum_purchase_quantity'];
+            $requestedQuantity = $this->normalizeQuantity($item['requested_quantity']);
+            $maximumPurchaseQuantity = (float) $item['maximum_purchase_quantity'];
 
             if ($maximumPurchaseQuantity > 0 && $requestedQuantity > $maximumPurchaseQuantity) {
                 throw new Exception('الكمية المطلوبة من ' . $item['product_name'] . ' تتجاوز الحد الأقصى المسموح به.');
             }
 
             $availableQuantity = $item['can_purchasable'] === Ask::NO
-                ? (int) env('NON_PURCHASE_QUANTITY', 999999)
+                ? (float) env('NON_PURCHASE_QUANTITY', 999999)
                 : $this->availableQuantityForItem($item['item_type'], (int) $item['item_id'], $lockStockRows);
 
             if ($requestedQuantity > $availableQuantity) {
-                throw new Exception('الكمية المطلوبة من ' . $item['product_name'] . ' غير متاحة في المخزون. المتاح حالياً: ' . max(0, $availableQuantity) . '.');
+                throw new Exception('الكمية المطلوبة من ' . $item['product_name'] . ' غير متاحة في المخزون. المتاح حالياً: ' . $this->formatQuantity(max(0, $availableQuantity)) . '.');
             }
         }
     }
 
-    protected function availableQuantityForItem(string $itemType, int $itemId, bool $lockStockRows): int
+    protected function availableQuantityForItem(string $itemType, int $itemId, bool $lockStockRows): float
     {
         $query = Stock::query()
             ->where('item_type', $itemType)
@@ -150,6 +150,16 @@ class OrderStockService
             $query->lockForUpdate();
         }
 
-        return max(0, (int) $query->sum('quantity'));
+        return max(0, $this->normalizeQuantity($query->sum('quantity')));
+    }
+
+    protected function normalizeQuantity(mixed $quantity): float
+    {
+        return round((float) $quantity, 2);
+    }
+
+    protected function formatQuantity(float $quantity): string
+    {
+        return rtrim(rtrim(number_format($quantity, 2, '.', ''), '0'), '.');
     }
 }

@@ -66,7 +66,7 @@ class StockService
                     $product->groupBy('item_id')?->map(function ($item) {
                         $firstStock = $item->first();
                         $productModel = $firstStock['product'];
-                        $stockQuantity = max(0, (int) $item->sum('quantity'));
+                        $stockQuantity = max(0, round((float) $item->sum('quantity'), 2));
                         $buyingPrice = (float) ($productModel['buying_price'] ?? 0);
                         $sellingPrice = $this->resolveSellingPrice($firstStock);
                         $purchaseValue = $stockQuantity * $buyingPrice;

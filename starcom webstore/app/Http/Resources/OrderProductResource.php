@@ -31,8 +31,8 @@ class OrderProductResource extends JsonResource
             'category_name'           => $this?->product?->category?->name,
             'price'                   => $this->price,
             'currency_price'          => AppLibrary::currencyAmountFormat($this->price),
-            'quantity'                => abs($this->quantity),
-            'order_quantity'          => abs($this->quantity),
+            'quantity'                => round(abs((float) $this->quantity), 2),
+            'order_quantity'          => round(abs((float) $this->quantity), 2),
             'discount'                => $this->discount,
             'discount_currency_price' => AppLibrary::currencyAmountFormat($this->discount),
             'tax'                     => $this->tax,
@@ -75,21 +75,21 @@ class OrderProductResource extends JsonResource
             ->toArray();
     }
 
-    protected function availableStockForEdit(): int
+    protected function availableStockForEdit(): float
     {
         $item = $this->item;
-        $currentQuantity = abs((int) $this->quantity);
+        $currentQuantity = round(abs((float) $this->quantity), 2);
 
         if (!$item || !method_exists($item, 'stockItems')) {
             return $currentQuantity;
         }
 
-        $availableStock = (int) $item->stockItems()->sum('quantity');
+        $availableStock = round((float) $item->stockItems()->sum('quantity'), 2);
 
         if ($this->item_type === Product::class && (int) ($this->product?->can_purchasable ?? Ask::YES) === Ask::NO) {
-            return max($currentQuantity, (int) env('NON_PURCHASE_QUANTITY', 999999));
+            return max($currentQuantity, (float) env('NON_PURCHASE_QUANTITY', 999999));
         }
 
-        return max(0, $availableStock) + $currentQuantity;
+        return round(max(0, $availableStock) + $currentQuantity, 2);
     }
 }

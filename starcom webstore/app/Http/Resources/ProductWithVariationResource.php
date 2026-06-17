@@ -22,7 +22,7 @@ class ProductWithVariationResource extends JsonResource
             'product_name'      => $this?->product?->name,
             'sku'               => $this->sku,
             'price'             => $this->price,
-            'quantity'          => abs($this->quantity),
+            'quantity'          => round(abs((float) $this->quantity), 2),
             'discount'          => $this->discount,
             'tax'               => $this->tax,
             'taxes'             => $this->stockTaxes,

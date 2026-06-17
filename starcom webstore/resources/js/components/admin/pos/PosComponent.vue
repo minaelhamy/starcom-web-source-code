@@ -110,7 +110,7 @@
               <button @click.prevent="quantityDecrement(index, cart)" type="button"
                 :class="cart.quantity === 1 ? 'cursor-not-allowed' : ''"
                 class="lab-fill-circle-minus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
-              <input v-on:keypress="onlyNumber($event)" v-on:keyup="quantityUp(index, cart, $event)" type="number"
+              <input v-on:keyup="quantityUp(index, cart, $event)" type="number" step="0.01" min="0.01"
                 v-model="cart.quantity" class="text-center w-full h-5 text-sm font-medium">
               <button :class="cart.quantity >= cart.stock ? 'cursor-not-allowed' : ''"
                 @click.prevent="quantityIncrement(index, cart)" type="button"
@@ -460,39 +460,36 @@ export default {
       this.props.search.product_brand_id = id;
       this.productList();
     },
-    quantityUp: function (id, product, e) {
-      let quantity = e.target.value;
-
-      if (quantity === 0 || quantity < 0 || quantity === "0") {
-        quantity = 1;
+    normalizeQuantity: function (quantity, fallback = 1) {
+      const parsed = parseFloat(quantity);
+      if (!Number.isFinite(parsed)) {
+        return fallback;
       }
+
+      return Math.max(0.01, Math.round(parsed * 100) / 100);
+    },
+    quantityUp: function (id, product, e) {
+      let quantity = this.normalizeQuantity(e.target.value);
+
       if (quantity > product.stock) {
-        quantity = product.stock
+        quantity = this.normalizeQuantity(product.stock);
       }
       this.$store.dispatch('posCart/quantity', { id: id, status: quantity }).then().catch();
       this.checkoutProps.form.discount = 0;
       this.$store.dispatch('posCart/discount', this.checkoutProps.form.discount).then().catch();
     },
     quantityIncrement: function (id, product) {
-      let quantity = product.quantity;
-      quantity++;
-      if (quantity <= 0) {
-        quantity = 1;
-      }
+      let quantity = this.normalizeQuantity(product.quantity + 1);
 
       if (quantity > product.stock) {
-        quantity--;
+        quantity = this.normalizeQuantity(product.stock);
       }
       this.$store.dispatch('posCart/quantity', { id: id, status: quantity }).then().catch();
       this.checkoutProps.form.discount = 0;
       this.$store.dispatch('posCart/discount', this.checkoutProps.form.discount).then().catch();
     },
     quantityDecrement: function (id, product) {
-      let quantity = product.quantity;
-      quantity--;
-      if (quantity <= 0) {
-        quantity = 1;
-      }
+      let quantity = this.normalizeQuantity(product.quantity - 1);
       this.$store.dispatch('posCart/quantity', { id: id, status: quantity }).then().catch();
       this.checkoutProps.form.discount = 0;
       this.$store.dispatch('posCart/discount', this.checkoutProps.form.discount).then().catch();
@@ -601,7 +598,7 @@ export default {
           variation_names: product.variation_names ?? '',
           variation_id: product.variation_id ? parseInt(product.variation_id) : null,
           sku: product.sku,
-          stock: parseInt(product.stock ?? product.quantity),
+          stock: parseFloat(product.stock ?? product.quantity),
           taxes: (product.taxes || []).map((tax) => ({
             id: tax.id,
             name: tax.name,
@@ -609,7 +606,7 @@ export default {
             tax_rate: parseFloat(tax.tax_rate),
             tax_amount: parseFloat(tax.tax_amount),
           })),
-          quantity: parseInt(product.quantity),
+          quantity: parseFloat(product.quantity),
           discount: parseFloat(product.discount),
           price: parseFloat(product.price),
           old_price: parseFloat(product.price) + parseFloat(product.discount),

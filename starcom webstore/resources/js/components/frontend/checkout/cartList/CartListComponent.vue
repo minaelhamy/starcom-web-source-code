@@ -25,10 +25,10 @@
                         <div class="flex items-start justify-between gap-3">
                             <div class="flex items-center gap-1 w-20 p-1 rounded-full bg-[#F7F7FC]">
                                 <button @click.prevent="quantityDecrement(index, cart)" type="button"
-                                        :class="cart.quantity === 1 ? 'cursor-not-allowed': ''"
+                                        :class="cart.quantity <= 0.01 ? 'cursor-not-allowed': ''"
                                         class="lab-fill-circle-minus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
-                                <input v-on:keypress="onlyNumber($event)" v-on:keyup="quantityUp(index, cart, $event)"
-                                       type="number" :value="cart.quantity"
+                                <input v-on:keyup="quantityUp(index, cart, $event)"
+                                       type="number" step="0.01" min="0.01" :value="cart.quantity"
                                        class="text-center w-full h-5 text-sm font-medium">
                                 <button :class="cart.quantity >= cart.stock ? 'cursor-not-allowed': ''"
                                         @click.prevent="quantityIncrement(index, cart)" type="button"
@@ -75,41 +75,34 @@ export default {
         }
     },
     methods: {
-        onlyNumber: function (e) {
-            return appService.onlyNumber(e);
+        normalizeQuantity: function (quantity, fallback = 1) {
+            const parsed = parseFloat(quantity);
+            if (!Number.isFinite(parsed)) {
+                return fallback;
+            }
+
+            return Math.max(0.01, Math.round(parsed * 100) / 100);
         },
         currencyFormat(amount, decimal, currency, position) {
             return appService.currencyFormat(amount, decimal, currency, position);
         },
         quantityUp: function (id, product, e) {
-            let quantity = e.target.value;
-
-            if (quantity === 0) {
-                quantity = 1;
-            }
+            let quantity = this.normalizeQuantity(e.target.value);
             if (quantity > product.stock) {
-                quantity = product.stock
+                quantity = this.normalizeQuantity(product.stock)
             }
             this.$store.dispatch('frontendCart/quantity', {id: id, status: quantity}).then().catch();
         },
         quantityIncrement: function (id, product) {
-            let quantity = product.quantity;
-            quantity++;
-            if (quantity <= 0) {
-                quantity = 1;
-            }
+            let quantity = this.normalizeQuantity(product.quantity + 1);
 
             if (quantity > product.stock) {
-                quantity--;
+                quantity = this.normalizeQuantity(product.stock);
             }
             this.$store.dispatch('frontendCart/quantity', {id: id, status: quantity}).then().catch();
         },
         quantityDecrement: function (id, product) {
-            let quantity = product.quantity;
-            quantity--;
-            if (quantity <= 0) {
-                quantity = 1;
-            }
+            let quantity = this.normalizeQuantity(product.quantity - 1);
             this.$store.dispatch('frontendCart/quantity', {id: id, status: quantity}).then().catch();
         },
         removeProduct: function (id) {

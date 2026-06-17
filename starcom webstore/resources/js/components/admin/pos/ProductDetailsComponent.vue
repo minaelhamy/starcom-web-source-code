@@ -65,9 +65,9 @@
                 <dt class="capitalize text-lg font-semibold">{{ $t('label.quantity') }}:</dt>
                 <dd class="flex items-center gap-6">
                     <div class="flex items-center gap-1 w-20 p-1 rounded-full bg-[#F7F7FC]">
-                        <button @click.prevent="quantityDecrement" type="button" :class="temp.quantity === 1 ? 'cursor-not-allowed': ''"
+                        <button @click.prevent="quantityDecrement" type="button" :class="temp.quantity <= 0.01 ? 'cursor-not-allowed': ''"
                             class="lab-fill-circle-minus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
-                        <input type="number" v-model="temp.quantity" v-on:keypress="onlyNumber($event)"
+                        <input type="number" step="0.01" min="0.01" v-model="temp.quantity"
                             v-on:keyup="quantityUp" class="text-center w-full h-5 text-sm font-medium">
                         <button @click.prevent="quantityIncrement" type="button" :class="temp.stock === temp.quantity ? 'cursor-not-allowed': ''"
                             class="lab-fill-circle-plus text-lg leading-none transition-all duration-300 hover:text-primary"></button>
@@ -211,8 +211,13 @@ export default {
         this.show();
     },
     methods: {
-        onlyNumber: function (e) {
-            return appService.onlyNumber(e);
+        normalizeQuantity: function (quantity, fallback = 1) {
+            const parsed = parseFloat(quantity);
+            if (!Number.isFinite(parsed)) {
+                return fallback;
+            }
+
+            return Math.max(0.01, Math.round(parsed * 100) / 100);
         },
         currencyFormat: function (amount, decimal, currency, position) {
             return appService.currencyFormat(amount, decimal, currency, position);
@@ -308,30 +313,22 @@ export default {
             }
         },
         quantityUp: function () {
-            if (this.temp.quantity === 0 || this.temp.quantity < 0) {
-                this.temp.quantity = 1;
-            }
+            this.temp.quantity = this.normalizeQuantity(this.temp.quantity);
             if (this.temp.quantity > this.temp.stock) {
-                this.temp.quantity = this.temp.stock
+                this.temp.quantity = this.normalizeQuantity(this.temp.stock)
             }
             this.totalPriceSetup();
         },
         quantityIncrement: function () {
-            this.temp.quantity++;
-            if (this.temp.quantity <= 0) {
-                this.temp.quantity = 1;
-            }
+            this.temp.quantity = this.normalizeQuantity(this.temp.quantity + 1);
 
             if (this.temp.quantity > this.temp.stock) {
-                this.temp.quantity--;
+                this.temp.quantity = this.normalizeQuantity(this.temp.stock);
             }
             this.totalPriceSetup();
         },
         quantityDecrement: function () {
-            this.temp.quantity--;
-            if (this.temp.quantity <= 0) {
-                this.temp.quantity = 1;
-            }
+            this.temp.quantity = this.normalizeQuantity(this.temp.quantity - 1);
             this.totalPriceSetup();
         },
         totalPriceSetup: function () {
