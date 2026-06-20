@@ -9,11 +9,29 @@
             <div class="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
                     <label class="db-field-title after:hidden">من تاريخ</label>
-                    <input :value="filters.date_from" @input="onDateInput('date_from', $event)" type="date" class="db-field-control" />
+                    <input
+                        :value="filters.date_from"
+                        @input="onDateInput('date_from', $event)"
+                        @keydown.enter.prevent="fetchReports"
+                        type="text"
+                        inputmode="numeric"
+                        placeholder="YYYY-MM-DD"
+                        dir="ltr"
+                        class="db-field-control"
+                    />
                 </div>
                 <div>
                     <label class="db-field-title after:hidden">إلى تاريخ</label>
-                    <input :value="filters.date_to" @input="onDateInput('date_to', $event)" type="date" class="db-field-control" />
+                    <input
+                        :value="filters.date_to"
+                        @input="onDateInput('date_to', $event)"
+                        @keydown.enter.prevent="fetchReports"
+                        type="text"
+                        inputmode="numeric"
+                        placeholder="YYYY-MM-DD"
+                        dir="ltr"
+                        class="db-field-control"
+                    />
                 </div>
                 <button type="button" class="db-btn text-white bg-primary py-2 self-end" @click="fetchReports">تحديث التقرير</button>
                 <button type="button" class="db-btn text-white bg-gray-600 py-2 self-end" @click="clearFilters">مسح الفترة</button>
@@ -135,7 +153,7 @@ export default {
             return "";
         },
         onDateInput(field, event) {
-            this.filters[field] = this.normalizeDateInput(event?.target?.value || "");
+            this.filters[field] = event?.target?.value || "";
         },
         syncFiltersWithReport(report) {
             this.filters.date_from = this.normalizeDateInput(report?.date_from || "");
