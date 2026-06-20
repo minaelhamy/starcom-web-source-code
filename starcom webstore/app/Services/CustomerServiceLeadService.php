@@ -312,9 +312,11 @@ class CustomerServiceLeadService
             throw new Exception(trans('all.message.permission_denied'), 422);
         }
 
+        [$dateFrom, $dateTo] = $this->resolveReportPeriod($request);
+
         return [
-            'date_from' => $request->get('date_from'),
-            'date_to' => $request->get('date_to'),
+            'date_from' => $dateFrom->toDateString(),
+            'date_to' => $dateTo->toDateString(),
             'agents' => $this->agentPerformanceCollection($request),
         ];
     }
@@ -737,38 +739,125 @@ class CustomerServiceLeadService
 
     protected function agentPerformanceCollection(Request $request): array
     {
-        $dateFrom = $request->get('date_from') ? Carbon::parse($request->get('date_from'))->startOfDay() : now()->subDays(6)->startOfDay();
-        $dateTo = $request->get('date_to') ? Carbon::parse($request->get('date_to'))->endOfDay() : now()->endOfDay();
+        [$dateFrom, $dateTo] = $this->resolveReportPeriod($request);
 
         return User::role(EnumRole::CUSTOMER_SERVICE)
             ->where('status', 5)
             ->get()
             ->map(function (User $agent) use ($dateFrom, $dateTo) {
-                $assignedLeads = $agent->assignedCustomerServiceLeads()->whereDoesntHave('user.creditApplications')->get();
-                $activities = $agent->customerServiceLeadActivities()->whereBetween('created_at', [$dateFrom, $dateTo])->get();
+                $activities = $agent->customerServiceLeadActivities()
+                    ->whereBetween('created_at', [$dateFrom, $dateTo])
+                    ->orderBy('created_at')
+                    ->get();
+
+                $activityLeadIds = $activities->pluck('customer_service_lead_id')->filter()->unique()->values();
+
+                $assignedLeadIds = CustomerServiceLead::query()
+                    ->where('assigned_to_user_id', $agent->id)
+                    ->whereBetween('assigned_at', [$dateFrom, $dateTo])
+                    ->pluck('id');
+
+                $applicationUserIds = CreditApplication::query()
+                    ->where('submitted_by_customer_service_user_id', $agent->id)
+                    ->whereBetween('submitted_by_customer_service_at', [$dateFrom, $dateTo])
+                    ->pluck('user_id');
+
+                $applicationLeadIds = CustomerServiceLead::query()
+                    ->whereIn('user_id', $applicationUserIds)
+                    ->pluck('id');
+
+                $periodLeadIds = $activityLeadIds
+                    ->merge($assignedLeadIds)
+                    ->merge($applicationLeadIds)
+                    ->unique()
+                    ->values();
+
+                $periodLeads = CustomerServiceLead::with('user')
+                    ->whereIn('id', $periodLeadIds)
+                    ->get();
+
+                $latestStatusesByLead = $activities
+                    ->groupBy('customer_service_lead_id')
+                    ->map(function ($leadActivities) {
+                        $latestActivity = $leadActivities->sortByDesc('created_at')->first();
+                        return $latestActivity?->status;
+                    });
+
+                $leadStatusCollection = $periodLeads->map(function (CustomerServiceLead $lead) use ($latestStatusesByLead, $dateFrom, $dateTo) {
+                    $effectiveStatus = $latestStatusesByLead->get($lead->id);
+
+                    if (blank($effectiveStatus)) {
+                        $effectiveStatus = $lead->assigned_at && $lead->assigned_at->between($dateFrom, $dateTo)
+                            ? CustomerServiceLeadStatus::NOT_APPROACHED
+                            : ($lead->status ?: CustomerServiceLeadStatus::NOT_APPROACHED);
+                    }
+
+                    return [
+                        'lead_id' => $lead->id,
+                        'status' => $effectiveStatus ?: CustomerServiceLeadStatus::NOT_APPROACHED,
+                    ];
+                });
+
+                $periodApplicationsSubmittedCount = CreditApplication::query()
+                    ->where('submitted_by_customer_service_user_id', $agent->id)
+                    ->whereBetween('submitted_by_customer_service_at', [$dateFrom, $dateTo])
+                    ->count();
+
+                $lastActivityAt = $activities->sortByDesc('created_at')->first()?->created_at;
+                $distinctActiveDaysCount = $activities->pluck('created_at')
+                    ->filter()
+                    ->map(fn ($date) => Carbon::parse($date)->toDateString())
+                    ->unique()
+                    ->count();
 
                 return [
                     'agent_id' => $agent->id,
                     'agent_name' => $agent->name,
-                    'assigned_leads_count' => $assignedLeads->count(),
-                    'not_approached_count' => $assignedLeads->where('status', CustomerServiceLeadStatus::NOT_APPROACHED)->count() + $assignedLeads->whereNull('status')->count(),
-                    'waiting_documents_count' => $assignedLeads->whereIn('status', self::waitingStatuses())->count(),
-                    'callbacks_count' => $assignedLeads->whereIn('status', self::callbackStatuses())->count(),
-                    'refused_count' => $assignedLeads->whereIn('status', self::refusedStatuses())->count(),
+                    'assigned_leads_count' => $periodLeads->count(),
+                    'period_leads_count' => $periodLeads->count(),
+                    'not_approached_count' => $leadStatusCollection->where('status', CustomerServiceLeadStatus::NOT_APPROACHED)->count(),
+                    'waiting_documents_count' => $leadStatusCollection->whereIn('status', self::waitingStatuses())->count(),
+                    'callbacks_count' => $leadStatusCollection->whereIn('status', self::callbackStatuses())->count(),
+                    'refused_count' => $leadStatusCollection->whereIn('status', self::refusedStatuses())->count(),
                     'period_updates_count' => $activities->count(),
-                    'period_applications_submitted_count' => CreditApplication::query()
-                        ->where('submitted_by_customer_service_user_id', $agent->id)
-                        ->whereBetween('submitted_by_customer_service_at', [$dateFrom, $dateTo])
-                        ->count(),
-                    'total_applications_submitted_count' => CreditApplication::query()
-                        ->where('submitted_by_customer_service_user_id', $agent->id)
-                        ->count(),
-                    'today_updates_count' => $agent->customerServiceLeadActivities()->whereDate('created_at', today())->count(),
-                    'week_updates_count' => $agent->customerServiceLeadActivities()->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+                    'period_applications_submitted_count' => $periodApplicationsSubmittedCount,
+                    'total_applications_submitted_count' => $periodApplicationsSubmittedCount,
+                    'active_days_count' => $distinctActiveDaysCount,
+                    'today_updates_count' => $distinctActiveDaysCount,
+                    'week_updates_count' => $distinctActiveDaysCount,
+                    'last_activity_at' => $lastActivityAt?->toDateTimeString(),
                 ];
             })
             ->values()
             ->all();
+    }
+
+    protected function resolveReportPeriod(Request $request): array
+    {
+        $dateFromInput = $request->get('date_from') ?: $request->get('from_date');
+        $dateToInput = $request->get('date_to') ?: $request->get('to_date');
+
+        if ($dateFromInput && !$dateToInput) {
+            $dateToInput = $dateFromInput;
+        }
+
+        if ($dateToInput && !$dateFromInput) {
+            $dateFromInput = $dateToInput;
+        }
+
+        $dateFrom = $dateFromInput
+            ? Carbon::parse($dateFromInput, config('app.timezone'))->startOfDay()
+            : now(config('app.timezone'))->subDays(6)->startOfDay();
+
+        $dateTo = $dateToInput
+            ? Carbon::parse($dateToInput, config('app.timezone'))->endOfDay()
+            : now(config('app.timezone'))->endOfDay();
+
+        if ($dateFrom->greaterThan($dateTo)) {
+            [$dateFrom, $dateTo] = [$dateTo->copy()->startOfDay(), $dateFrom->copy()->endOfDay()];
+        }
+
+        return [$dateFrom, $dateTo];
     }
 
     protected function dashboardLeadPayload(CustomerServiceLead $lead): array
