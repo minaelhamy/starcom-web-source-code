@@ -232,7 +232,16 @@
             <div class="row p-4">
                 <div class="col-12 md:col-6">
                     <label class="db-field-title required">بداية المدة</label>
-                    <input v-model="dateForm.starts_at" type="date" class="db-field-control" />
+                    <input
+                        :value="dateForm.starts_at"
+                        @input="onFacilityDateInput($event)"
+                        @keydown.enter.prevent="updateFacilityDates"
+                        type="text"
+                        inputmode="numeric"
+                        placeholder="YYYY-MM-DD"
+                        dir="ltr"
+                        class="db-field-control"
+                    />
                     <small class="db-field-alert" v-if="dateErrors.starts_at">{{ dateErrors.starts_at[0] }}</small>
                 </div>
                 <div class="col-12 md:col-6">
@@ -447,8 +456,42 @@ export default {
             this.identityErrors = {};
         },
         syncDateForm: function () {
-            this.dateForm.starts_at = this.facility.starts_at || "";
+            this.dateForm.starts_at = this.normalizeFacilityDate(this.facility.starts_at || "");
             this.dateErrors = {};
+        },
+        normalizeFacilityDate: function (value) {
+            if (!value) {
+                return "";
+            }
+
+            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                return value;
+            }
+
+            const slashMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+            if (slashMatch) {
+                const [, month, day, year] = slashMatch;
+                return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+            }
+
+            const dashMatch = value.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+            if (dashMatch) {
+                const [, day, month, year] = dashMatch;
+                return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+            }
+
+            const parsedDate = new Date(value);
+            if (!Number.isNaN(parsedDate.getTime())) {
+                const year = parsedDate.getFullYear();
+                const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
+                const day = String(parsedDate.getDate()).padStart(2, "0");
+                return `${year}-${month}-${day}`;
+            }
+
+            return "";
+        },
+        onFacilityDateInput: function (event) {
+            this.dateForm.starts_at = event?.target?.value || "";
         },
         setContractFiles: function (event) {
             this.contractForm.contract_documents = Array.from(event.target.files || []);
@@ -558,6 +601,7 @@ export default {
             });
         },
         updateFacilityDates: function () {
+            this.dateForm.starts_at = this.normalizeFacilityDate(this.dateForm.starts_at);
             this.loading.isActive = true;
             this.$store.dispatch("creditApplicationReview/updateFacilityDates", {
                 id: this.facility.id,
