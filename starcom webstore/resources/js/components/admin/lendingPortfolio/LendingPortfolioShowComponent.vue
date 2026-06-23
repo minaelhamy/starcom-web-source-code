@@ -428,7 +428,12 @@ export default {
             }
 
             startsAt.setDate(startsAt.getDate() + durationDays);
-            return startsAt.toISOString().slice(0, 10);
+
+            const year = startsAt.getFullYear();
+            const month = String(startsAt.getMonth() + 1).padStart(2, "0");
+            const day = String(startsAt.getDate()).padStart(2, "0");
+
+            return `${year}-${month}-${day}`;
         },
     },
     mounted() {
