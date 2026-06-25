@@ -35,8 +35,28 @@
                     <div v-else class="space-y-3">
                         <input v-model="applicationForm.full_name" type="text" class="db-field-control" placeholder="الاسم رباعي" />
                         <input v-model="applicationForm.national_id_number" type="text" class="db-field-control" placeholder="الرقم القومي" />
-                        <input type="file" class="db-field-control" @change="setFile($event, 'national_id_front_document')" />
-                        <input type="file" class="db-field-control" @change="setFile($event, 'national_id_back_document')" />
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="db-field-title after:hidden">البطاقة الشخصية - الوجه الأمامي</label>
+                                <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" class="db-field-control" @change="setFile($event, 'national_id_front_document')" />
+                            </div>
+                            <div>
+                                <label class="db-field-title after:hidden">البطاقة الشخصية - الوجه الخلفي</label>
+                                <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" class="db-field-control" @change="setFile($event, 'national_id_back_document')" />
+                            </div>
+                            <div>
+                                <label class="db-field-title after:hidden">البطاقة الضريبية</label>
+                                <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" class="db-field-control" @change="setFile($event, 'tax_card_document')" />
+                            </div>
+                            <div>
+                                <label class="db-field-title after:hidden">عقد ايجار</label>
+                                <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" class="db-field-control" @change="setFile($event, 'rent_contract_document')" />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="db-field-title after:hidden">السجل التجاري / Commercial Register</label>
+                            <input type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf" class="db-field-control" @change="setFiles($event, 'commercial_register_documents')" />
+                        </div>
                         <textarea v-model="applicationForm.note" class="db-field-control h-24" placeholder="ملاحظات إضافية"></textarea>
                         <button type="button" class="db-btn text-white bg-primary py-2" @click="submitApplication">رفع البيانات وإنشاء الطلب</button>
                     </div>
@@ -87,6 +107,9 @@ export default {
                 national_id_number: "",
                 national_id_front_document: null,
                 national_id_back_document: null,
+                commercial_register_documents: [],
+                tax_card_document: null,
+                rent_contract_document: null,
                 note: "",
             },
             statusOptions: [
@@ -127,6 +150,9 @@ export default {
         setFile(event, field) {
             this.applicationForm[field] = event.target.files?.[0] || null;
         },
+        setFiles(event, field) {
+            this.applicationForm[field] = Array.from(event.target.files || []);
+        },
         labelForStatus(status) {
             const match = this.statusOptions.find((item) => item.value === status);
             return match ? match.label : status || "--";
@@ -154,6 +180,15 @@ export default {
             }
             if (this.applicationForm.national_id_back_document) {
                 form.append("national_id_back_document", this.applicationForm.national_id_back_document);
+            }
+            this.applicationForm.commercial_register_documents.forEach((document) => {
+                form.append("commercial_register_documents[]", document);
+            });
+            if (this.applicationForm.tax_card_document) {
+                form.append("tax_card_document", this.applicationForm.tax_card_document);
+            }
+            if (this.applicationForm.rent_contract_document) {
+                form.append("rent_contract_document", this.applicationForm.rent_contract_document);
             }
 
             this.loading.isActive = true;

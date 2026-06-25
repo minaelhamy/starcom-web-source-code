@@ -222,7 +222,14 @@ class CustomerServiceLeadService
                     $application->save();
                 }
 
-                $this->syncApplicationMedia($application, $request->file('national_id_front_document'), $request->file('national_id_back_document'));
+                $this->syncApplicationMedia(
+                    $application,
+                    $request->file('national_id_front_document'),
+                    $request->file('national_id_back_document'),
+                    $request->file('commercial_register_documents', []),
+                    $request->file('tax_card_document'),
+                    $request->file('rent_contract_document')
+                );
 
                 $lead->prospect_full_name = $request->full_name;
                 $lead->prospect_national_id_number = $request->national_id_number;
@@ -988,7 +995,14 @@ class CustomerServiceLeadService
         }
     }
 
-    protected function syncApplicationMedia(CreditApplication $application, UploadedFile $front, ?UploadedFile $back = null): void
+    protected function syncApplicationMedia(
+        CreditApplication $application,
+        UploadedFile $front,
+        ?UploadedFile $back = null,
+        array $commercialRegisterDocuments = [],
+        ?UploadedFile $taxCardDocument = null,
+        ?UploadedFile $rentContractDocument = null
+    ): void
     {
         $application->clearMediaCollection('national_id_front_document');
         $application->addMedia($front)->toMediaCollection('national_id_front_document');
@@ -996,6 +1010,25 @@ class CustomerServiceLeadService
         if ($back) {
             $application->clearMediaCollection('national_id_back_document');
             $application->addMedia($back)->toMediaCollection('national_id_back_document');
+        }
+
+        if (!empty($commercialRegisterDocuments)) {
+            $application->clearMediaCollection('commercial_register_documents');
+            foreach ($commercialRegisterDocuments as $commercialRegisterDocument) {
+                if ($commercialRegisterDocument instanceof UploadedFile) {
+                    $application->addMedia($commercialRegisterDocument)->toMediaCollection('commercial_register_documents');
+                }
+            }
+        }
+
+        if ($taxCardDocument) {
+            $application->clearMediaCollection('tax_card_document');
+            $application->addMedia($taxCardDocument)->toMediaCollection('tax_card_document');
+        }
+
+        if ($rentContractDocument) {
+            $application->clearMediaCollection('rent_contract_document');
+            $application->addMedia($rentContractDocument)->toMediaCollection('rent_contract_document');
         }
     }
 

@@ -43,6 +43,7 @@ class CreditApplicationResource extends JsonResource
             'national_id_document'         => $this->national_id_document,
             'commercial_register_document' => $this->commercial_register_document,
             'tax_card_document'            => $this->tax_card_document,
+            'rent_contract_document'       => $this->rent_contract_document,
             'reviewed_by_me'               => $reviewedByMe,
             'my_review_status'             => $myReviewStatus,
             'notes_history'                => CreditApplicationNoteResource::collection($this->whenLoaded('notesHistory')),

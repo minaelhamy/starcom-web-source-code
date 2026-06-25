@@ -81,6 +81,7 @@ class CreditFacilityResource extends JsonResource
                 'national_id_back_document'     => $application->national_id_back_document,
                 'commercial_register_documents' => $application->commercial_register_documents,
                 'tax_card_document'             => $application->tax_card_document,
+                'rent_contract_document'        => $application->rent_contract_document,
             ] : null,
             'has_contract_documents' => count($this->contract_documents) > 0,
             'contract_documents_count' => count($this->contract_documents),
