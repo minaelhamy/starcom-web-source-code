@@ -86,6 +86,7 @@
                             <th class="db-table-head-th">الموظف المسؤول</th>
                             <th class="db-table-head-th">بداية المدة</th>
                             <th class="db-table-head-th">تاريخ الاستحقاق</th>
+                            <th class="db-table-head-th">آخر تحديث</th>
                             <th class="db-table-head-th">العقود</th>
                             <th class="db-table-head-th">العقد الموقع</th>
                             <th class="db-table-head-th">الملف</th>
@@ -107,6 +108,7 @@
                             <td class="db-table-body-td">{{ item.employee?.name || "--" }}</td>
                             <td class="db-table-body-td">{{ item.starts_at || "--" }}</td>
                             <td class="db-table-body-td">{{ item.due_at || "--" }}</td>
+                            <td class="db-table-body-td">{{ item.updated_date || "--" }}</td>
                             <td class="db-table-body-td">
                                 <span
                                     class="db-table-badge"
@@ -130,7 +132,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="14">{{ emptyStateText }}</td>
+                            <td class="db-table-body-td text-center" colspan="15">{{ emptyStateText }}</td>
                         </tr>
                     </tbody>
                 </table>

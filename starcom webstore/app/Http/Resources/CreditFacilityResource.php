@@ -15,6 +15,7 @@ class CreditFacilityResource extends JsonResource
         $showInstitution = Auth::check() && !Auth::user()->hasRole(Role::CUSTOMER);
         $application = $this->relationLoaded('application') ? $this->application : null;
         $notesHistory = $this->relationLoaded('notesHistory') ? $this->notesHistory : collect();
+        $lastUpdatedAt = $this->updated_at;
 
         if ($notesHistory->isEmpty() && !empty($this->notes)) {
             $notesHistory = collect([
@@ -25,6 +26,18 @@ class CreditFacilityResource extends JsonResource
                     'author' => $this->employee ?: $this->institution,
                 ],
             ]);
+        }
+
+        if ($application?->updated_at && (!$lastUpdatedAt || $application->updated_at->gt($lastUpdatedAt))) {
+            $lastUpdatedAt = $application->updated_at;
+        }
+
+        if ($this->user?->updated_at && (!$lastUpdatedAt || $this->user->updated_at->gt($lastUpdatedAt))) {
+            $lastUpdatedAt = $this->user->updated_at;
+        }
+
+        if ($this->user?->latestAddress?->updated_at && (!$lastUpdatedAt || $this->user->latestAddress->updated_at->gt($lastUpdatedAt))) {
+            $lastUpdatedAt = $this->user->latestAddress->updated_at;
         }
 
         return [
@@ -54,6 +67,8 @@ class CreditFacilityResource extends JsonResource
             'starts_at'         => $this->starts_at ? $this->starts_at->toDateString() : null,
             'due_at'            => $this->due_at ? $this->due_at->toDateString() : null,
             'reviewed_at'       => $this->reviewed_at ? $this->reviewed_at->toDateTimeString() : null,
+            'updated_at'        => $lastUpdatedAt ? $lastUpdatedAt->toDateTimeString() : null,
+            'updated_date'      => $lastUpdatedAt ? AppLibrary::date($lastUpdatedAt) : null,
             'notes'             => $this->notes,
             'notes_history'     => CreditApplicationNoteResource::collection($notesHistory),
             'starcom_intelligence' => StarcomIntelligenceCalculator::forUser($this->user),
@@ -82,6 +97,7 @@ class CreditFacilityResource extends JsonResource
                 'commercial_register_documents' => $application->commercial_register_documents,
                 'tax_card_document'             => $application->tax_card_document,
                 'rent_contract_document'        => $application->rent_contract_document,
+                'utility_bill_document'         => $application->utility_bill_document,
             ] : null,
             'has_contract_documents' => count($this->contract_documents) > 0,
             'contract_documents_count' => count($this->contract_documents),

@@ -76,6 +76,27 @@
                     <input v-model="identityForm.national_id_number" type="text" class="db-field-control" />
                     <small class="db-field-alert" v-if="identityErrors.national_id_number">{{ identityErrors.national_id_number[0] }}</small>
                 </div>
+                <div class="col-12 md:col-6 mt-3">
+                    <label class="db-field-title after:hidden">رفع السجل التجاري</label>
+                    <input type="file" multiple class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFiles($event, 'commercial_register_documents')" />
+                    <small class="db-field-alert" v-if="identityErrors.commercial_register_documents">{{ identityErrors.commercial_register_documents[0] }}</small>
+                    <small class="db-field-alert" v-if="identityErrors['commercial_register_documents.0']">{{ identityErrors['commercial_register_documents.0'][0] }}</small>
+                </div>
+                <div class="col-12 md:col-6 mt-3">
+                    <label class="db-field-title after:hidden">رفع البطاقة الضريبية</label>
+                    <input type="file" class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFile($event, 'tax_card_document')" />
+                    <small class="db-field-alert" v-if="identityErrors.tax_card_document">{{ identityErrors.tax_card_document[0] }}</small>
+                </div>
+                <div class="col-12 md:col-6 mt-3">
+                    <label class="db-field-title after:hidden">رفع عقد ايجار</label>
+                    <input type="file" class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFile($event, 'rent_contract_document')" />
+                    <small class="db-field-alert" v-if="identityErrors.rent_contract_document">{{ identityErrors.rent_contract_document[0] }}</small>
+                </div>
+                <div class="col-12 md:col-6 mt-3">
+                    <label class="db-field-title after:hidden">رفع ايصال مرافق</label>
+                    <input type="file" class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFile($event, 'utility_bill_document')" />
+                    <small class="db-field-alert" v-if="identityErrors.utility_bill_document">{{ identityErrors.utility_bill_document[0] }}</small>
+                </div>
                 <div class="col-12 mt-3">
                     <button class="db-btn py-2 text-white bg-primary" @click="updateIdentity">حفظ بيانات الهوية</button>
                 </div>
@@ -111,6 +132,24 @@
                         <div class="flex flex-col gap-2">
                             <a v-if="facility.application?.tax_card_document" :href="facility.application.tax_card_document" target="_blank" download class="db-btn py-2 text-white bg-primary">تحميل البطاقة الضريبية</a>
                             <span v-else class="text-sm text-text">غير مرفوعة.</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 md:col-6 xl:col-4">
+                    <div class="db-card p-4 h-full">
+                        <h4 class="font-semibold mb-3">عقد ايجار</h4>
+                        <div class="flex flex-col gap-2">
+                            <a v-if="facility.application?.rent_contract_document" :href="facility.application.rent_contract_document" target="_blank" download class="db-btn py-2 text-white bg-primary">تحميل عقد الايجار</a>
+                            <span v-else class="text-sm text-text">غير مرفوع.</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 md:col-6 xl:col-4">
+                    <div class="db-card p-4 h-full">
+                        <h4 class="font-semibold mb-3">ايصال مرافق</h4>
+                        <div class="flex flex-col gap-2">
+                            <a v-if="facility.application?.utility_bill_document" :href="facility.application.utility_bill_document" target="_blank" download class="db-btn py-2 text-white bg-primary">تحميل ايصال المرافق</a>
+                            <span v-else class="text-sm text-text">غير مرفوع.</span>
                         </div>
                     </div>
                 </div>
@@ -351,6 +390,10 @@ export default {
             identityForm: {
                 full_name: "",
                 national_id_number: "",
+                commercial_register_documents: [],
+                tax_card_document: null,
+                rent_contract_document: null,
+                utility_bill_document: null,
             },
             identityErrors: {},
         };
@@ -458,7 +501,17 @@ export default {
         syncIdentityForm: function () {
             this.identityForm.full_name = this.facility.full_name || "";
             this.identityForm.national_id_number = this.facility.national_id_number || "";
+            this.identityForm.commercial_register_documents = [];
+            this.identityForm.tax_card_document = null;
+            this.identityForm.rent_contract_document = null;
+            this.identityForm.utility_bill_document = null;
             this.identityErrors = {};
+        },
+        setIdentityFile: function (event, field) {
+            this.identityForm[field] = event.target.files?.[0] || null;
+        },
+        setIdentityFiles: function (event, field) {
+            this.identityForm[field] = Array.from(event.target.files || []);
         },
         syncDateForm: function () {
             this.dateForm.starts_at = this.normalizeFacilityDate(this.facility.starts_at || "");
@@ -662,9 +715,24 @@ export default {
             }
 
             this.loading.isActive = true;
+            const form = new FormData();
+            form.append("full_name", this.identityForm.full_name || "");
+            form.append("national_id_number", this.identityForm.national_id_number || "");
+            this.identityForm.commercial_register_documents.forEach((document) => {
+                form.append("commercial_register_documents[]", document);
+            });
+            if (this.identityForm.tax_card_document) {
+                form.append("tax_card_document", this.identityForm.tax_card_document);
+            }
+            if (this.identityForm.rent_contract_document) {
+                form.append("rent_contract_document", this.identityForm.rent_contract_document);
+            }
+            if (this.identityForm.utility_bill_document) {
+                form.append("utility_bill_document", this.identityForm.utility_bill_document);
+            }
             this.$store.dispatch("creditApplicationReview/updateIdentity", {
                 id: this.facility.application.id,
-                form: this.identityForm,
+                form,
             }).then((res) => {
                 alertService.success(res.data.message || "تم تحديث بيانات الهوية بنجاح.");
                 this.identityErrors = {};

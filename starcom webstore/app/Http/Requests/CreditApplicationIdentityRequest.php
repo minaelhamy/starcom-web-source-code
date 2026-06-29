@@ -18,6 +18,11 @@ class CreditApplicationIdentityRequest extends FormRequest
             'national_id_number' => ['required', 'string', 'max:32'],
             'national_id_front_document' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'national_id_back_document' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'commercial_register_documents'   => ['nullable', 'array', 'max:4'],
+            'commercial_register_documents.*' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'tax_card_document'               => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'rent_contract_document'          => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'utility_bill_document'           => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'return_to_review' => ['nullable', 'boolean'],
         ];
     }

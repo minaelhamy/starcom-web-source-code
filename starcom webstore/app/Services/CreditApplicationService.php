@@ -42,6 +42,7 @@ class CreditApplicationService
 
         return CreditApplication::with([
             'user',
+            'user.latestAddress',
             'submittedByCustomerService',
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
@@ -178,6 +179,16 @@ class CreditApplicationService
                 $creditApplication->addMedia($request->file('tax_card_document'))->toMediaCollection('tax_card_document');
             }
 
+            if ($request->hasFile('rent_contract_document')) {
+                $creditApplication->clearMediaCollection('rent_contract_document');
+                $creditApplication->addMedia($request->file('rent_contract_document'))->toMediaCollection('rent_contract_document');
+            }
+
+            if ($request->hasFile('utility_bill_document')) {
+                $creditApplication->clearMediaCollection('utility_bill_document');
+                $creditApplication->addMedia($request->file('utility_bill_document'))->toMediaCollection('utility_bill_document');
+            }
+
             return $creditApplication->load([
                 'user',
                 'submittedByCustomerService',
@@ -210,6 +221,7 @@ class CreditApplicationService
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
 
+            $documentsUpdated = false;
             $creditApplication->full_name = $request->full_name;
             $creditApplication->national_id_number = $request->national_id_number;
             $creditApplication->save();
@@ -217,11 +229,39 @@ class CreditApplicationService
             if ($request->hasFile('national_id_front_document')) {
                 $creditApplication->clearMediaCollection('national_id_front_document');
                 $creditApplication->addMedia($request->file('national_id_front_document'))->toMediaCollection('national_id_front_document');
+                $documentsUpdated = true;
             }
 
             if ($request->hasFile('national_id_back_document')) {
                 $creditApplication->clearMediaCollection('national_id_back_document');
                 $creditApplication->addMedia($request->file('national_id_back_document'))->toMediaCollection('national_id_back_document');
+                $documentsUpdated = true;
+            }
+
+            if ($request->hasFile('commercial_register_documents')) {
+                $creditApplication->clearMediaCollection('commercial_register_documents');
+                foreach ($request->file('commercial_register_documents', []) as $commercialRegisterDocument) {
+                    $creditApplication->addMedia($commercialRegisterDocument)->toMediaCollection('commercial_register_documents');
+                }
+                $documentsUpdated = true;
+            }
+
+            if ($request->hasFile('tax_card_document')) {
+                $creditApplication->clearMediaCollection('tax_card_document');
+                $creditApplication->addMedia($request->file('tax_card_document'))->toMediaCollection('tax_card_document');
+                $documentsUpdated = true;
+            }
+
+            if ($request->hasFile('rent_contract_document')) {
+                $creditApplication->clearMediaCollection('rent_contract_document');
+                $creditApplication->addMedia($request->file('rent_contract_document'))->toMediaCollection('rent_contract_document');
+                $documentsUpdated = true;
+            }
+
+            if ($request->hasFile('utility_bill_document')) {
+                $creditApplication->clearMediaCollection('utility_bill_document');
+                $creditApplication->addMedia($request->file('utility_bill_document'))->toMediaCollection('utility_bill_document');
+                $documentsUpdated = true;
             }
 
             if (
@@ -232,8 +272,14 @@ class CreditApplicationService
                 $creditApplication->save();
             }
 
+            if ($documentsUpdated) {
+                $creditApplication->touch();
+                $creditApplication->facilities()->update(['updated_at' => now()]);
+            }
+
             return $creditApplication->load([
                 'user',
+                'user.latestAddress',
                 'submittedByCustomerService',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'facilities.institution.financialInstitutionProfile',
@@ -254,6 +300,7 @@ class CreditApplicationService
 
         $query = CreditApplication::with([
             'user',
+            'user.latestAddress',
             'submittedByCustomerService',
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
@@ -279,7 +326,18 @@ class CreditApplicationService
             });
         }
 
-        return $query->latest()->$method($methodValue);
+        return $query
+            ->select('credit_applications.*')
+            ->selectRaw("
+                GREATEST(
+                    UNIX_TIMESTAMP(COALESCE(credit_applications.updated_at, credit_applications.created_at)),
+                    UNIX_TIMESTAMP(COALESCE((select users.updated_at from users where users.id = credit_applications.user_id limit 1), credit_applications.updated_at, credit_applications.created_at)),
+                    UNIX_TIMESTAMP(COALESCE((select addresses.updated_at from addresses where addresses.user_id = credit_applications.user_id order by addresses.id desc limit 1), credit_applications.updated_at, credit_applications.created_at))
+                ) as last_updated_sort
+            ")
+            ->orderByDesc('last_updated_sort')
+            ->orderByDesc('credit_applications.id')
+            ->$method($methodValue);
     }
 
     public function portfolioList(PaginateRequest $request)
@@ -340,7 +398,19 @@ class CreditApplicationService
             }
         }
 
-        return $query->latest()->$method($methodValue);
+        return $query
+            ->select('credit_facilities.*')
+            ->selectRaw("
+                GREATEST(
+                    UNIX_TIMESTAMP(COALESCE(credit_facilities.updated_at, credit_facilities.created_at)),
+                    UNIX_TIMESTAMP(COALESCE((select credit_applications.updated_at from credit_applications where credit_applications.id = credit_facilities.credit_application_id limit 1), credit_facilities.updated_at, credit_facilities.created_at)),
+                    UNIX_TIMESTAMP(COALESCE((select users.updated_at from users where users.id = credit_facilities.user_id limit 1), credit_facilities.updated_at, credit_facilities.created_at)),
+                    UNIX_TIMESTAMP(COALESCE((select addresses.updated_at from addresses where addresses.user_id = credit_facilities.user_id order by addresses.id desc limit 1), credit_facilities.updated_at, credit_facilities.created_at))
+                ) as last_updated_sort
+            ")
+            ->orderByDesc('last_updated_sort')
+            ->orderByDesc('credit_facilities.id')
+            ->$method($methodValue);
     }
 
     public function show(CreditApplication $creditApplication): CreditApplication
@@ -395,6 +465,7 @@ class CreditApplicationService
             'user',
             'user.latestAddress',
             'application.user',
+            'application.user.latestAddress',
             'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'application.facilities.institution.financialInstitutionProfile',
@@ -463,10 +534,14 @@ class CreditApplicationService
                     'financial_institution_user_id' => $institution->id,
                 ]);
 
+                $facility->touch();
+                optional($facility->application)->touch();
+
                 return $facility->load([
                     'user',
                     'user.latestAddress',
                     'application.user',
+                    'application.user.latestAddress',
                     'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                     'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                     'application.facilities.institution.financialInstitutionProfile',
@@ -587,10 +662,14 @@ class CreditApplicationService
                 $creditFacility->addMedia($contractDocument)->toMediaCollection('facility_contract_documents');
             }
 
+            $creditFacility->touch();
+            optional($creditFacility->application)->touch();
+
             return $creditFacility->load([
                 'user',
                 'user.latestAddress',
                 'application.user',
+                'application.user.latestAddress',
                 'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'application.facilities.institution.financialInstitutionProfile',
@@ -624,10 +703,14 @@ class CreditApplicationService
                 $creditFacility->addMedia($contractDocument)->toMediaCollection('facility_signed_contract_documents');
             }
 
+            $creditFacility->touch();
+            optional($creditFacility->application)->touch();
+
             return $creditFacility->load([
                 'user',
                 'user.latestAddress',
                 'application.user',
+                'application.user.latestAddress',
                 'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'application.facilities.institution.financialInstitutionProfile',
@@ -673,11 +756,14 @@ class CreditApplicationService
             }
 
             $media->delete();
+            $creditFacility->touch();
+            optional($creditFacility->application)->touch();
 
             return $creditFacility->load([
                 'user',
                 'user.latestAddress',
                 'application.user',
+                'application.user.latestAddress',
                 'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'application.facilities.institution.financialInstitutionProfile',
@@ -712,11 +798,14 @@ class CreditApplicationService
             }
 
             $media->delete();
+            $creditFacility->touch();
+            optional($creditFacility->application)->touch();
 
             return $creditFacility->load([
                 'user',
                 'user.latestAddress',
                 'application.user',
+                'application.user.latestAddress',
                 'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'application.facilities.institution.financialInstitutionProfile',
@@ -767,6 +856,7 @@ class CreditApplicationService
                 'user',
                 'user.latestAddress',
                 'application.user',
+                'application.user.latestAddress',
                 'application.notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
                 'application.facilities.institution.financialInstitutionProfile',
@@ -848,7 +938,8 @@ class CreditApplicationService
                 'institution.financialInstitutionProfile',
                 'employee',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
-                'application',
+                'application.user',
+                'application.user.latestAddress',
             ]);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
@@ -929,7 +1020,8 @@ class CreditApplicationService
                 'institution.financialInstitutionProfile',
                 'employee',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
-                'application',
+                'application.user',
+                'application.user.latestAddress',
             ]);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
@@ -1007,7 +1099,8 @@ class CreditApplicationService
                 'institution.financialInstitutionProfile',
                 'employee',
                 'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
-                'application',
+                'application.user',
+                'application.user.latestAddress',
             ]);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
@@ -1067,6 +1160,7 @@ class CreditApplicationService
                 $facility->save();
 
                 $this->createFacilityNote($facility->application, $facility, $actor, $note);
+                optional($facility->application)->touch();
             });
 
             return $this->showFacility($creditFacility);
@@ -1130,6 +1224,8 @@ class CreditApplicationService
                 $application->clearMediaCollection('national_id_back_document');
                 $application->clearMediaCollection('commercial_register_documents');
                 $application->clearMediaCollection('tax_card_document');
+                $application->clearMediaCollection('rent_contract_document');
+                $application->clearMediaCollection('utility_bill_document');
                 $application->delete();
             });
         } catch (Exception $exception) {

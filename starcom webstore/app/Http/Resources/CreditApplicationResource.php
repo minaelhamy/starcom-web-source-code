@@ -15,6 +15,16 @@ class CreditApplicationResource extends JsonResource
         $reviewedByMe = false;
         $myReviewStatus = null;
         $canViewCustomerServiceAttribution = false;
+        $lastUpdatedAt = $this->updated_at;
+
+        if ($this->user?->updated_at && (!$lastUpdatedAt || $this->user->updated_at->gt($lastUpdatedAt))) {
+            $lastUpdatedAt = $this->user->updated_at;
+        }
+
+        if ($this->user?->latestAddress?->updated_at && (!$lastUpdatedAt || $this->user->latestAddress->updated_at->gt($lastUpdatedAt))) {
+            $lastUpdatedAt = $this->user->latestAddress->updated_at;
+        }
+
         if (Auth::check()) {
             $actor = Auth::user();
             $canViewCustomerServiceAttribution = $actor->hasRole(\App\Enums\Role::ADMIN) || $actor->hasRole(\App\Enums\Role::MANAGER);
@@ -37,6 +47,8 @@ class CreditApplicationResource extends JsonResource
             'notes'                        => $this->notes,
             'created_at'                   => $this->created_at ? $this->created_at->toDateTimeString() : null,
             'created_date'                 => $this->created_at ? AppLibrary::date($this->created_at) : null,
+            'updated_at'                   => $lastUpdatedAt ? $lastUpdatedAt->toDateTimeString() : null,
+            'updated_date'                 => $lastUpdatedAt ? AppLibrary::date($lastUpdatedAt) : null,
             'national_id_front_document'   => $this->national_id_front_document,
             'national_id_back_document'    => $this->national_id_back_document,
             'commercial_register_documents'=> $this->commercial_register_documents,
@@ -44,6 +56,7 @@ class CreditApplicationResource extends JsonResource
             'commercial_register_document' => $this->commercial_register_document,
             'tax_card_document'            => $this->tax_card_document,
             'rent_contract_document'       => $this->rent_contract_document,
+            'utility_bill_document'        => $this->utility_bill_document,
             'reviewed_by_me'               => $reviewedByMe,
             'my_review_status'             => $myReviewStatus,
             'notes_history'                => CreditApplicationNoteResource::collection($this->whenLoaded('notesHistory')),

@@ -64,6 +64,7 @@
                             <th class="db-table-head-th">الهاتف</th>
                             <th v-if="canViewCustomerServiceAttribution" class="db-table-head-th">تم التقديم بواسطة</th>
                             <th class="db-table-head-th">الحالة</th>
+                            <th class="db-table-head-th">آخر تحديث</th>
                             <th class="db-table-head-th">إجمالي المعتمد</th>
                             <th class="db-table-head-th">المستندات</th>
                             <th class="db-table-head-th">القرار</th>
@@ -86,6 +87,7 @@
                                 <span v-else>--</span>
                             </td>
                             <td class="db-table-body-td">{{ statusText(item.status) }}</td>
+                            <td class="db-table-body-td">{{ item.updated_date || "--" }}</td>
                             <td class="db-table-body-td">{{ item.approved_amount_currency }}</td>
                             <td class="db-table-body-td">
                                 <div class="flex flex-col gap-2">
@@ -134,7 +136,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" :colspan="canViewCustomerServiceAttribution ? 9 : 8">لا توجد طلبات جديدة حالياً.</td>
+                            <td class="db-table-body-td text-center" :colspan="canViewCustomerServiceAttribution ? 10 : 9">لا توجد طلبات جديدة حالياً.</td>
                         </tr>
                     </tbody>
                 </table>

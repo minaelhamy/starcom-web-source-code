@@ -80,6 +80,11 @@ class CreditApplication extends Model implements HasMedia
         return $this->getFirstMediaUrl('rent_contract_document') ?: null;
     }
 
+    public function getUtilityBillDocumentAttribute(): ?string
+    {
+        return $this->getFirstMediaUrl('utility_bill_document') ?: null;
+    }
+
     public function getNationalIdDocumentAttribute(): ?string
     {
         return $this->national_id_front_document;
