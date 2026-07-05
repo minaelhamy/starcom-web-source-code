@@ -16,6 +16,7 @@ class CreditFacilityResource extends JsonResource
         $application = $this->relationLoaded('application') ? $this->application : null;
         $notesHistory = $this->relationLoaded('notesHistory') ? $this->notesHistory : collect();
         $lastUpdatedAt = $this->updated_at;
+        $lastUpdateLabel = 'تحديث المحفظة التمويلية';
 
         if ($notesHistory->isEmpty() && !empty($this->notes)) {
             $notesHistory = collect([
@@ -30,14 +31,23 @@ class CreditFacilityResource extends JsonResource
 
         if ($application?->updated_at && (!$lastUpdatedAt || $application->updated_at->gt($lastUpdatedAt))) {
             $lastUpdatedAt = $application->updated_at;
+            $lastUpdateLabel = 'تحديث طلب التمويل أو مستنداته';
         }
 
         if ($this->user?->updated_at && (!$lastUpdatedAt || $this->user->updated_at->gt($lastUpdatedAt))) {
             $lastUpdatedAt = $this->user->updated_at;
+            $lastUpdateLabel = 'تحديث بيانات العميل';
         }
 
         if ($this->user?->latestAddress?->updated_at && (!$lastUpdatedAt || $this->user->latestAddress->updated_at->gt($lastUpdatedAt))) {
             $lastUpdatedAt = $this->user->latestAddress->updated_at;
+            $lastUpdateLabel = 'تحديث العنوان أو الموقع';
+        }
+
+        $latestFacilityNote = $notesHistory->sortByDesc('created_at')->first();
+        if ($latestFacilityNote?->created_at && (!$lastUpdatedAt || $latestFacilityNote->created_at->gt($lastUpdatedAt))) {
+            $lastUpdatedAt = $latestFacilityNote->created_at;
+            $lastUpdateLabel = 'إضافة ملاحظة أو إجراء من جهة التمويل';
         }
 
         return [
@@ -69,6 +79,7 @@ class CreditFacilityResource extends JsonResource
             'reviewed_at'       => $this->reviewed_at ? $this->reviewed_at->toDateTimeString() : null,
             'updated_at'        => $lastUpdatedAt ? $lastUpdatedAt->toDateTimeString() : null,
             'updated_date'      => $lastUpdatedAt ? AppLibrary::date($lastUpdatedAt) : null,
+            'last_update_label' => $lastUpdateLabel,
             'notes'             => $this->notes,
             'notes_history'     => CreditApplicationNoteResource::collection($notesHistory),
             'starcom_intelligence' => StarcomIntelligenceCalculator::forUser($this->user),

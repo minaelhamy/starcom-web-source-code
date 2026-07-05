@@ -75,25 +75,58 @@
                 <table class="db-table">
                     <thead class="db-table-head">
                         <tr class="db-table-head-tr">
-                            <th class="db-table-head-th">العميل</th>
-                            <th class="db-table-head-th">الاسم رباعي</th>
-                            <th class="db-table-head-th">الرقم القومي</th>
-                            <th class="db-table-head-th">الحالة</th>
-                            <th class="db-table-head-th">المعتمد</th>
-                            <th class="db-table-head-th">المتاح</th>
-                            <th class="db-table-head-th">المستخدم</th>
-                            <th class="db-table-head-th">جهة التمويل</th>
-                            <th class="db-table-head-th">الموظف المسؤول</th>
-                            <th class="db-table-head-th">بداية المدة</th>
-                            <th class="db-table-head-th">تاريخ الاستحقاق</th>
-                            <th class="db-table-head-th">آخر تحديث</th>
-                            <th class="db-table-head-th">العقود</th>
-                            <th class="db-table-head-th">العقد الموقع</th>
-                            <th class="db-table-head-th">الملف</th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('customer_name')">العميل <span>{{ sortIcon('customer_name') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('full_name')">الاسم رباعي <span>{{ sortIcon('full_name') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('national_id_number')">الرقم القومي <span>{{ sortIcon('national_id_number') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('status')">الحالة <span>{{ sortIcon('status') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('approved_amount')">المعتمد <span>{{ sortIcon('approved_amount') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('available_amount')">المتاح <span>{{ sortIcon('available_amount') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('utilized_amount')">المستخدم <span>{{ sortIcon('utilized_amount') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('institution_name')">جهة التمويل <span>{{ sortIcon('institution_name') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('employee_name')">الموظف المسؤول <span>{{ sortIcon('employee_name') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('starts_at')">بداية المدة <span>{{ sortIcon('starts_at') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('due_at')">تاريخ الاستحقاق <span>{{ sortIcon('due_at') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('updated_at')">آخر تحديث <span>{{ sortIcon('updated_at') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('last_update_label')">ما هو آخر تحديث <span>{{ sortIcon('last_update_label') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('has_contract_documents')">العقود <span>{{ sortIcon('has_contract_documents') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('has_signed_contract_documents')">العقد الموقع <span>{{ sortIcon('has_signed_contract_documents') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('file_reference')">الملف <span>{{ sortIcon('file_reference') }}</span></button>
+                            </th>
                         </tr>
                     </thead>
-                    <tbody class="db-table-body" v-if="tabbedPortfolio.length">
-                        <tr class="db-table-body-tr" v-for="item in tabbedPortfolio" :key="item.id">
+                    <tbody class="db-table-body" v-if="sortedTabbedPortfolio.length">
+                        <tr class="db-table-body-tr" v-for="item in sortedTabbedPortfolio" :key="item.id">
                             <td class="db-table-body-td">
                                 <div class="font-semibold">{{ item.user?.name || "--" }}</div>
                                 <div class="text-xs text-text">{{ item.user?.phone || "" }}</div>
@@ -109,6 +142,7 @@
                             <td class="db-table-body-td">{{ item.starts_at || "--" }}</td>
                             <td class="db-table-body-td">{{ item.due_at || "--" }}</td>
                             <td class="db-table-body-td">{{ item.updated_date || "--" }}</td>
+                            <td class="db-table-body-td">{{ item.last_update_label || "--" }}</td>
                             <td class="db-table-body-td">
                                 <span
                                     class="db-table-badge"
@@ -132,7 +166,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="15">{{ emptyStateText }}</td>
+                            <td class="db-table-body-td text-center" colspan="16">{{ emptyStateText }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -162,6 +196,8 @@ export default {
             appliedTerm: "",
             appliedHasContracts: "",
             appliedHasSignedContracts: "",
+            sortField: "updated_at",
+            sortDirection: "desc",
             tabs: [
                 { value: "approved", label: "المعتمدة" },
                 { value: "declined", label: "المرفوضة" },
@@ -206,14 +242,30 @@ export default {
 
             return this.filteredPortfolio.filter((item) => item.status === this.activeTab);
         },
+        sortedTabbedPortfolio: function () {
+            const items = [...this.tabbedPortfolio];
+            const direction = this.sortDirection === "asc" ? 1 : -1;
+
+            return items.sort((firstItem, secondItem) => {
+                const firstValue = this.getSortValue(firstItem, this.sortField);
+                const secondValue = this.getSortValue(secondItem, this.sortField);
+                const comparison = this.compareSortValues(firstValue, secondValue);
+
+                if (comparison !== 0) {
+                    return comparison * direction;
+                }
+
+                return (Number(secondItem.id) - Number(firstItem.id)) * direction;
+            });
+        },
         totalCustomers: function () {
-            return this.tabbedPortfolio.length;
+            return this.sortedTabbedPortfolio.length;
         },
         totalApprovedAmount: function () {
-            return this.tabbedPortfolio.reduce((sum, item) => sum + Number(item.approved_amount || 0), 0);
+            return this.sortedTabbedPortfolio.reduce((sum, item) => sum + Number(item.approved_amount || 0), 0);
         },
         totalUtilizedAmount: function () {
-            return this.tabbedPortfolio.reduce((sum, item) => sum + Number(item.utilized_amount || 0), 0);
+            return this.sortedTabbedPortfolio.reduce((sum, item) => sum + Number(item.utilized_amount || 0), 0);
         },
         setting: function () {
             return this.$store.getters["frontendSetting/lists"] || {};
@@ -263,6 +315,60 @@ export default {
             this.appliedHasContracts = "";
             this.appliedHasSignedContracts = "";
             this.list();
+        },
+        toggleSort: function (field) {
+            if (this.sortField === field) {
+                this.sortDirection = this.sortDirection === "asc" ? "desc" : "asc";
+                return;
+            }
+
+            this.sortField = field;
+            this.sortDirection = field === "updated_at" ? "desc" : "asc";
+        },
+        sortIcon: function (field) {
+            if (this.sortField !== field) {
+                return "↕";
+            }
+
+            return this.sortDirection === "asc" ? "↑" : "↓";
+        },
+        getSortValue: function (item, field) {
+            const sortMap = {
+                customer_name: item.user?.name || "",
+                full_name: item.full_name || "",
+                national_id_number: item.national_id_number || "",
+                status: this.statusText(item.status),
+                approved_amount: Number(item.approved_amount || 0),
+                available_amount: Number(item.available_amount || 0),
+                utilized_amount: Number(item.utilized_amount || 0),
+                institution_name: item.institution?.company_name || item.institution?.name || "",
+                employee_name: item.employee?.name || "",
+                starts_at: item.starts_at || "",
+                due_at: item.due_at || "",
+                updated_at: item.updated_at || "",
+                last_update_label: item.last_update_label || "",
+                has_contract_documents: Number(Boolean(item.has_contract_documents)) * 1000 + Number(item.contract_documents_count || 0),
+                has_signed_contract_documents: Number(Boolean(item.has_signed_contract_documents)) * 1000 + Number(item.signed_contract_documents_count || 0),
+                file_reference: Number(item.id || 0),
+            };
+
+            return sortMap[field] ?? "";
+        },
+        compareSortValues: function (firstValue, secondValue) {
+            if (typeof firstValue === "number" || typeof secondValue === "number") {
+                return Number(firstValue || 0) - Number(secondValue || 0);
+            }
+
+            const firstDate = Date.parse(firstValue);
+            const secondDate = Date.parse(secondValue);
+            if (!Number.isNaN(firstDate) && !Number.isNaN(secondDate)) {
+                return firstDate - secondDate;
+            }
+
+            return String(firstValue || "").localeCompare(String(secondValue || ""), "ar", {
+                numeric: true,
+                sensitivity: "base",
+            });
         },
         normalizeSearchValue: function (value) {
             if (value === null || typeof value === "undefined") {

@@ -16,13 +16,22 @@ class CreditApplicationResource extends JsonResource
         $myReviewStatus = null;
         $canViewCustomerServiceAttribution = false;
         $lastUpdatedAt = $this->updated_at;
+        $lastUpdateLabel = 'تحديث طلب التمويل أو المستندات';
 
         if ($this->user?->updated_at && (!$lastUpdatedAt || $this->user->updated_at->gt($lastUpdatedAt))) {
             $lastUpdatedAt = $this->user->updated_at;
+            $lastUpdateLabel = 'تحديث بيانات العميل';
         }
 
         if ($this->user?->latestAddress?->updated_at && (!$lastUpdatedAt || $this->user->latestAddress->updated_at->gt($lastUpdatedAt))) {
             $lastUpdatedAt = $this->user->latestAddress->updated_at;
+            $lastUpdateLabel = 'تحديث العنوان أو الموقع';
+        }
+
+        $latestNote = $this->relationLoaded('notesHistory') ? $this->notesHistory->sortByDesc('created_at')->first() : null;
+        if ($latestNote?->created_at && (!$lastUpdatedAt || $latestNote->created_at->gt($lastUpdatedAt))) {
+            $lastUpdatedAt = $latestNote->created_at;
+            $lastUpdateLabel = 'إضافة ملاحظة أو قرار مراجعة';
         }
 
         if (Auth::check()) {
@@ -49,6 +58,7 @@ class CreditApplicationResource extends JsonResource
             'created_date'                 => $this->created_at ? AppLibrary::date($this->created_at) : null,
             'updated_at'                   => $lastUpdatedAt ? $lastUpdatedAt->toDateTimeString() : null,
             'updated_date'                 => $lastUpdatedAt ? AppLibrary::date($lastUpdatedAt) : null,
+            'last_update_label'            => $lastUpdateLabel,
             'national_id_front_document'   => $this->national_id_front_document,
             'national_id_back_document'    => $this->national_id_back_document,
             'commercial_register_documents'=> $this->commercial_register_documents,

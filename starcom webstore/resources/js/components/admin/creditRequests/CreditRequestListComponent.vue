@@ -58,20 +58,43 @@
                 <table class="db-table">
                     <thead class="db-table-head">
                         <tr class="db-table-head-tr">
-                            <th class="db-table-head-th">العميل</th>
-                            <th class="db-table-head-th">الاسم رباعي</th>
-                            <th class="db-table-head-th">الرقم القومي</th>
-                            <th class="db-table-head-th">الهاتف</th>
-                            <th v-if="canViewCustomerServiceAttribution" class="db-table-head-th">تم التقديم بواسطة</th>
-                            <th class="db-table-head-th">الحالة</th>
-                            <th class="db-table-head-th">آخر تحديث</th>
-                            <th class="db-table-head-th">إجمالي المعتمد</th>
-                            <th class="db-table-head-th">المستندات</th>
-                            <th class="db-table-head-th">القرار</th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('customer_name')">العميل <span>{{ sortIcon('customer_name') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('full_name')">الاسم رباعي <span>{{ sortIcon('full_name') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('national_id_number')">الرقم القومي <span>{{ sortIcon('national_id_number') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('phone')">الهاتف <span>{{ sortIcon('phone') }}</span></button>
+                            </th>
+                            <th v-if="canViewCustomerServiceAttribution" class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('submitted_by_customer_service')">تم التقديم بواسطة <span>{{ sortIcon('submitted_by_customer_service') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('status')">الحالة <span>{{ sortIcon('status') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('updated_at')">آخر تحديث <span>{{ sortIcon('updated_at') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('last_update_label')">ما هو آخر تحديث <span>{{ sortIcon('last_update_label') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('approved_amount')">إجمالي المعتمد <span>{{ sortIcon('approved_amount') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('documents_count')">المستندات <span>{{ sortIcon('documents_count') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('decision_state')">القرار <span>{{ sortIcon('decision_state') }}</span></button>
+                            </th>
                         </tr>
                     </thead>
-                    <tbody class="db-table-body" v-if="tabbedLists.length">
-                        <tr class="db-table-body-tr" v-for="item in tabbedLists" :key="item.id">
+                    <tbody class="db-table-body" v-if="sortedTabbedLists.length">
+                        <tr class="db-table-body-tr" v-for="item in sortedTabbedLists" :key="item.id">
                             <td class="db-table-body-td">
                                 <div class="font-semibold">{{ item.user?.name }}</div>
                                 <div class="text-xs text-text">{{ item.user?.email }}</div>
@@ -88,6 +111,7 @@
                             </td>
                             <td class="db-table-body-td">{{ statusText(item.status) }}</td>
                             <td class="db-table-body-td">{{ item.updated_date || "--" }}</td>
+                            <td class="db-table-body-td">{{ item.last_update_label || "--" }}</td>
                             <td class="db-table-body-td">{{ item.approved_amount_currency }}</td>
                             <td class="db-table-body-td">
                                 <div class="flex flex-col gap-2">
@@ -136,7 +160,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" :colspan="canViewCustomerServiceAttribution ? 10 : 9">لا توجد طلبات جديدة حالياً.</td>
+                            <td class="db-table-body-td text-center" :colspan="canViewCustomerServiceAttribution ? 11 : 10">لا توجد طلبات جديدة حالياً.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -165,6 +189,8 @@ export default {
                 term: "",
             },
             appliedTerm: "",
+            sortField: "updated_at",
+            sortDirection: "desc",
         };
     },
     computed: {
@@ -209,6 +235,22 @@ export default {
                 return item.status === "pending";
             });
         },
+        sortedTabbedLists: function () {
+            const items = [...this.tabbedLists];
+            const direction = this.sortDirection === "asc" ? 1 : -1;
+
+            return items.sort((firstItem, secondItem) => {
+                const firstValue = this.getSortValue(firstItem, this.sortField);
+                const secondValue = this.getSortValue(secondItem, this.sortField);
+                const comparison = this.compareSortValues(firstValue, secondValue);
+
+                if (comparison !== 0) {
+                    return comparison * direction;
+                }
+
+                return (Number(secondItem.id) - Number(firstItem.id)) * direction;
+            });
+        },
         authInfo: function () {
             return this.$store.getters.authInfo || {};
         },
@@ -251,6 +293,64 @@ export default {
             this.searchForm.term = "";
             this.appliedTerm = "";
             this.list();
+        },
+        toggleSort: function (field) {
+            if (this.sortField === field) {
+                this.sortDirection = this.sortDirection === "asc" ? "desc" : "asc";
+                return;
+            }
+
+            this.sortField = field;
+            this.sortDirection = field === "updated_at" ? "desc" : "asc";
+        },
+        sortIcon: function (field) {
+            if (this.sortField !== field) {
+                return "↕";
+            }
+
+            return this.sortDirection === "asc" ? "↑" : "↓";
+        },
+        getSortValue: function (item, field) {
+            const documentCount = Number(Boolean(item.national_id_front_document))
+                + Number(Boolean(item.national_id_back_document))
+                + Number((item.commercial_register_documents || []).length)
+                + Number(Boolean(item.tax_card_document))
+                + Number(Boolean(item.rent_contract_document))
+                + Number(Boolean(item.utility_bill_document));
+
+            const decisionState = this.canReview(item) ? "1-review" : this.canReReview(item) ? "2-rereview" : "3-closed";
+
+            const sortMap = {
+                customer_name: item.user?.name || "",
+                full_name: item.full_name || "",
+                national_id_number: item.national_id_number || "",
+                phone: item.user?.phone || "",
+                submitted_by_customer_service: item.submitted_by_customer_service?.name || "",
+                status: this.statusText(item.status),
+                updated_at: item.updated_at || "",
+                last_update_label: item.last_update_label || "",
+                approved_amount: Number(item.approved_amount || 0),
+                documents_count: documentCount,
+                decision_state: decisionState,
+            };
+
+            return sortMap[field] ?? "";
+        },
+        compareSortValues: function (firstValue, secondValue) {
+            if (typeof firstValue === "number" || typeof secondValue === "number") {
+                return Number(firstValue || 0) - Number(secondValue || 0);
+            }
+
+            const firstDate = Date.parse(firstValue);
+            const secondDate = Date.parse(secondValue);
+            if (!Number.isNaN(firstDate) && !Number.isNaN(secondDate)) {
+                return firstDate - secondDate;
+            }
+
+            return String(firstValue || "").localeCompare(String(secondValue || ""), "ar", {
+                numeric: true,
+                sensitivity: "base",
+            });
         },
         normalizeSearchValue: function (value) {
             if (value === null || typeof value === "undefined") {
