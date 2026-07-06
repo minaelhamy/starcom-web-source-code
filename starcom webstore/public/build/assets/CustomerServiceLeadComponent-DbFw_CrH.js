@@ -1,1 +1,0 @@
-import{_ as o,r,k as t,o as n}from"./app-BSHnJafZ.js";const s={name:"CustomerServiceLeadComponent"};function c(a,p,_,m,i,u){const e=r("router-view");return n(),t(e)}const f=o(s,[["render",c]]);export{f as default};
