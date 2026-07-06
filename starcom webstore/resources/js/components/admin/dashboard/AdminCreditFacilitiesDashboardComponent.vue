@@ -373,11 +373,17 @@ export default {
         },
         filteredLatestApprovedClients: function () {
             const term = this.normalizeSearchValue(this.appliedTerm);
-            if (!term) {
-                return this.latestApprovedClients;
+            let clients = this.latestApprovedClients;
+
+            if (this.selectedInstitutionId) {
+                clients = clients.filter((client) => String(client.institution_id) === String(this.selectedInstitutionId));
             }
 
-            return this.latestApprovedClients.filter((client) => {
+            if (!term) {
+                return clients;
+            }
+
+            return clients.filter((client) => {
                 const name = this.normalizeSearchValue(client.customer_name || "");
                 const phone = this.normalizeSearchValue(client.customer_phone || "");
                 const localPhone = phone.startsWith("20") ? `0${phone.slice(2)}` : phone;

@@ -428,6 +428,7 @@ class DashboardController extends AdminController implements HasMiddleware
                         'customer_name'                => $facility->user?->name,
                         'customer_phone'               => trim(($facility->user?->country_code ?: '') . ' ' . ($facility->user?->phone ?: '')),
                         'customer_address'             => $facility->user?->address,
+                        'institution_id'               => $facility->institution?->id,
                         'institution_name'             => $facility->institution?->financialInstitutionProfile?->company_name ?: $facility->institution?->name,
                         'employee_name'                => $facility->employee?->name ?: $facility->institution?->name,
                         'approved_amount'              => (float)$facility->approved_amount,

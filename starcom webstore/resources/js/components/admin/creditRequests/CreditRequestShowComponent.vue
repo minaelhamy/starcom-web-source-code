@@ -20,7 +20,7 @@
                         <div v-if="canViewCustomerServiceAttribution"><span class="font-semibold">تم التقديم بواسطة:</span> {{ application.submitted_by_customer_service?.name || "--" }}</div>
                         <div v-if="canViewCustomerServiceAttribution"><span class="font-semibold">تاريخ التقديم عبر خدمة العملاء:</span> {{ application.submitted_by_customer_service_at || "--" }}</div>
                         <div><span class="font-semibold">المحفظة الحالية:</span> {{ application.user?.wallet_balance || "--" }}</div>
-                        <div><span class="font-semibold">حالة الطلب:</span> {{ statusText(application.status) }}</div>
+                        <div><span class="font-semibold">حالة الطلب:</span> {{ statusText(effectiveStatus) }}</div>
                         <div><span class="font-semibold">تاريخ الطلب:</span> {{ application.created_date || "--" }}</div>
                     </div>
                 </div>
@@ -81,7 +81,7 @@
                     <div class="flex gap-2 flex-wrap">
                         <button class="db-btn py-2 text-white bg-primary" @click="updateIdentity()">حفظ بيانات الهوية</button>
                         <button
-                            v-if="application.status === 'pending_approval'"
+                            v-if="effectiveStatus === 'pending_approval'"
                             class="db-btn py-2 text-white bg-green-600"
                             @click="updateIdentity(true)"
                         >
@@ -303,8 +303,13 @@ export default {
         canViewCustomerServiceAttribution: function () {
             return this.isAdminLike;
         },
+        effectiveStatus: function () {
+            return this.application.queue_status || this.application.my_review_status || this.application.status || "pending";
+        },
         canReview: function () {
-            return this.application.status === "pending" || this.application.status === "declined";
+            return this.effectiveStatus === "pending"
+                || this.effectiveStatus === "declined"
+                || this.effectiveStatus === "pending_approval";
         },
     },
     mounted() {
