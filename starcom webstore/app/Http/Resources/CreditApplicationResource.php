@@ -14,6 +14,7 @@ class CreditApplicationResource extends JsonResource
     {
         $reviewedByMe = false;
         $myReviewStatus = null;
+        $queueStatus = $this->status;
         $canViewCustomerServiceAttribution = false;
         $lastUpdatedAt = $this->updated_at;
         $lastUpdateLabel = 'تحديث طلب التمويل أو المستندات';
@@ -45,6 +46,7 @@ class CreditApplicationResource extends JsonResource
                 });
                 $reviewedByMe = (bool)$myFacility;
                 $myReviewStatus = $myFacility?->status;
+                $queueStatus = $myReviewStatus ?: \App\Enums\CreditApplicationStatus::PENDING;
             }
         }
 
@@ -53,6 +55,7 @@ class CreditApplicationResource extends JsonResource
             'full_name'                    => $this->full_name,
             'national_id_number'           => $this->national_id_number,
             'status'                       => $this->status,
+            'queue_status'                 => $queueStatus,
             'notes'                        => $this->notes,
             'created_at'                   => $this->created_at ? $this->created_at->toDateTimeString() : null,
             'created_date'                 => $this->created_at ? AppLibrary::date($this->created_at) : null,

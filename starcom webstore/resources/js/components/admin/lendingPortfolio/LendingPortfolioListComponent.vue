@@ -59,6 +59,32 @@
                             <option value="0">لا يوجد عقد موقع</option>
                         </select>
                     </div>
+                    <div v-if="isAdminLike" class="w-full md:w-56">
+                        <label class="db-field-title after:hidden">جهة التمويل</label>
+                        <select v-model="searchForm.financial_institution_user_id" class="db-field-control" @change="handleInstitutionChange">
+                            <option value="">الكل</option>
+                            <option
+                                v-for="institution in institutions"
+                                :key="institution.id"
+                                :value="String(institution.id)"
+                            >
+                                {{ institution.company_name || institution.name }}
+                            </option>
+                        </select>
+                    </div>
+                    <div v-if="isAdminLike" class="w-full md:w-56">
+                        <label class="db-field-title after:hidden">الموظف المسؤول</label>
+                        <select v-model="searchForm.financial_institution_employee_user_id" class="db-field-control">
+                            <option value="">الكل</option>
+                            <option
+                                v-for="employee in filteredEmployees"
+                                :key="employee.id"
+                                :value="String(employee.id)"
+                            >
+                                {{ employee.name }}
+                            </option>
+                        </select>
+                    </div>
                     <div class="flex gap-2">
                         <button type="button" class="db-btn py-2 text-white bg-primary" @click="submitSearch">
                             <i class="lab lab-line-search lab-font-size-16"></i>
@@ -178,6 +204,7 @@
 <script>
 import LoadingComponent from "../components/LoadingComponent.vue";
 import appService from "../../../services/appService";
+import roleEnum from "../../../enums/modules/roleEnum";
 
 export default {
     name: "LendingPortfolioListComponent",
@@ -192,10 +219,14 @@ export default {
                 term: "",
                 has_contracts: "",
                 has_signed_contracts: "",
+                financial_institution_user_id: "",
+                financial_institution_employee_user_id: "",
             },
             appliedTerm: "",
             appliedHasContracts: "",
             appliedHasSignedContracts: "",
+            appliedFinancialInstitutionUserId: "",
+            appliedFinancialInstitutionEmployeeUserId: "",
             sortField: "updated_at",
             sortDirection: "desc",
             tabs: [
@@ -207,6 +238,28 @@ export default {
         };
     },
     computed: {
+        authInfo: function () {
+            return this.$store.getters.authInfo;
+        },
+        isAdminLike: function () {
+            return this.authInfo?.role_id === roleEnum.ADMIN || this.authInfo?.role_id === roleEnum.MANAGER;
+        },
+        assignmentOptions: function () {
+            return this.$store.getters["creditApplicationReview/assignmentOptions"] || { institutions: [], employees: [] };
+        },
+        institutions: function () {
+            return Array.isArray(this.assignmentOptions?.institutions) ? this.assignmentOptions.institutions : [];
+        },
+        filteredEmployees: function () {
+            const employees = Array.isArray(this.assignmentOptions?.employees) ? this.assignmentOptions.employees : [];
+            const institutionId = this.searchForm.financial_institution_user_id;
+
+            if (!institutionId) {
+                return employees;
+            }
+
+            return employees.filter((employee) => String(employee.institution_owner_user_id) === String(institutionId));
+        },
         portfolio: function () {
             return this.$store.getters["creditApplicationReview/portfolio"];
         },
@@ -287,6 +340,9 @@ export default {
         },
     },
     mounted() {
+        if (this.isAdminLike) {
+            this.$store.dispatch("creditApplicationReview/assignmentOptions");
+        }
         this.list();
     },
     methods: {
@@ -297,6 +353,8 @@ export default {
                 term: this.appliedTerm,
                 has_contracts: this.appliedHasContracts,
                 has_signed_contracts: this.appliedHasSignedContracts,
+                financial_institution_user_id: this.appliedFinancialInstitutionUserId,
+                financial_institution_employee_user_id: this.appliedFinancialInstitutionEmployeeUserId,
             }).finally(() => {
                 this.loading.isActive = false;
             });
@@ -305,16 +363,33 @@ export default {
             this.appliedTerm = this.searchForm.term.trim();
             this.appliedHasContracts = this.searchForm.has_contracts;
             this.appliedHasSignedContracts = this.searchForm.has_signed_contracts;
+            this.appliedFinancialInstitutionUserId = this.searchForm.financial_institution_user_id;
+            this.appliedFinancialInstitutionEmployeeUserId = this.searchForm.financial_institution_employee_user_id;
             this.list();
         },
         clearSearch: function () {
             this.searchForm.term = "";
             this.searchForm.has_contracts = "";
             this.searchForm.has_signed_contracts = "";
+            this.searchForm.financial_institution_user_id = "";
+            this.searchForm.financial_institution_employee_user_id = "";
             this.appliedTerm = "";
             this.appliedHasContracts = "";
             this.appliedHasSignedContracts = "";
+            this.appliedFinancialInstitutionUserId = "";
+            this.appliedFinancialInstitutionEmployeeUserId = "";
             this.list();
+        },
+        handleInstitutionChange: function () {
+            if (!this.searchForm.financial_institution_user_id) {
+                this.searchForm.financial_institution_employee_user_id = "";
+                return;
+            }
+
+            const employeeStillMatches = this.filteredEmployees.some((employee) => String(employee.id) === String(this.searchForm.financial_institution_employee_user_id));
+            if (!employeeStillMatches) {
+                this.searchForm.financial_institution_employee_user_id = "";
+            }
         },
         toggleSort: function (field) {
             if (this.sortField === field) {

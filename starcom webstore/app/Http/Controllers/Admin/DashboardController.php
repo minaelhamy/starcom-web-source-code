@@ -159,10 +159,8 @@ class DashboardController extends AdminController implements HasMiddleware
             }
 
             $lenderQueueQuery = $this->creditApplicationService->lenderOpportunitiesQuery($actor);
-            $opportunitiesQuery = (clone $lenderQueueQuery)
-                ->where('credit_applications.status', CreditApplicationStatus::PENDING);
-            $pendingApprovalQuery = (clone $lenderQueueQuery)
-                ->where('credit_applications.status', CreditApplicationStatus::PENDING_APPROVAL);
+            $opportunitiesQuery = $this->creditApplicationService->lenderFreshOpportunitiesQuery($actor);
+            $pendingApprovalQuery = $this->creditApplicationService->lenderPendingApprovalQuery($actor);
 
             $approvedFacilitiesQuery = $this->creditApplicationService->portfolioQuery($actor)
                 ->where('status', CreditFacilityStatus::APPROVED);

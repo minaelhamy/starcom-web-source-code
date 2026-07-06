@@ -109,7 +109,7 @@
                                 </div>
                                 <span v-else>--</span>
                             </td>
-                            <td class="db-table-body-td">{{ statusText(item.status) }}</td>
+                            <td class="db-table-body-td">{{ statusText(effectiveStatus(item)) }}</td>
                             <td class="db-table-body-td">{{ item.updated_date || "--" }}</td>
                             <td class="db-table-body-td">{{ item.last_update_label || "--" }}</td>
                             <td class="db-table-body-td">{{ item.approved_amount_currency }}</td>
@@ -136,7 +136,7 @@
                                 </div>
                                 <div v-else-if="canReReview(item)" class="space-y-2 min-w-[240px]">
                                     <div class="text-text text-sm">
-                                        {{ item.my_review_status === 'pending_approval'
+                                        {{ effectiveStatus(item) === 'pending_approval'
                                             ? 'هذا الطلب قيد التعديل من حسابك. يمكنك فتح الملف وقراءة الملاحظات ومراجعته بعد استكمال البيانات.'
                                             : 'تم رفض الطلب سابقاً من حسابك. يمكنك مراجعة الملف والاطلاع على الملاحظات السابقة ثم اتخاذ قرار جديد.' }}
                                     </div>
@@ -224,15 +224,16 @@ export default {
         },
         tabbedLists: function () {
             return this.filteredLists.filter((item) => {
+                const status = this.effectiveStatus(item);
                 if (this.activeTab === "pending_approval") {
-                    return item.status === "pending_approval";
+                    return status === "pending_approval";
                 }
 
                 if (this.activeTab === "declined") {
-                    return item.status === "declined";
+                    return status === "declined";
                 }
 
-                return item.status === "pending";
+                return status === "pending";
             });
         },
         sortedTabbedLists: function () {
@@ -326,7 +327,7 @@ export default {
                 national_id_number: item.national_id_number || "",
                 phone: item.user?.phone || "",
                 submitted_by_customer_service: item.submitted_by_customer_service?.name || "",
-                status: this.statusText(item.status),
+                status: this.statusText(this.effectiveStatus(item)),
                 updated_at: item.updated_at || "",
                 last_update_label: item.last_update_label || "",
                 approved_amount: Number(item.approved_amount || 0),
@@ -435,7 +436,11 @@ export default {
             return this.isReopenable(item) && item.reviewed_by_me;
         },
         isReopenable: function (item) {
-            return item.status === "pending" || item.status === "pending_approval" || item.status === "declined";
+            const status = this.effectiveStatus(item);
+            return status === "pending" || status === "pending_approval" || status === "declined";
+        },
+        effectiveStatus: function (item) {
+            return item.queue_status || item.my_review_status || item.status;
         },
         statusText: function (status) {
             if (status === "approved") {
