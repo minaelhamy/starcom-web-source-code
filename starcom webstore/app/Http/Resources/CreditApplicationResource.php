@@ -18,6 +18,10 @@ class CreditApplicationResource extends JsonResource
         $canViewCustomerServiceAttribution = false;
         $lastUpdatedAt = $this->updated_at;
         $lastUpdateLabel = 'تحديث طلب التمويل أو المستندات';
+        $myFacility = null;
+        $visibleFacilities = $this->relationLoaded('facilities') ? $this->facilities : collect();
+        $visibleNotesHistory = $this->relationLoaded('notesHistory') ? $this->notesHistory : collect();
+        $walletBalanceAmount = (float) ($this->user?->balance ?? 0);
 
         if ($this->user?->updated_at && (!$lastUpdatedAt || $this->user->updated_at->gt($lastUpdatedAt))) {
             $lastUpdatedAt = $this->user->updated_at;
@@ -47,6 +51,17 @@ class CreditApplicationResource extends JsonResource
                 $reviewedByMe = (bool)$myFacility;
                 $myReviewStatus = $myFacility?->status;
                 $queueStatus = $myReviewStatus ?: \App\Enums\CreditApplicationStatus::PENDING;
+                $visibleFacilities = $myFacility ? collect([$myFacility]) : collect();
+                $visibleNotesHistory = $visibleNotesHistory->filter(function ($note) use ($myFacility) {
+                    if (!$myFacility) {
+                        return !$note->credit_facility_id;
+                    }
+
+                    return !$note->credit_facility_id || (int) $note->credit_facility_id === (int) $myFacility->id;
+                })->values();
+                $walletBalanceAmount = $myFacility && $myFacility->status === 'approved'
+                    ? (float) $myFacility->available_amount
+                    : 0.0;
             }
         }
 
@@ -72,7 +87,7 @@ class CreditApplicationResource extends JsonResource
             'utility_bill_document'        => $this->utility_bill_document,
             'reviewed_by_me'               => $reviewedByMe,
             'my_review_status'             => $myReviewStatus,
-            'notes_history'                => CreditApplicationNoteResource::collection($this->whenLoaded('notesHistory')),
+            'notes_history'                => CreditApplicationNoteResource::collection($visibleNotesHistory),
             'user'                         => $this->user ? [
                 'id'              => $this->user->id,
                 'name'            => $this->user->name,
@@ -84,13 +99,13 @@ class CreditApplicationResource extends JsonResource
                 'area'            => $this->user->display_area,
                 'latitude'        => $this->user->display_latitude,
                 'longitude'       => $this->user->display_longitude,
-                'balance'         => (float)$this->user->balance,
-                'wallet_balance'  => AppLibrary::currencyAmountFormat($this->user->balance),
+                'balance'         => $walletBalanceAmount,
+                'wallet_balance'  => AppLibrary::currencyAmountFormat($walletBalanceAmount),
             ] : null,
             'starcom_intelligence'         => StarcomIntelligenceCalculator::forUser($this->user),
-            'facilities'                    => CreditFacilityResource::collection($this->whenLoaded('facilities')),
-            'approved_amount'               => (float)$this->facilities->where('status', 'approved')->sum('approved_amount'),
-            'approved_amount_currency'      => AppLibrary::currencyAmountFormat($this->facilities->where('status', 'approved')->sum('approved_amount')),
+            'facilities'                    => CreditFacilityResource::collection($visibleFacilities),
+            'approved_amount'               => (float)$visibleFacilities->where('status', 'approved')->sum('approved_amount'),
+            'approved_amount_currency'      => AppLibrary::currencyAmountFormat($visibleFacilities->where('status', 'approved')->sum('approved_amount')),
             'submitted_by_customer_service' => $this->when($canViewCustomerServiceAttribution, $this->submittedByCustomerService ? [
                 'id' => $this->submittedByCustomerService->id,
                 'name' => $this->submittedByCustomerService->name,
