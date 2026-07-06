@@ -32,6 +32,19 @@
                             placeholder="ابحث داخل أحدث العملاء المعتمدين وأحدث فرص التمويل"
                         />
                     </div>
+                    <div class="w-full md:w-72">
+                        <label class="db-field-title after:hidden">عرض جهة التمويل</label>
+                        <select v-model="selectedInstitutionId" class="db-field-control">
+                            <option value="">كل الجهات</option>
+                            <option
+                                v-for="institution in institutionBreakdown"
+                                :key="institution.institution_id"
+                                :value="String(institution.institution_id)"
+                            >
+                                {{ institution.institution_company_name }}
+                            </option>
+                        </select>
+                    </div>
                     <div class="flex gap-2">
                         <button type="button" class="db-btn py-2 text-white bg-primary" @click="submitSearch">
                             <i class="lab lab-line-search lab-font-size-16"></i>
@@ -86,20 +99,28 @@
             <div class="db-card p-5">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <h4 class="font-semibold text-lg text-heading">أفضل الجهات التمويلية أداءً</h4>
-                        <p class="text-sm text-secondary">مرتبة حسب الاستخدام الفعلي وحجم المحفظة وعدد العملاء الممولين.</p>
+                        <h4 class="font-semibold text-lg text-heading">تفاصيل الجهات التمويلية</h4>
+                        <p class="text-sm text-secondary">عرض تفصيلي لكل جهة تمويل لفهم الفرص المفتوحة، الطلبات قيد التعديل، الأداء، وحجم المحفظة.</p>
                     </div>
                     <router-link :to="{ name: 'admin.financialInstitutions.list' }" class="text-primary text-sm font-medium">
                         إدارة الجهات
                     </router-link>
                 </div>
 
-                <div v-if="topInstitutions.length" class="space-y-3">
-                    <div v-for="institution in topInstitutions" :key="institution.institution_id" class="rounded-lg border border-[#E8E8F3] p-4">
+                <div v-if="filteredInstitutionBreakdown.length" class="space-y-4">
+                    <div v-for="institution in filteredInstitutionBreakdown" :key="institution.institution_id" class="rounded-lg border border-[#E8E8F3] p-4">
                         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                             <div>
                                 <h5 class="font-semibold text-heading">{{ institution.institution_company_name }}</h5>
-                                <p class="text-sm text-secondary">{{ institution.active_customers_count }} عميل ممول</p>
+                                <p class="text-sm text-secondary">
+                                    {{ institution.active_customers_count }} عميل ممول
+                                    <span class="mx-1">|</span>
+                                    {{ institution.employee_count }} موظف
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm text-secondary">آخر نشاط</p>
+                                <h6 class="font-semibold text-heading">{{ institution.latest_activity_date || 'لا يوجد نشاط بعد' }}</h6>
                             </div>
                             <div class="text-right">
                                 <p class="text-sm text-secondary">إجمالي الاعتماد</p>
@@ -107,7 +128,23 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+                        <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mt-4">
+                            <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
+                                <p class="text-xs text-secondary">فرص مفتوحة</p>
+                                <p class="font-medium text-heading">{{ institution.opportunities_count }}</p>
+                            </div>
+                            <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
+                                <p class="text-xs text-secondary">قيد التعديل</p>
+                                <p class="font-medium text-heading">{{ institution.pending_approval_count }}</p>
+                            </div>
+                            <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
+                                <p class="text-xs text-secondary">تمت مراجعتها</p>
+                                <p class="font-medium text-heading">{{ institution.reviewed_requests_count }}</p>
+                            </div>
+                            <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
+                                <p class="text-xs text-secondary">المرفوضة</p>
+                                <p class="font-medium text-heading">{{ institution.declined_requests_count }}</p>
+                            </div>
                             <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
                                 <p class="text-xs text-secondary">محافظ معتمدة</p>
                                 <p class="font-medium text-heading">{{ institution.approved_facilities_count }}</p>
@@ -120,11 +157,54 @@
                                 <p class="text-xs text-secondary">المتاح</p>
                                 <p class="font-medium text-heading">{{ institution.available_amount_currency }}</p>
                             </div>
+                            <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
+                                <p class="text-xs text-secondary">معدل الاستخدام</p>
+                                <p class="font-medium text-heading">{{ Number(institution.utilization_rate || 0).toFixed(2) }}%</p>
+                            </div>
+                        </div>
+
+                        <div v-if="institution.top_customers?.length" class="mt-4">
+                            <p class="text-sm font-medium text-heading mb-3">أعلى العملاء داخل هذه الجهة</p>
+                            <div class="space-y-3">
+                                <div
+                                    v-for="customer in institution.top_customers"
+                                    :key="`${institution.institution_id}-${customer.facility_id}`"
+                                    class="rounded-lg border border-dashed border-[#DADCEC] p-3"
+                                >
+                                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                        <div>
+                                            <h6 class="font-semibold text-heading">{{ customer.customer_name || '--' }}</h6>
+                                            <p class="text-sm text-secondary">{{ customer.customer_phone || 'لا يوجد رقم هاتف' }}</p>
+                                        </div>
+                                        <router-link
+                                            :to="{ name: 'admin.lendingPortfolio.show', params: { id: customer.facility_id } }"
+                                            class="text-primary text-sm font-medium"
+                                        >
+                                            فتح الملف
+                                        </router-link>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                                        <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
+                                            <p class="text-xs text-secondary">المعتمد</p>
+                                            <p class="font-medium text-heading">{{ customer.approved_amount_currency }}</p>
+                                        </div>
+                                        <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
+                                            <p class="text-xs text-secondary">المستخدم</p>
+                                            <p class="font-medium text-heading">{{ customer.utilized_amount_currency }}</p>
+                                        </div>
+                                        <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
+                                            <p class="text-xs text-secondary">المتاح</p>
+                                            <p class="font-medium text-heading">{{ customer.available_amount_currency }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div v-else class="rounded-lg border border-dashed border-[#DADCEC] p-6 text-center text-secondary">
-                    لا توجد جهات تمويل لديها محافظ معتمدة حتى الآن.
+                    لا توجد جهات تمويل لعرض تفاصيلها حالياً.
                 </div>
             </div>
         </div>
@@ -233,6 +313,7 @@ export default {
                 term: "",
             },
             appliedTerm: "",
+            selectedInstitutionId: "",
         };
     },
     computed: {
@@ -273,6 +354,16 @@ export default {
         },
         topInstitutions: function () {
             return this.summary.top_institutions || [];
+        },
+        institutionBreakdown: function () {
+            return this.summary.institution_breakdown || [];
+        },
+        filteredInstitutionBreakdown: function () {
+            if (!this.selectedInstitutionId) {
+                return this.institutionBreakdown;
+            }
+
+            return this.institutionBreakdown.filter((institution) => String(institution.institution_id) === String(this.selectedInstitutionId));
         },
         latestApprovedClients: function () {
             return this.summary.latest_approved_clients || [];
@@ -324,6 +415,9 @@ export default {
             this.loading.isActive = true;
             this.$store.dispatch("dashboard/adminCreditFacilitiesSummary").then((res) => {
                 this.summary = res.data.data || {};
+                if (!this.selectedInstitutionId && Array.isArray(this.summary.institution_breakdown) && this.summary.institution_breakdown.length === 1) {
+                    this.selectedInstitutionId = String(this.summary.institution_breakdown[0].institution_id);
+                }
             }).finally(() => {
                 this.loading.isActive = false;
             });

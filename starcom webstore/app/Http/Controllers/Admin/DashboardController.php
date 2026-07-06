@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use App\Libraries\AppLibrary;
 use App\Models\CreditApplication;
 use App\Models\CreditFacility;
+use App\Models\User;
 use App\Services\CreditApplicationService;
 use App\Services\ProductService;
 use App\Services\DashboardService;
@@ -264,7 +265,7 @@ class DashboardController extends AdminController implements HasMiddleware
         try {
             $actor = Auth::user();
 
-            if (!$actor || !$actor->hasRole(EnumRole::ADMIN)) {
+            if (!$actor || !$actor->hasAnyRole([EnumRole::ADMIN, EnumRole::MANAGER])) {
                 return response(['status' => false, 'message' => trans('all.message.permission_denied')], 403);
             }
 
@@ -323,6 +324,97 @@ class DashboardController extends AdminController implements HasMiddleware
                     return [$institution['utilized_amount'], $institution['approved_amount'], $institution['active_customers_count']];
                 })
                 ->take(5)
+                ->values();
+
+            $institutionBreakdown = $this->creditApplicationService
+                ->assignmentOptions()['institutions'];
+
+            $institutionBreakdown = collect($institutionBreakdown)
+                ->map(function (array $institutionData) {
+                    $institutionId = (int) ($institutionData['id'] ?? 0);
+                    $institutionUser = User::with('financialInstitutionProfile')->find($institutionId);
+                    if (!$institutionUser) {
+                        return null;
+                    }
+
+                    $institutionFacilitiesQuery = CreditFacility::with(['user', 'institution.financialInstitutionProfile', 'employee'])
+                        ->where('financial_institution_user_id', $institutionId);
+
+                    $approvedInstitutionFacilitiesQuery = (clone $institutionFacilitiesQuery)
+                        ->where('status', CreditFacilityStatus::APPROVED);
+
+                    $opportunitiesCount = $this->creditApplicationService->lenderFreshOpportunitiesQuery($institutionUser)->count();
+                    $pendingApprovalCount = $this->creditApplicationService->lenderPendingApprovalQuery($institutionUser)->count();
+                    $reviewedRequestsCount = (clone $institutionFacilitiesQuery)->count();
+                    $acceptedRequestsCount = (clone $institutionFacilitiesQuery)->where('status', CreditFacilityStatus::APPROVED)->count();
+                    $declinedRequestsCount = (clone $institutionFacilitiesQuery)->where('status', CreditFacilityStatus::DECLINED)->count();
+                    $expiredFacilitiesCount = (clone $institutionFacilitiesQuery)->where('status', CreditFacilityStatus::EXPIRED)->count();
+                    $activeCustomersCount = (clone $approvedInstitutionFacilitiesQuery)->distinct('user_id')->count('user_id');
+                    $approvedFacilitiesCount = (clone $approvedInstitutionFacilitiesQuery)->count();
+                    $employeeCount = (clone $institutionFacilitiesQuery)
+                        ->whereNotNull('financial_institution_employee_user_id')
+                        ->distinct('financial_institution_employee_user_id')
+                        ->count('financial_institution_employee_user_id');
+                    $approvedAmount = (float) (clone $approvedInstitutionFacilitiesQuery)->sum('approved_amount');
+                    $availableAmount = (float) (clone $approvedInstitutionFacilitiesQuery)->sum('available_amount');
+                    $utilizedAmount = (float) (clone $approvedInstitutionFacilitiesQuery)->sum('utilized_amount');
+                    $utilizationRate = $approvedAmount > 0 ? round(($utilizedAmount / $approvedAmount) * 100, 2) : 0;
+
+                    $latestActivity = (clone $institutionFacilitiesQuery)
+                        ->latest('updated_at')
+                        ->first();
+
+                    $topCustomers = (clone $approvedInstitutionFacilitiesQuery)
+                        ->get()
+                        ->sortByDesc(function (CreditFacility $facility) {
+                            return [$facility->utilized_amount, $facility->approved_amount, $facility->available_amount];
+                        })
+                        ->take(3)
+                        ->map(function (CreditFacility $facility) {
+                            return [
+                                'facility_id'              => $facility->id,
+                                'customer_name'            => $facility->user?->name,
+                                'customer_phone'           => trim(($facility->user?->country_code ?: '') . ' ' . ($facility->user?->phone ?: '')),
+                                'approved_amount'          => (float) $facility->approved_amount,
+                                'approved_amount_currency' => AppLibrary::currencyAmountFormat($facility->approved_amount),
+                                'utilized_amount'          => (float) $facility->utilized_amount,
+                                'utilized_amount_currency' => AppLibrary::currencyAmountFormat($facility->utilized_amount),
+                                'available_amount'         => (float) $facility->available_amount,
+                                'available_amount_currency'=> AppLibrary::currencyAmountFormat($facility->available_amount),
+                            ];
+                        })
+                        ->values();
+
+                    return [
+                        'institution_id'                => $institutionId,
+                        'institution_name'              => $institutionUser->name,
+                        'institution_company_name'      => $institutionUser->financialInstitutionProfile?->company_name ?: $institutionUser->name,
+                        'opportunities_count'           => $opportunitiesCount,
+                        'pending_approval_count'        => $pendingApprovalCount,
+                        'reviewed_requests_count'       => $reviewedRequestsCount,
+                        'accepted_requests_count'       => $acceptedRequestsCount,
+                        'declined_requests_count'       => $declinedRequestsCount,
+                        'expired_facilities_count'      => $expiredFacilitiesCount,
+                        'active_customers_count'        => $activeCustomersCount,
+                        'approved_facilities_count'     => $approvedFacilitiesCount,
+                        'employee_count'                => $employeeCount,
+                        'approved_amount'               => $approvedAmount,
+                        'approved_amount_currency'      => AppLibrary::currencyAmountFormat($approvedAmount),
+                        'available_amount'              => $availableAmount,
+                        'available_amount_currency'     => AppLibrary::currencyAmountFormat($availableAmount),
+                        'utilized_amount'               => $utilizedAmount,
+                        'utilized_amount_currency'      => AppLibrary::currencyAmountFormat($utilizedAmount),
+                        'utilization_rate'              => $utilizationRate,
+                        'latest_activity_at'            => $latestActivity?->updated_at?->toDateTimeString(),
+                        'latest_activity_date'          => $latestActivity?->updated_at ? AppLibrary::datetime($latestActivity->updated_at) : null,
+                        'latest_activity_label'         => $latestActivity ? 'آخر تعديل على ملف تمويلي' : null,
+                        'top_customers'                 => $topCustomers,
+                    ];
+                })
+                ->filter()
+                ->sortByDesc(function (array $institution) {
+                    return [$institution['utilized_amount'], $institution['approved_amount'], $institution['active_customers_count']];
+                })
                 ->values();
 
             $latestApprovedClients = (clone $approvedFacilitiesQuery)
@@ -389,6 +481,7 @@ class DashboardController extends AdminController implements HasMiddleware
                     'utilized_wallet_value_currency'  => AppLibrary::currencyAmountFormat($utilizedAmount),
                     'utilization_rate'                => $utilizationRate,
                     'top_institutions'                => $topInstitutions,
+                    'institution_breakdown'           => $institutionBreakdown,
                     'latest_approved_clients'         => $latestApprovedClients,
                     'recent_opportunities'            => $recentOpportunities,
                 ],
