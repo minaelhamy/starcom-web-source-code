@@ -672,7 +672,7 @@ class CreditApplicationService
             }
 
             if ($creditFacility->status !== CreditFacilityStatus::APPROVED) {
-                throw new Exception('يمكن رفع العقود فقط بعد اعتماد التمويل.', 422);
+                throw new Exception('يمكن رفع العقود غير الموقعة فقط بعد اعتماد التمويل.', 422);
             }
 
             foreach ($request->file('contract_documents', []) as $contractDocument) {
@@ -713,7 +713,7 @@ class CreditApplicationService
             }
 
             if ($creditFacility->status !== CreditFacilityStatus::APPROVED) {
-                throw new Exception('يمكن رفع العقود الموقعة فقط بعد اعتماد التمويل.', 422);
+                throw new Exception('يمكن رفع العقود الموقعة فقط بعد اعتماد التمويل المعتمد لهذه الجهة.', 422);
             }
 
             foreach ($request->file('signed_contract_documents', []) as $contractDocument) {

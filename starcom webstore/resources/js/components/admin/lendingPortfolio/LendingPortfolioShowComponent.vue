@@ -158,12 +158,12 @@
 
         <div v-if="canUploadContracts || (facility.contract_documents || []).length" class="db-card mb-4">
             <div class="db-card-header border-none">
-                <h3 class="db-card-title">عقود التمويل</h3>
+                <h3 class="db-card-title">عقود التمويل غير الموقعة</h3>
             </div>
             <div class="row p-4">
                 <div class="col-12 lg:col-6">
                     <div class="db-card p-4 h-full">
-                        <h4 class="font-semibold mb-3">العقود المرفوعة</h4>
+                        <h4 class="font-semibold mb-3">العقود غير الموقعة المرفوعة</h4>
                         <div class="flex flex-col gap-2">
                             <div
                                 v-for="(document, index) in facility.contract_documents || []"
@@ -176,7 +176,7 @@
                                     download
                                     class="db-btn py-2 text-white bg-primary"
                                 >
-                                    تحميل العقد {{ index + 1 }}
+                                    تحميل العقد غير الموقع {{ index + 1 }}
                                 </a>
                                 <button
                                     v-if="canDeleteContracts"
@@ -186,13 +186,13 @@
                                     حذف العقد
                                 </button>
                             </div>
-                            <span v-if="!(facility.contract_documents || []).length" class="text-sm text-text">لا توجد عقود مرفوعة بعد.</span>
+                            <span v-if="!(facility.contract_documents || []).length" class="text-sm text-text">لا توجد عقود غير موقعة مرفوعة بعد.</span>
                         </div>
                     </div>
                 </div>
                 <div class="col-12 lg:col-6" v-if="canUploadContracts">
                     <div class="db-card p-4 h-full">
-                        <h4 class="font-semibold mb-3">رفع عقود جديدة</h4>
+                        <h4 class="font-semibold mb-3">رفع عقود غير موقعة جديدة</h4>
                         <input
                             type="file"
                             multiple
@@ -203,7 +203,7 @@
                         <small class="db-field-alert" v-if="contractErrors.contract_documents">{{ contractErrors.contract_documents[0] }}</small>
                         <small class="db-field-alert" v-if="contractErrors['contract_documents.0']">{{ contractErrors['contract_documents.0'][0] }}</small>
                         <div class="mt-3">
-                            <button class="db-btn py-2 text-white bg-primary" @click="uploadContracts">رفع العقود</button>
+                            <button class="db-btn py-2 text-white bg-primary" @click="uploadContracts">رفع العقود غير الموقعة</button>
                         </div>
                     </div>
                 </div>
