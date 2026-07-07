@@ -21,43 +21,6 @@
 
     <div class="row">
         <div class="col-12 xl:col-7">
-            <div class="db-card p-5 mb-6">
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <h4 class="font-semibold text-lg text-heading">أداء المحفظة</h4>
-                        <p class="text-sm text-secondary">ملخص تمويل المحافظ ومعدل الاستخدام الحالي.</p>
-                    </div>
-                    <router-link :to="{ name: 'admin.lendingPortfolio' }" class="text-primary text-sm font-medium">
-                        عرض المحافظ
-                    </router-link>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-                    <div class="rounded-lg border border-[#E8E8F3] p-4">
-                        <p class="text-sm text-secondary mb-1">إجمالي قيمة المحافظ</p>
-                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.wallet_value_currency, summary.wallet_value) }}</h5>
-                    </div>
-                    <div class="rounded-lg border border-[#E8E8F3] p-4">
-                        <p class="text-sm text-secondary mb-1">الرصيد المتاح</p>
-                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.available_wallet_value_currency, summary.available_wallet_value) }}</h5>
-                    </div>
-                    <div class="rounded-lg border border-[#E8E8F3] p-4">
-                        <p class="text-sm text-secondary mb-1">الرصيد المستخدم</p>
-                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.utilized_wallet_value_currency, summary.utilized_wallet_value) }}</h5>
-                    </div>
-                </div>
-
-                <div class="rounded-lg border border-[#E8E8F3] p-4">
-                    <div class="flex items-center justify-between mb-2">
-                        <p class="text-sm text-secondary">معدل الاستخدام</p>
-                        <span class="text-sm font-semibold text-heading">{{ utilizationLabel }}</span>
-                    </div>
-                    <div class="w-full h-3 rounded-full bg-[#F3F4FA] overflow-hidden">
-                        <div class="h-full bg-primary rounded-full transition-all duration-300" :style="{ width: `${safeUtilizationRate}%` }"></div>
-                    </div>
-                </div>
-            </div>
-
             <div class="db-card p-5">
                 <div class="flex items-center justify-between mb-4">
                     <div>
