@@ -113,6 +113,7 @@
         "lending_portfolio": "Lending Portfolio",
         "customer_service_leads": "Customer Service Leads",
         "customer_service_reports": "Customer Service Reports",
+        "payment_collection_report": "Collections and Repayment Report",
         "pay_later_wallet": "Pay Later Wallet"
     },
     "label": {

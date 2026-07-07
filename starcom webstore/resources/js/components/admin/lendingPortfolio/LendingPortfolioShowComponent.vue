@@ -20,6 +20,7 @@
                         <div><span class="font-semibold">المبلغ المعتمد:</span> {{ facility.approved_currency || "--" }}</div>
                         <div><span class="font-semibold">المتاح:</span> {{ facility.available_currency || "--" }}</div>
                         <div><span class="font-semibold">المستخدم:</span> {{ facility.utilized_currency || "--" }}</div>
+                        <div><span class="font-semibold">إجمالي المسدد:</span> {{ facility.repaid_currency || "--" }}</div>
                     </div>
                 </div>
                 <div class="col-12 lg:col-6">
@@ -56,6 +57,72 @@
                     <textarea v-model="noteForm.note" class="db-field-control h-28" placeholder="اكتب ملاحظة جديدة على العميل"></textarea>
                     <div class="mt-3">
                         <button class="db-btn py-2 text-white bg-primary" @click="addNote">حفظ الملاحظة</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="db-card mb-4" v-if="canRecordRepayment || (facility.repayments || []).length">
+            <div class="db-card-header border-none">
+                <h3 class="db-card-title">السداد والتحصيل</h3>
+            </div>
+            <div class="row p-4">
+                <div class="col-12 lg:col-6" v-if="canRecordRepayment">
+                    <div class="db-card p-4 h-full">
+                        <h4 class="font-semibold mb-3">تسجيل دفعة جديدة</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="db-field-title required">قيمة السداد</label>
+                                <input v-model="repaymentForm.amount" type="number" min="0.01" step="0.01" class="db-field-control" />
+                                <small class="db-field-alert" v-if="repaymentErrors.amount">{{ repaymentErrors.amount[0] }}</small>
+                            </div>
+                            <div>
+                                <label class="db-field-title after:hidden">تاريخ السداد</label>
+                                <input v-model="repaymentForm.paid_at" type="date" class="db-field-control" />
+                                <small class="db-field-alert" v-if="repaymentErrors.paid_at">{{ repaymentErrors.paid_at[0] }}</small>
+                            </div>
+                            <div>
+                                <label class="db-field-title after:hidden">طريقة السداد</label>
+                                <input v-model="repaymentForm.payment_method" type="text" class="db-field-control" placeholder="مثال: تحويل بنكي أو نقدي" />
+                                <small class="db-field-alert" v-if="repaymentErrors.payment_method">{{ repaymentErrors.payment_method[0] }}</small>
+                            </div>
+                            <div>
+                                <label class="db-field-title after:hidden">المرجع</label>
+                                <input v-model="repaymentForm.reference_number" type="text" class="db-field-control" placeholder="رقم العملية أو المرجع" />
+                                <small class="db-field-alert" v-if="repaymentErrors.reference_number">{{ repaymentErrors.reference_number[0] }}</small>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="db-field-title after:hidden">ملاحظات السداد</label>
+                                <textarea v-model="repaymentForm.notes" class="db-field-control h-28" placeholder="أي ملاحظات تخص التحصيل أو السداد"></textarea>
+                                <small class="db-field-alert" v-if="repaymentErrors.notes">{{ repaymentErrors.notes[0] }}</small>
+                            </div>
+                        </div>
+                        <div class="mt-3 text-sm text-text">
+                            عند السداد الكامل سيتم إغلاق هذا التمويل وإعادة العميل إلى فرص التمويل المفتوحة لهذه الجهة فقط.
+                        </div>
+                        <div class="mt-3">
+                            <button class="db-btn py-2 text-white bg-primary" @click="recordRepayment">تسجيل السداد</button>
+                        </div>
+                    </div>
+                </div>
+                <div :class="canRecordRepayment ? 'col-12 lg:col-6' : 'col-12'">
+                    <div class="db-card p-4 h-full">
+                        <h4 class="font-semibold mb-3">سجل السداد</h4>
+                        <div v-if="facility.repayments?.length" class="space-y-3">
+                            <div v-for="repayment in facility.repayments" :key="repayment.id" class="db-field-control !h-auto py-3">
+                                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-1 mb-2">
+                                    <div class="font-semibold text-sm">
+                                        {{ repayment.amount_currency }}
+                                        <span v-if="repayment.creator?.name" class="text-text font-normal">- بواسطة {{ repayment.creator.name }}</span>
+                                    </div>
+                                    <div class="text-xs text-text">{{ repayment.paid_date || repayment.created_date || "--" }}</div>
+                                </div>
+                                <div class="text-sm" v-if="repayment.payment_method">طريقة السداد: {{ repayment.payment_method }}</div>
+                                <div class="text-sm" v-if="repayment.reference_number">المرجع: {{ repayment.reference_number }}</div>
+                                <div class="text-sm whitespace-pre-line" v-if="repayment.notes">{{ repayment.notes }}</div>
+                            </div>
+                        </div>
+                        <div v-else class="db-field-control min-h-[100px] !h-auto py-3">لا توجد عمليات سداد مسجلة حتى الآن.</div>
                     </div>
                 </div>
             </div>
@@ -387,6 +454,14 @@ export default {
                 starts_at: "",
             },
             dateErrors: {},
+            repaymentForm: {
+                amount: "",
+                payment_method: "",
+                reference_number: "",
+                notes: "",
+                paid_at: "",
+            },
+            repaymentErrors: {},
             identityForm: {
                 full_name: "",
                 national_id_number: "",
@@ -455,6 +530,12 @@ export default {
                 this.facility.id &&
                 this.facility.status === "approved";
         },
+        canRecordRepayment: function () {
+            return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) &&
+                this.facility.id &&
+                this.facility.status === "approved" &&
+                Number(this.facility.utilized_amount || 0) > 0;
+        },
         expectedDueDate: function () {
             if (!this.dateForm.starts_at) {
                 return this.facility.due_at || "--";
@@ -517,6 +598,14 @@ export default {
             this.dateForm.starts_at = this.normalizeFacilityDate(this.facility.starts_at || "");
             this.dateErrors = {};
         },
+        resetRepaymentForm: function () {
+            this.repaymentForm.amount = "";
+            this.repaymentForm.payment_method = "";
+            this.repaymentForm.reference_number = "";
+            this.repaymentForm.notes = "";
+            this.repaymentForm.paid_at = "";
+            this.repaymentErrors = {};
+        },
         normalizeFacilityDate: function (value) {
             if (!value) {
                 return "";
@@ -576,7 +665,25 @@ export default {
             if (status === "expired") {
                 return "منتهي";
             }
+            if (status === "settled") {
+                return "مسدد";
+            }
             return status || "--";
+        },
+        recordRepayment: function () {
+            this.loading.isActive = true;
+            this.$store.dispatch("creditApplicationReview/recordRepayment", {
+                id: this.facility.id,
+                form: this.repaymentForm,
+            }).then((res) => {
+                alertService.success(res.data.message || "تم تسجيل السداد بنجاح.");
+                this.resetRepaymentForm();
+            }).catch((err) => {
+                this.repaymentErrors = err.response?.data?.errors || {};
+                alertService.error(err.response?.data?.message || "تعذر تسجيل السداد.");
+            }).finally(() => {
+                this.loading.isActive = false;
+            });
         },
         assignFacility: function () {
             this.loading.isActive = true;

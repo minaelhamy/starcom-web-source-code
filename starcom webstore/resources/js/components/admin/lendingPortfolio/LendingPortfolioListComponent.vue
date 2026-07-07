@@ -232,6 +232,7 @@ export default {
             tabs: [
                 { value: "approved", label: "المعتمدة" },
                 { value: "declined", label: "المرفوضة" },
+                { value: "settled", label: "المسددة" },
                 { value: "expired", label: "المنتهية" },
                 { value: "all", label: "الكل" },
             ],
@@ -330,6 +331,10 @@ export default {
 
             if (this.activeTab === "expired") {
                 return "لا توجد عمليات تمويل منتهية حالياً.";
+            }
+
+            if (this.activeTab === "settled") {
+                return "لا توجد عمليات تمويل مسددة حالياً.";
             }
 
             if (this.activeTab === "all") {
@@ -474,6 +479,9 @@ export default {
             }
             if (status === "expired") {
                 return "منتهي";
+            }
+            if (status === "settled") {
+                return "مسدد";
             }
             return status;
         },

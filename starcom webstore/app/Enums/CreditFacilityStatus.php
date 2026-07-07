@@ -8,4 +8,5 @@ interface CreditFacilityStatus
     const APPROVED         = 'approved';
     const DECLINED         = 'declined';
     const EXPIRED          = 'expired';
+    const SETTLED          = 'settled';
 }

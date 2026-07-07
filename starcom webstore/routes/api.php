@@ -36,6 +36,7 @@ use App\Http\Controllers\Admin\OrderAreaController;
 use App\Http\Controllers\Admin\OtpController;
 use App\Http\Controllers\Admin\OutletController;
 use App\Http\Controllers\Admin\PageController;
+use App\Http\Controllers\Admin\PaymentCollectionReportController;
 use App\Http\Controllers\Admin\PaymentGatewayController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\PosController;
@@ -604,6 +605,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::post('/portfolio/reset/{creditFacility}', [CreditApplicationController::class, 'resetApproval']);
         Route::post('/portfolio/assign/{creditFacility}', [CreditApplicationController::class, 'assignFacility']);
         Route::post('/portfolio/note/{creditFacility}', [CreditApplicationController::class, 'addFacilityNote']);
+        Route::post('/portfolio/repayments/{creditFacility}', [CreditApplicationController::class, 'recordRepayment']);
         Route::post('/portfolio/dates/{creditFacility}', [CreditApplicationController::class, 'updateFacilityDates']);
         Route::post('/portfolio/contracts/{creditFacility}', [CreditApplicationController::class, 'uploadFacilityContracts']);
         Route::delete('/portfolio/contracts/{creditFacility}/{mediaId}', [CreditApplicationController::class, 'deleteFacilityContract']);
@@ -670,6 +672,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/', [CreditBalanceReportController::class, 'index']);
         Route::get('/export', [CreditBalanceReportController::class, 'export']);
         Route::get('/export-pdf', [CreditBalanceReportController::class, 'exportPdf']);
+    });
+
+    Route::prefix('payment-collection-report')->name('payment-collection-report.')->group(function () {
+        Route::get('/', [PaymentCollectionReportController::class, 'index']);
     });
 
     Route::prefix('push-notification')->name('push-notification.')->group(function () {

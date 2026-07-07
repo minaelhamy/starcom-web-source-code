@@ -75,6 +75,11 @@ class CreditFacility extends Model implements HasMedia
         return $this->hasMany(CreditApplicationNote::class)->orderBy('created_at');
     }
 
+    public function repayments(): HasMany
+    {
+        return $this->hasMany(CreditFacilityRepayment::class)->orderByDesc('paid_at')->orderByDesc('id');
+    }
+
     public function getContractDocumentsAttribute(): array
     {
         return $this->getMedia('facility_contract_documents')->map(function ($media) {

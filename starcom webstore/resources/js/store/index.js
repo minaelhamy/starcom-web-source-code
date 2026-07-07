@@ -69,6 +69,7 @@ import { otp } from "./modules/otp";
 import { outlet } from "./modules/outlet";
 import { page } from "./modules/page";
 import { paymentGateway } from "./modules/paymentGateway";
+import { paymentCollectionReport } from "./modules/paymentCollectionReport";
 import { permission } from "./modules/permission";
 import { posCart } from "./modules/posCart";
 import { posOrder } from "./modules/posOrder";
@@ -145,6 +146,7 @@ export default new createStore({
         smsGateway,
         productAttribute,
         paymentGateway,
+        paymentCollectionReport,
         timezone,
         productAttributeOption,
         role,

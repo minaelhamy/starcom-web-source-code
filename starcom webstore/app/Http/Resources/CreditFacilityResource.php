@@ -15,6 +15,13 @@ class CreditFacilityResource extends JsonResource
         $showInstitution = Auth::check() && !Auth::user()->hasRole(Role::CUSTOMER);
         $application = $this->relationLoaded('application') ? $this->application : null;
         $notesHistory = $this->relationLoaded('notesHistory') ? $this->notesHistory : collect();
+        $repayments = $this->relationLoaded('repayments')
+            ? $this->repayments
+            : (
+                $request->route()?->getActionMethod() !== 'portfolio'
+                    ? $this->repayments()->with(['creator.financialInstitutionOwner.financialInstitutionProfile'])->get()
+                    : collect()
+            );
         $lastUpdatedAt = $this->updated_at;
         $lastUpdateLabel = 'تحديث المحفظة التمويلية';
 
@@ -50,6 +57,15 @@ class CreditFacilityResource extends JsonResource
             $lastUpdateLabel = 'إضافة ملاحظة أو إجراء من جهة التمويل';
         }
 
+        $latestRepayment = $repayments->sortByDesc(function ($repayment) {
+            return $repayment->paid_at ?: $repayment->created_at;
+        })->first();
+        $latestRepaymentAt = $latestRepayment?->paid_at ?: $latestRepayment?->created_at;
+        if ($latestRepaymentAt && (!$lastUpdatedAt || $latestRepaymentAt->gt($lastUpdatedAt))) {
+            $lastUpdatedAt = $latestRepaymentAt;
+            $lastUpdateLabel = 'تسجيل سداد جديد';
+        }
+
         return [
             'id'                => $this->id,
             'full_name'         => $application?->full_name,
@@ -73,6 +89,8 @@ class CreditFacilityResource extends JsonResource
             'approved_currency' => AppLibrary::currencyAmountFormat($this->approved_amount),
             'available_currency'=> AppLibrary::currencyAmountFormat($this->available_amount),
             'utilized_currency' => AppLibrary::currencyAmountFormat($this->utilized_amount),
+            'repaid_amount'     => (float) $repayments->sum('amount'),
+            'repaid_currency'   => AppLibrary::currencyAmountFormat($repayments->sum('amount')),
             'duration_days'     => $this->duration_days,
             'starts_at'         => $this->starts_at ? $this->starts_at->toDateString() : null,
             'due_at'            => $this->due_at ? $this->due_at->toDateString() : null,
@@ -82,6 +100,25 @@ class CreditFacilityResource extends JsonResource
             'last_update_label' => $lastUpdateLabel,
             'notes'             => $this->notes,
             'notes_history'     => CreditApplicationNoteResource::collection($notesHistory),
+            'repayments'        => $repayments->map(function ($repayment) {
+                return [
+                    'id'                 => $repayment->id,
+                    'amount'             => (float) $repayment->amount,
+                    'amount_currency'    => AppLibrary::currencyAmountFormat($repayment->amount),
+                    'payment_method'     => $repayment->payment_method,
+                    'reference_number'   => $repayment->reference_number,
+                    'notes'              => $repayment->notes,
+                    'paid_at'            => $repayment->paid_at ? $repayment->paid_at->toDateTimeString() : null,
+                    'paid_date'          => $repayment->paid_at ? AppLibrary::datetime($repayment->paid_at) : null,
+                    'created_at'         => $repayment->created_at ? $repayment->created_at->toDateTimeString() : null,
+                    'created_date'       => $repayment->created_at ? AppLibrary::datetime($repayment->created_at) : null,
+                    'creator'            => $repayment->creator ? [
+                        'id'    => $repayment->creator->id,
+                        'name'  => $repayment->creator->name,
+                        'email' => $repayment->creator->email,
+                    ] : null,
+                ];
+            })->values(),
             'starcom_intelligence' => StarcomIntelligenceCalculator::forUser($this->user),
             'institution'       => $showInstitution && $this->institution ? [
                 'id'           => $this->institution->id,

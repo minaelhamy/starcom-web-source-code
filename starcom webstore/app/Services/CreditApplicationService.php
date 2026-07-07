@@ -12,6 +12,7 @@ use App\Http\Requests\CreditApplicationNoteRequest;
 use App\Http\Requests\CreditFacilityAssignmentRequest;
 use App\Http\Requests\CreditFacilityContractRequest;
 use App\Http\Requests\CreditFacilityDatesRequest;
+use App\Http\Requests\CreditFacilityRepaymentRequest;
 use App\Http\Requests\CreditFacilitySignedContractRequest;
 use App\Http\Requests\CreditApplicationStoreRequest;
 use App\Http\Requests\CreditApplicationUpdateRequest;
@@ -21,6 +22,7 @@ use App\Libraries\QueryExceptionLibrary;
 use App\Models\CreditApplication;
 use App\Models\CreditApplicationNote;
 use App\Models\CreditFacility;
+use App\Models\CreditFacilityRepayment;
 use App\Models\User;
 use App\Notifications\CreditApplicationApprovedNotification;
 use App\Notifications\CreditApplicationDeclinedNotification;
@@ -52,10 +54,11 @@ class CreditApplicationService
                 $query->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
                     $facilityQuery->where('financial_institution_user_id', $institutionId);
                 })->orWhereHas('facilities', function ($facilityQuery) use ($institutionId) {
-                    $facilityQuery->where('financial_institution_user_id', $institutionId)
+                        $facilityQuery->where('financial_institution_user_id', $institutionId)
                         ->whereIn('status', [
                             CreditFacilityStatus::PENDING_APPROVAL,
                             CreditFacilityStatus::DECLINED,
+                            CreditFacilityStatus::SETTLED,
                         ]);
                 });
             });
@@ -72,8 +75,13 @@ class CreditApplicationService
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
             'facilities.employee',
-        ])->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
-            $facilityQuery->where('financial_institution_user_id', $institutionId);
+        ])->where(function ($query) use ($institutionId) {
+            $query->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
+                $facilityQuery->where('financial_institution_user_id', $institutionId);
+            })->orWhereHas('facilities', function ($facilityQuery) use ($institutionId) {
+                $facilityQuery->where('financial_institution_user_id', $institutionId)
+                    ->where('status', CreditFacilityStatus::SETTLED);
+            });
         });
     }
 
@@ -489,6 +497,7 @@ class CreditApplicationService
             'application.facilities.employee',
             'institution.financialInstitutionProfile',
             'employee',
+            'repayments.creator.financialInstitutionOwner.financialInstitutionProfile',
         ]);
     }
 
@@ -1145,6 +1154,125 @@ class CreditApplicationService
 
                 $this->createFacilityNote($facility->application, $facility, $actor, $note);
                 optional($facility->application)->touch();
+            });
+
+            return $this->showFacility($creditFacility);
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    public function recordRepayment(CreditFacility $creditFacility, CreditFacilityRepaymentRequest $request): CreditFacility
+    {
+        try {
+            $actor = Auth::user();
+
+            if (
+                !$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                !$actor->hasRole(EnumRole::ADMIN) &&
+                !$actor->hasRole(EnumRole::MANAGER)
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if (
+                $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                (int) $creditFacility->financial_institution_user_id !== (int) $this->resolveInstitutionUserId($actor)
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            DB::transaction(function () use ($creditFacility, $request, $actor) {
+                $facility = CreditFacility::with(['application', 'user'])
+                    ->lockForUpdate()
+                    ->findOrFail($creditFacility->id);
+
+                if ($facility->status !== CreditFacilityStatus::APPROVED) {
+                    throw new Exception('يمكن تسجيل السداد فقط على تمويل معتمد ونشط.', 422);
+                }
+
+                $repaymentAmount = round((float) $request->amount, 6);
+                $currentUtilized = round((float) $facility->utilized_amount, 6);
+
+                if ($currentUtilized <= 0) {
+                    throw new Exception('لا يوجد رصيد مستخدم على هذا التمويل لتسجيل سداد عليه.', 422);
+                }
+
+                if ($repaymentAmount - $currentUtilized > 0.000001) {
+                    throw new Exception('قيمة السداد أكبر من الرصيد المستخدم الحالي لهذا التمويل.', 422);
+                }
+
+                $user = User::lockForUpdate()->findOrFail($facility->user_id);
+                $balanceBefore = (float) $user->balance;
+
+                $repayment = CreditFacilityRepayment::create([
+                    'credit_facility_id'            => $facility->id,
+                    'user_id'                       => $facility->user_id,
+                    'financial_institution_user_id' => $facility->financial_institution_user_id,
+                    'amount'                        => $repaymentAmount,
+                    'payment_method'                => $request->payment_method,
+                    'reference_number'              => $request->reference_number,
+                    'notes'                         => $request->notes,
+                    'paid_at'                       => $request->filled('paid_at') ? Carbon::parse($request->paid_at) : now(),
+                    'created_by_user_id'            => $actor->id,
+                ]);
+
+                $facility->utilized_amount = max(0, $currentUtilized - $repaymentAmount);
+
+                WalletTransaction::create([
+                    'user_id'                       => $facility->user_id,
+                    'financial_institution_user_id' => $facility->financial_institution_user_id,
+                    'credit_application_id'         => $facility->credit_application_id,
+                    'credit_facility_id'            => $facility->id,
+                    'type'                          => 'facility_repayment',
+                    'direction'                     => 'neutral',
+                    'amount'                        => $repaymentAmount,
+                    'balance_before'                => $balanceBefore,
+                    'balance_after'                 => $balanceBefore,
+                    'description'                   => 'تم تسجيل سداد على التمويل',
+                    'meta'                          => [
+                        'repayment_id' => $repayment->id,
+                        'payment_method' => $request->payment_method,
+                        'reference_number' => $request->reference_number,
+                    ],
+                ]);
+
+                if ((float) $facility->utilized_amount <= 0.000001) {
+                    $availableToClose = round((float) $facility->available_amount, 6);
+
+                    if ($availableToClose > 0) {
+                        if (($balanceBefore - $availableToClose) < -0.000001) {
+                            throw new Exception('لا يمكن إغلاق التمويل حالياً لأن رصيد المحفظة أقل من الرصيد المتاح غير المستخدم لهذا التمويل.', 422);
+                        }
+
+                        $user->balance = $balanceBefore - $availableToClose;
+                        $user->save();
+
+                        WalletTransaction::create([
+                            'user_id'                       => $facility->user_id,
+                            'financial_institution_user_id' => $facility->financial_institution_user_id,
+                            'credit_application_id'         => $facility->credit_application_id,
+                            'credit_facility_id'            => $facility->id,
+                            'type'                          => 'facility_settlement_close',
+                            'direction'                     => 'debit',
+                            'amount'                        => $availableToClose,
+                            'balance_before'                => $balanceBefore,
+                            'balance_after'                 => (float) $user->balance,
+                            'description'                   => 'تم إغلاق التمويل بعد السداد الكامل وسحب الرصيد المتاح غير المستخدم',
+                            'meta'                          => ['repayment_id' => $repayment->id],
+                        ]);
+                    }
+
+                    $facility->utilized_amount = 0;
+                    $facility->available_amount = 0;
+                    $facility->status = CreditFacilityStatus::SETTLED;
+                    $facility->reviewed_at = now();
+                }
+
+                $facility->save();
+                optional($facility->application)->touch();
+                $this->refreshApplicationStatus($facility->application);
             });
 
             return $this->showFacility($creditFacility);
