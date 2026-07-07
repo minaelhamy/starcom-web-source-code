@@ -77,14 +77,14 @@
                             </div>
                             <div>
                                 <label class="db-field-title after:hidden">تاريخ السداد</label>
-                                <input
+                                <textarea
                                     v-model="repaymentForm.paid_at"
                                     @keydown.enter.prevent="recordRepayment"
-                                    type="text"
                                     placeholder="YYYY-MM-DD أو 07/07/2026"
                                     dir="ltr"
-                                    class="db-field-control"
-                                />
+                                    rows="1"
+                                    class="db-field-control !h-[52px] resize-none overflow-hidden py-3"
+                                ></textarea>
                                 <small class="db-field-alert" v-if="repaymentErrors.paid_at">{{ repaymentErrors.paid_at[0] }}</small>
                             </div>
                             <div>
