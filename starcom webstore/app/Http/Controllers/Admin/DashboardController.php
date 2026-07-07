@@ -164,6 +164,9 @@ class DashboardController extends AdminController implements HasMiddleware
             $opportunitiesQuery = $this->creditApplicationService->lenderFreshOpportunitiesQuery($actor);
             $pendingApprovalQuery = $this->creditApplicationService->lenderPendingApprovalQuery($actor);
 
+            $fundedFacilitiesQuery = $this->creditApplicationService->portfolioQuery($actor)
+                ->whereIn('status', [CreditFacilityStatus::APPROVED, CreditFacilityStatus::SETTLED, CreditFacilityStatus::EXPIRED]);
+
             $approvedFacilitiesQuery = $this->creditApplicationService->portfolioQuery($actor)
                 ->where('status', CreditFacilityStatus::APPROVED);
 
@@ -171,7 +174,7 @@ class DashboardController extends AdminController implements HasMiddleware
 
             $opportunitiesCount = (clone $opportunitiesQuery)->count();
             $pendingApprovalCount = (clone $pendingApprovalQuery)->count();
-            $approvedAmount = (float)(clone $approvedFacilitiesQuery)->sum('approved_amount');
+            $approvedAmount = (float)(clone $fundedFacilitiesQuery)->sum('approved_amount');
             $repaidAmount = (float) CreditFacilityRepayment::query()
                 ->where('financial_institution_user_id', $actor->id)
                 ->sum('amount');
@@ -188,7 +191,7 @@ class DashboardController extends AdminController implements HasMiddleware
 
             $collectionRate = $approvedAmount > 0 ? round(($repaidAmount / $approvedAmount) * 100, 2) : 0;
 
-            $bestPerformingCustomers = (clone $approvedFacilitiesQuery)
+            $bestPerformingCustomers = (clone $fundedFacilitiesQuery)
                 ->get()
                 ->map(function (CreditFacility $facility) {
                     $intelligence = StarcomIntelligenceCalculator::forUser($facility->user);
@@ -278,13 +281,16 @@ class DashboardController extends AdminController implements HasMiddleware
                     $facilityQuery->where('status', CreditFacilityStatus::APPROVED);
                 });
 
+            $fundedFacilitiesQuery = CreditFacility::with(['user', 'institution.financialInstitutionProfile', 'employee'])
+                ->whereIn('status', [CreditFacilityStatus::APPROVED, CreditFacilityStatus::SETTLED, CreditFacilityStatus::EXPIRED]);
+
             $approvedFacilitiesQuery = CreditFacility::with(['user', 'institution.financialInstitutionProfile', 'employee'])
                 ->where('status', CreditFacilityStatus::APPROVED);
 
             $reviewedFacilitiesQuery = CreditFacility::with(['institution.financialInstitutionProfile', 'employee']);
 
             $opportunitiesCount = (clone $opportunitiesQuery)->count();
-            $approvedAmount = (float)(clone $approvedFacilitiesQuery)->sum('approved_amount');
+            $approvedAmount = (float)(clone $fundedFacilitiesQuery)->sum('approved_amount');
             $repaidAmount = (float) CreditFacilityRepayment::query()->sum('amount');
             $remainingAmount = max(0, $approvedAmount - $repaidAmount);
             $activeCustomersCount = (clone $approvedFacilitiesQuery)->distinct('user_id')->count('user_id');
@@ -302,7 +308,7 @@ class DashboardController extends AdminController implements HasMiddleware
             $collectionRate = $approvedAmount > 0 ? round(($repaidAmount / $approvedAmount) * 100, 2) : 0;
 
             $topInstitutions = CreditFacility::with(['institution.financialInstitutionProfile'])
-                ->where('status', CreditFacilityStatus::APPROVED)
+                ->whereIn('status', [CreditFacilityStatus::APPROVED, CreditFacilityStatus::SETTLED, CreditFacilityStatus::EXPIRED])
                 ->get()
                 ->groupBy('financial_institution_user_id')
                 ->map(function ($facilities) {
@@ -351,6 +357,9 @@ class DashboardController extends AdminController implements HasMiddleware
                     $institutionFacilitiesQuery = CreditFacility::with(['user', 'institution.financialInstitutionProfile', 'employee'])
                         ->where('financial_institution_user_id', $institutionId);
 
+                    $fundedInstitutionFacilitiesQuery = (clone $institutionFacilitiesQuery)
+                        ->whereIn('status', [CreditFacilityStatus::APPROVED, CreditFacilityStatus::SETTLED, CreditFacilityStatus::EXPIRED]);
+
                     $approvedInstitutionFacilitiesQuery = (clone $institutionFacilitiesQuery)
                         ->where('status', CreditFacilityStatus::APPROVED);
 
@@ -366,7 +375,7 @@ class DashboardController extends AdminController implements HasMiddleware
                         ->whereNotNull('financial_institution_employee_user_id')
                         ->distinct('financial_institution_employee_user_id')
                         ->count('financial_institution_employee_user_id');
-                    $approvedAmount = (float) (clone $approvedInstitutionFacilitiesQuery)->sum('approved_amount');
+                    $approvedAmount = (float) (clone $fundedInstitutionFacilitiesQuery)->sum('approved_amount');
                     $repaidAmount = (float) CreditFacilityRepayment::query()
                         ->where('financial_institution_user_id', $institutionId)
                         ->sum('amount');
@@ -377,7 +386,7 @@ class DashboardController extends AdminController implements HasMiddleware
                         ->latest('updated_at')
                         ->first();
 
-                    $topCustomers = (clone $approvedInstitutionFacilitiesQuery)
+                    $topCustomers = (clone $fundedInstitutionFacilitiesQuery)
                         ->get()
                         ->sortByDesc(function (CreditFacility $facility) {
                             return [$facility->approved_amount, $facility->repayments()->sum('amount'), $facility->id];

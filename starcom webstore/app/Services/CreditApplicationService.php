@@ -40,6 +40,7 @@ class CreditApplicationService
 {
     public function lenderOpportunitiesQuery(User $actor)
     {
+        $this->synchronizeSettledFacilities($this->resolveInstitutionUserId($actor));
         $institutionId = $this->resolveInstitutionUserId($actor);
 
         return CreditApplication::with([
@@ -66,6 +67,7 @@ class CreditApplicationService
 
     public function lenderFreshOpportunitiesQuery(User $actor)
     {
+        $this->synchronizeSettledFacilities($this->resolveInstitutionUserId($actor));
         $institutionId = $this->resolveInstitutionUserId($actor);
 
         return CreditApplication::with([
@@ -87,6 +89,7 @@ class CreditApplicationService
 
     public function lenderPendingApprovalQuery(User $actor)
     {
+        $this->synchronizeSettledFacilities($this->resolveInstitutionUserId($actor));
         $institutionId = $this->resolveInstitutionUserId($actor);
 
         return CreditApplication::with([
@@ -381,6 +384,11 @@ class CreditApplicationService
     public function portfolioList(PaginateRequest $request)
     {
         $actor = Auth::user();
+        $this->synchronizeSettledFacilities(
+            $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)
+                ? $this->resolveInstitutionUserId($actor)
+                : null
+        );
         $method = $request->get('paginate', 0) == 1 ? 'paginate' : 'get';
         $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
         $term = trim((string) $request->get('term', ''));
@@ -392,7 +400,11 @@ class CreditApplicationService
         $query = $this->portfolioQuery($actor);
 
         if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
-            $query->where('status', CreditFacilityStatus::APPROVED);
+            $query->whereIn('status', [
+                CreditFacilityStatus::APPROVED,
+                CreditFacilityStatus::SETTLED,
+                CreditFacilityStatus::EXPIRED,
+            ]);
         } else {
             if ($institutionUserId !== null && $institutionUserId !== '') {
                 $query->where('financial_institution_user_id', (int) $institutionUserId);
@@ -478,6 +490,11 @@ class CreditApplicationService
     public function showFacility(CreditFacility $creditFacility): CreditFacility
     {
         $actor = Auth::user();
+        $this->synchronizeSettledFacilities(
+            $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)
+                ? $this->resolveInstitutionUserId($actor)
+                : null
+        );
 
         if (
             $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
@@ -1268,6 +1285,36 @@ class CreditApplicationService
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
         }
+    }
+
+    protected function synchronizeSettledFacilities(?int $institutionUserId = null): void
+    {
+        $query = CreditFacility::with(['application'])
+            ->withSum('repayments', 'amount')
+            ->where('status', CreditFacilityStatus::APPROVED);
+
+        if ($institutionUserId) {
+            $query->where('financial_institution_user_id', $institutionUserId);
+        }
+
+        $query->get()->each(function (CreditFacility $facility) {
+            $repaidAmount = round((float) ($facility->repayments_sum_amount ?? 0), 6);
+            $approvedAmount = round((float) $facility->approved_amount, 6);
+
+            if (($approvedAmount - $repaidAmount) > 0.000001) {
+                return;
+            }
+
+            $facility->available_amount = 0;
+            $facility->utilized_amount = 0;
+            $facility->status = CreditFacilityStatus::SETTLED;
+            $facility->reviewed_at = $facility->reviewed_at ?: now();
+            $facility->save();
+
+            if ($facility->application) {
+                $this->refreshApplicationStatus($facility->application);
+            }
+        });
     }
 
     protected function refreshApplicationStatus(CreditApplication $creditApplication): void
