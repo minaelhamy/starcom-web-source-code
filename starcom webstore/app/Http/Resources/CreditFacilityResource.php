@@ -66,6 +66,9 @@ class CreditFacilityResource extends JsonResource
             $lastUpdateLabel = 'تسجيل سداد جديد';
         }
 
+        $repaidAmount = (float) $repayments->sum('amount');
+        $remainingDue = max(0, (float) $this->approved_amount - $repaidAmount);
+
         return [
             'id'                => $this->id,
             'full_name'         => $application?->full_name,
@@ -89,8 +92,10 @@ class CreditFacilityResource extends JsonResource
             'approved_currency' => AppLibrary::currencyAmountFormat($this->approved_amount),
             'available_currency'=> AppLibrary::currencyAmountFormat($this->available_amount),
             'utilized_currency' => AppLibrary::currencyAmountFormat($this->utilized_amount),
-            'repaid_amount'     => (float) $repayments->sum('amount'),
-            'repaid_currency'   => AppLibrary::currencyAmountFormat($repayments->sum('amount')),
+            'repaid_amount'     => $repaidAmount,
+            'repaid_currency'   => AppLibrary::currencyAmountFormat($repaidAmount),
+            'remaining_due_amount' => $remainingDue,
+            'remaining_due_currency' => AppLibrary::currencyAmountFormat($remainingDue),
             'duration_days'     => $this->duration_days,
             'starts_at'         => $this->starts_at ? $this->starts_at->toDateString() : null,
             'due_at'            => $this->due_at ? $this->due_at->toDateString() : null,

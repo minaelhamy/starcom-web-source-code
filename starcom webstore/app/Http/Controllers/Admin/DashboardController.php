@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use App\Libraries\AppLibrary;
 use App\Models\CreditApplication;
 use App\Models\CreditFacility;
+use App\Models\CreditFacilityRepayment;
 use App\Models\User;
 use App\Services\CreditApplicationService;
 use App\Services\ProductService;
@@ -171,8 +172,10 @@ class DashboardController extends AdminController implements HasMiddleware
             $opportunitiesCount = (clone $opportunitiesQuery)->count();
             $pendingApprovalCount = (clone $pendingApprovalQuery)->count();
             $approvedAmount = (float)(clone $approvedFacilitiesQuery)->sum('approved_amount');
-            $availableAmount = (float)(clone $approvedFacilitiesQuery)->sum('available_amount');
-            $utilizedAmount = (float)(clone $approvedFacilitiesQuery)->sum('utilized_amount');
+            $repaidAmount = (float) CreditFacilityRepayment::query()
+                ->where('financial_institution_user_id', $actor->id)
+                ->sum('amount');
+            $remainingAmount = max(0, $approvedAmount - $repaidAmount);
             $activeCustomersCount = (clone $approvedFacilitiesQuery)->distinct('user_id')->count('user_id');
             $activeFacilitiesCount = (clone $approvedFacilitiesQuery)->count();
             $reviewedRequestsCount = (clone $reviewedFacilitiesQuery)->count();
@@ -183,7 +186,7 @@ class DashboardController extends AdminController implements HasMiddleware
                 ->where('status', CreditFacilityStatus::DECLINED)
                 ->count();
 
-            $utilizationRate = $approvedAmount > 0 ? round(($utilizedAmount / $approvedAmount) * 100, 2) : 0;
+            $collectionRate = $approvedAmount > 0 ? round(($repaidAmount / $approvedAmount) * 100, 2) : 0;
 
             $bestPerformingCustomers = (clone $approvedFacilitiesQuery)
                 ->get()
@@ -198,10 +201,10 @@ class DashboardController extends AdminController implements HasMiddleware
                         'customer_address'                 => $facility->user?->address,
                         'approved_amount'                  => (float)$facility->approved_amount,
                         'approved_amount_currency'         => AppLibrary::currencyAmountFormat($facility->approved_amount),
-                        'available_amount'                 => (float)$facility->available_amount,
-                        'available_amount_currency'        => AppLibrary::currencyAmountFormat($facility->available_amount),
-                        'utilized_amount'                  => (float)$facility->utilized_amount,
-                        'utilized_amount_currency'         => AppLibrary::currencyAmountFormat($facility->utilized_amount),
+                        'repaid_amount'                    => (float)$facility->repayments()->sum('amount'),
+                        'repaid_amount_currency'           => AppLibrary::currencyAmountFormat($facility->repayments()->sum('amount')),
+                        'remaining_due_amount'             => max(0, (float)$facility->approved_amount - (float)$facility->repayments()->sum('amount')),
+                        'remaining_due_amount_currency'    => AppLibrary::currencyAmountFormat(max(0, (float)$facility->approved_amount - (float)$facility->repayments()->sum('amount'))),
                         'total_monthly_purchase'           => (float)($intelligence['average_monthly_purchase_last_12_months'] ?? 0),
                         'total_monthly_purchase_currency'  => $intelligence['average_monthly_purchase_last_12_months_currency'] ?? AppLibrary::currencyAmountFormat(0),
                         'credit_proposed_amount'           => (float)($intelligence['average_monthly_purchase_last_12_months'] ?? 0),
@@ -209,7 +212,7 @@ class DashboardController extends AdminController implements HasMiddleware
                     ];
                 })
                 ->sortByDesc(function (array $customer) {
-                    return [$customer['total_monthly_purchase'], $customer['utilized_amount'], $customer['approved_amount']];
+                    return [$customer['total_monthly_purchase'], $customer['approved_amount'], $customer['repaid_amount']];
                 })
                 ->take(5)
                 ->values();
@@ -246,11 +249,11 @@ class DashboardController extends AdminController implements HasMiddleware
                     'declined_requests_count'            => $declinedRequestsCount,
                     'wallet_value'                       => $approvedAmount,
                     'wallet_value_currency'              => AppLibrary::currencyAmountFormat($approvedAmount),
-                    'available_wallet_value'             => $availableAmount,
-                    'available_wallet_value_currency'    => AppLibrary::currencyAmountFormat($availableAmount),
-                    'utilized_wallet_value'              => $utilizedAmount,
-                    'utilized_wallet_value_currency'     => AppLibrary::currencyAmountFormat($utilizedAmount),
-                    'utilization_rate'                   => $utilizationRate,
+                    'repaid_amount'                      => $repaidAmount,
+                    'repaid_amount_currency'             => AppLibrary::currencyAmountFormat($repaidAmount),
+                    'remaining_amount'                   => $remainingAmount,
+                    'remaining_amount_currency'          => AppLibrary::currencyAmountFormat($remainingAmount),
+                    'utilization_rate'                   => $collectionRate,
                     'best_performing_customers'          => $bestPerformingCustomers,
                     'recent_opportunities'               => $recentOpportunities,
                 ],
@@ -282,8 +285,8 @@ class DashboardController extends AdminController implements HasMiddleware
 
             $opportunitiesCount = (clone $opportunitiesQuery)->count();
             $approvedAmount = (float)(clone $approvedFacilitiesQuery)->sum('approved_amount');
-            $availableAmount = (float)(clone $approvedFacilitiesQuery)->sum('available_amount');
-            $utilizedAmount = (float)(clone $approvedFacilitiesQuery)->sum('utilized_amount');
+            $repaidAmount = (float) CreditFacilityRepayment::query()->sum('amount');
+            $remainingAmount = max(0, $approvedAmount - $repaidAmount);
             $activeCustomersCount = (clone $approvedFacilitiesQuery)->distinct('user_id')->count('user_id');
             $approvedFacilitiesCount = (clone $approvedFacilitiesQuery)->count();
             $reviewedRequestsCount = (clone $reviewedFacilitiesQuery)->count();
@@ -296,7 +299,7 @@ class DashboardController extends AdminController implements HasMiddleware
                 ->distinct('financial_institution_employee_user_id')
                 ->count('financial_institution_employee_user_id');
 
-            $utilizationRate = $approvedAmount > 0 ? round(($utilizedAmount / $approvedAmount) * 100, 2) : 0;
+            $collectionRate = $approvedAmount > 0 ? round(($repaidAmount / $approvedAmount) * 100, 2) : 0;
 
             $topInstitutions = CreditFacility::with(['institution.financialInstitutionProfile'])
                 ->where('status', CreditFacilityStatus::APPROVED)
@@ -314,14 +317,22 @@ class DashboardController extends AdminController implements HasMiddleware
                         'active_customers_count'        => $facilities->pluck('user_id')->unique()->count(),
                         'approved_amount'               => (float)$facilities->sum('approved_amount'),
                         'approved_amount_currency'      => AppLibrary::currencyAmountFormat($facilities->sum('approved_amount')),
-                        'available_amount'              => (float)$facilities->sum('available_amount'),
-                        'available_amount_currency'     => AppLibrary::currencyAmountFormat($facilities->sum('available_amount')),
-                        'utilized_amount'               => (float)$facilities->sum('utilized_amount'),
-                        'utilized_amount_currency'      => AppLibrary::currencyAmountFormat($facilities->sum('utilized_amount')),
+                        'repaid_amount'                 => (float) CreditFacilityRepayment::query()
+                            ->where('financial_institution_user_id', $firstFacility?->institution?->id)
+                            ->sum('amount'),
+                        'repaid_amount_currency'        => AppLibrary::currencyAmountFormat(CreditFacilityRepayment::query()
+                            ->where('financial_institution_user_id', $firstFacility?->institution?->id)
+                            ->sum('amount')),
+                        'remaining_amount'              => max(0, (float)$facilities->sum('approved_amount') - (float) CreditFacilityRepayment::query()
+                            ->where('financial_institution_user_id', $firstFacility?->institution?->id)
+                            ->sum('amount')),
+                        'remaining_amount_currency'     => AppLibrary::currencyAmountFormat(max(0, (float)$facilities->sum('approved_amount') - (float) CreditFacilityRepayment::query()
+                            ->where('financial_institution_user_id', $firstFacility?->institution?->id)
+                            ->sum('amount'))),
                     ];
                 })
                 ->sortByDesc(function (array $institution) {
-                    return [$institution['utilized_amount'], $institution['approved_amount'], $institution['active_customers_count']];
+                    return [$institution['approved_amount'], $institution['repaid_amount'], $institution['active_customers_count']];
                 })
                 ->take(5)
                 ->values();
@@ -356,9 +367,11 @@ class DashboardController extends AdminController implements HasMiddleware
                         ->distinct('financial_institution_employee_user_id')
                         ->count('financial_institution_employee_user_id');
                     $approvedAmount = (float) (clone $approvedInstitutionFacilitiesQuery)->sum('approved_amount');
-                    $availableAmount = (float) (clone $approvedInstitutionFacilitiesQuery)->sum('available_amount');
-                    $utilizedAmount = (float) (clone $approvedInstitutionFacilitiesQuery)->sum('utilized_amount');
-                    $utilizationRate = $approvedAmount > 0 ? round(($utilizedAmount / $approvedAmount) * 100, 2) : 0;
+                    $repaidAmount = (float) CreditFacilityRepayment::query()
+                        ->where('financial_institution_user_id', $institutionId)
+                        ->sum('amount');
+                    $remainingAmount = max(0, $approvedAmount - $repaidAmount);
+                    $utilizationRate = $approvedAmount > 0 ? round(($repaidAmount / $approvedAmount) * 100, 2) : 0;
 
                     $latestActivity = (clone $institutionFacilitiesQuery)
                         ->latest('updated_at')
@@ -367,20 +380,22 @@ class DashboardController extends AdminController implements HasMiddleware
                     $topCustomers = (clone $approvedInstitutionFacilitiesQuery)
                         ->get()
                         ->sortByDesc(function (CreditFacility $facility) {
-                            return [$facility->utilized_amount, $facility->approved_amount, $facility->available_amount];
+                            return [$facility->approved_amount, $facility->repayments()->sum('amount'), $facility->id];
                         })
                         ->take(3)
                         ->map(function (CreditFacility $facility) {
+                            $facilityRepaidAmount = (float) $facility->repayments()->sum('amount');
+                            $facilityRemainingAmount = max(0, (float) $facility->approved_amount - $facilityRepaidAmount);
                             return [
                                 'facility_id'              => $facility->id,
                                 'customer_name'            => $facility->user?->name,
                                 'customer_phone'           => trim(($facility->user?->country_code ?: '') . ' ' . ($facility->user?->phone ?: '')),
                                 'approved_amount'          => (float) $facility->approved_amount,
                                 'approved_amount_currency' => AppLibrary::currencyAmountFormat($facility->approved_amount),
-                                'utilized_amount'          => (float) $facility->utilized_amount,
-                                'utilized_amount_currency' => AppLibrary::currencyAmountFormat($facility->utilized_amount),
-                                'available_amount'         => (float) $facility->available_amount,
-                                'available_amount_currency'=> AppLibrary::currencyAmountFormat($facility->available_amount),
+                                'repaid_amount'            => $facilityRepaidAmount,
+                                'repaid_amount_currency'   => AppLibrary::currencyAmountFormat($facilityRepaidAmount),
+                                'remaining_amount'         => $facilityRemainingAmount,
+                                'remaining_amount_currency'=> AppLibrary::currencyAmountFormat($facilityRemainingAmount),
                             ];
                         })
                         ->values();
@@ -400,10 +415,10 @@ class DashboardController extends AdminController implements HasMiddleware
                         'employee_count'                => $employeeCount,
                         'approved_amount'               => $approvedAmount,
                         'approved_amount_currency'      => AppLibrary::currencyAmountFormat($approvedAmount),
-                        'available_amount'              => $availableAmount,
-                        'available_amount_currency'     => AppLibrary::currencyAmountFormat($availableAmount),
-                        'utilized_amount'               => $utilizedAmount,
-                        'utilized_amount_currency'      => AppLibrary::currencyAmountFormat($utilizedAmount),
+                        'repaid_amount'                 => $repaidAmount,
+                        'repaid_amount_currency'        => AppLibrary::currencyAmountFormat($repaidAmount),
+                        'remaining_amount'              => $remainingAmount,
+                        'remaining_amount_currency'     => AppLibrary::currencyAmountFormat($remainingAmount),
                         'utilization_rate'              => $utilizationRate,
                         'latest_activity_at'            => $latestActivity?->updated_at?->toDateTimeString(),
                         'latest_activity_date'          => $latestActivity?->updated_at ? AppLibrary::datetime($latestActivity->updated_at) : null,
@@ -413,7 +428,7 @@ class DashboardController extends AdminController implements HasMiddleware
                 })
                 ->filter()
                 ->sortByDesc(function (array $institution) {
-                    return [$institution['utilized_amount'], $institution['approved_amount'], $institution['active_customers_count']];
+                    return [$institution['approved_amount'], $institution['repaid_amount'], $institution['active_customers_count']];
                 })
                 ->values();
 
@@ -433,10 +448,10 @@ class DashboardController extends AdminController implements HasMiddleware
                         'employee_name'                => $facility->employee?->name ?: $facility->institution?->name,
                         'approved_amount'              => (float)$facility->approved_amount,
                         'approved_amount_currency'     => AppLibrary::currencyAmountFormat($facility->approved_amount),
-                        'available_amount'             => (float)$facility->available_amount,
-                        'available_amount_currency'    => AppLibrary::currencyAmountFormat($facility->available_amount),
-                        'utilized_amount'              => (float)$facility->utilized_amount,
-                        'utilized_amount_currency'     => AppLibrary::currencyAmountFormat($facility->utilized_amount),
+                        'repaid_amount'                => (float)$facility->repayments()->sum('amount'),
+                        'repaid_amount_currency'       => AppLibrary::currencyAmountFormat($facility->repayments()->sum('amount')),
+                        'remaining_amount'             => max(0, (float)$facility->approved_amount - (float)$facility->repayments()->sum('amount')),
+                        'remaining_amount_currency'    => AppLibrary::currencyAmountFormat(max(0, (float)$facility->approved_amount - (float)$facility->repayments()->sum('amount'))),
                         'due_at'                       => $facility->due_at ? $facility->due_at->toDateString() : null,
                         'reviewed_at'                  => $facility->reviewed_at ? $facility->reviewed_at->toDateTimeString() : null,
                         'status'                       => $facility->status,
@@ -476,11 +491,11 @@ class DashboardController extends AdminController implements HasMiddleware
                     'employees_count'                 => $employeesCount,
                     'wallet_value'                    => $approvedAmount,
                     'wallet_value_currency'           => AppLibrary::currencyAmountFormat($approvedAmount),
-                    'available_wallet_value'          => $availableAmount,
-                    'available_wallet_value_currency' => AppLibrary::currencyAmountFormat($availableAmount),
-                    'utilized_wallet_value'           => $utilizedAmount,
-                    'utilized_wallet_value_currency'  => AppLibrary::currencyAmountFormat($utilizedAmount),
-                    'utilization_rate'                => $utilizationRate,
+                    'repaid_amount'                   => $repaidAmount,
+                    'repaid_amount_currency'          => AppLibrary::currencyAmountFormat($repaidAmount),
+                    'remaining_amount'                => $remainingAmount,
+                    'remaining_amount_currency'       => AppLibrary::currencyAmountFormat($remainingAmount),
+                    'utilization_rate'                => $collectionRate,
                     'top_institutions'                => $topInstitutions,
                     'institution_breakdown'           => $institutionBreakdown,
                     'latest_approved_clients'         => $latestApprovedClients,

@@ -1193,18 +1193,16 @@ class CreditApplicationService
                 }
 
                 $repaymentAmount = round((float) $request->amount, 6);
-                $currentUtilized = round((float) $facility->utilized_amount, 6);
+                $repaidBefore = round((float) $facility->repayments()->sum('amount'), 6);
+                $remainingDue = max(0, round((float) $facility->approved_amount - $repaidBefore, 6));
 
-                if ($currentUtilized <= 0) {
-                    throw new Exception('لا يوجد رصيد مستخدم على هذا التمويل لتسجيل سداد عليه.', 422);
+                if ($remainingDue <= 0.000001) {
+                    throw new Exception('تم سداد هذا التمويل بالكامل بالفعل.', 422);
                 }
 
-                if ($repaymentAmount - $currentUtilized > 0.000001) {
-                    throw new Exception('قيمة السداد أكبر من الرصيد المستخدم الحالي لهذا التمويل.', 422);
+                if ($repaymentAmount - $remainingDue > 0.000001) {
+                    throw new Exception('قيمة السداد أكبر من المبلغ المتبقي على هذا التمويل.', 422);
                 }
-
-                $user = User::lockForUpdate()->findOrFail($facility->user_id);
-                $balanceBefore = (float) $user->balance;
 
                 $repayment = CreditFacilityRepayment::create([
                     'credit_facility_id'            => $facility->id,
@@ -1228,42 +1226,20 @@ class CreditApplicationService
                     'type'                          => 'facility_repayment',
                     'direction'                     => 'neutral',
                     'amount'                        => $repaymentAmount,
-                    'balance_before'                => $balanceBefore,
-                    'balance_after'                 => $balanceBefore,
-                    'description'                   => 'تم تسجيل سداد على التمويل',
+                    'balance_before'                => (float) ($facility->user?->balance ?? 0),
+                    'balance_after'                 => (float) ($facility->user?->balance ?? 0),
+                    'description'                   => 'تم تسجيل سداد على التمويل مقابل الحد المعتمد',
                     'meta'                          => [
                         'repayment_id' => $repayment->id,
                         'payment_method' => $request->payment_method,
                         'reference_number' => $request->reference_number,
+                        'approved_amount' => (float) $facility->approved_amount,
+                        'repaid_before' => $repaidBefore,
                     ],
                 ]);
 
-                if ((float) $facility->utilized_amount <= 0.000001) {
-                    $availableToClose = round((float) $facility->available_amount, 6);
-
-                    if ($availableToClose > 0) {
-                        if (($balanceBefore - $availableToClose) < -0.000001) {
-                            throw new Exception('لا يمكن إغلاق التمويل حالياً لأن رصيد المحفظة أقل من الرصيد المتاح غير المستخدم لهذا التمويل.', 422);
-                        }
-
-                        $user->balance = $balanceBefore - $availableToClose;
-                        $user->save();
-
-                        WalletTransaction::create([
-                            'user_id'                       => $facility->user_id,
-                            'financial_institution_user_id' => $facility->financial_institution_user_id,
-                            'credit_application_id'         => $facility->credit_application_id,
-                            'credit_facility_id'            => $facility->id,
-                            'type'                          => 'facility_settlement_close',
-                            'direction'                     => 'debit',
-                            'amount'                        => $availableToClose,
-                            'balance_before'                => $balanceBefore,
-                            'balance_after'                 => (float) $user->balance,
-                            'description'                   => 'تم إغلاق التمويل بعد السداد الكامل وسحب الرصيد المتاح غير المستخدم',
-                            'meta'                          => ['repayment_id' => $repayment->id],
-                        ]);
-                    }
-
+                $repaidAfter = $repaidBefore + $repaymentAmount;
+                if (((float) $facility->approved_amount - $repaidAfter) <= 0.000001) {
                     $facility->utilized_amount = 0;
                     $facility->available_amount = 0;
                     $facility->status = CreditFacilityStatus::SETTLED;

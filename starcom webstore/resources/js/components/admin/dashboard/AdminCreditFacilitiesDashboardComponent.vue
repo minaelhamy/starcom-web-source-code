@@ -62,8 +62,8 @@
             <div class="db-card p-5 mb-6">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <h4 class="font-semibold text-lg text-heading">أداء المحفظة التمويلية</h4>
-                        <p class="text-sm text-secondary">نظرة مجمعة على إجمالي الاعتمادات والمتاح والمستخدم عبر كل الجهات التمويلية.</p>
+                        <h4 class="font-semibold text-lg text-heading">موقف السداد والتحصيل</h4>
+                        <p class="text-sm text-secondary">نظرة مجمعة على إجمالي الاعتمادات والمسدّد والمتبقي للسداد عبر كل الجهات التمويلية.</p>
                     </div>
                     <router-link :to="{ name: 'admin.lendingPortfolio.list' }" class="text-primary text-sm font-medium">
                         فتح المحافظ
@@ -76,18 +76,18 @@
                         <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.wallet_value, summary.wallet_value_currency) }}</h5>
                     </div>
                     <div class="rounded-lg border border-[#E8E8F3] p-4">
-                        <p class="text-sm text-secondary mb-1">الرصيد المتاح</p>
-                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.available_wallet_value, summary.available_wallet_value_currency) }}</h5>
+                        <p class="text-sm text-secondary mb-1">إجمالي المسدد</p>
+                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.repaid_amount, summary.repaid_amount_currency) }}</h5>
                     </div>
                     <div class="rounded-lg border border-[#E8E8F3] p-4">
-                        <p class="text-sm text-secondary mb-1">الرصيد المستخدم</p>
-                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.utilized_wallet_value, summary.utilized_wallet_value_currency) }}</h5>
+                        <p class="text-sm text-secondary mb-1">المتبقي للسداد</p>
+                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(summary.remaining_amount, summary.remaining_amount_currency) }}</h5>
                     </div>
                 </div>
 
                 <div class="rounded-lg border border-[#E8E8F3] p-4">
                     <div class="flex items-center justify-between mb-2">
-                        <p class="text-sm text-secondary">معدل الاستخدام الكلي</p>
+                        <p class="text-sm text-secondary">معدل التحصيل الكلي</p>
                         <span class="text-sm font-semibold text-heading">{{ utilizationLabel }}</span>
                     </div>
                     <div class="w-full h-3 rounded-full bg-[#F3F4FA] overflow-hidden">
@@ -150,15 +150,15 @@
                                 <p class="font-medium text-heading">{{ institution.approved_facilities_count }}</p>
                             </div>
                             <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
-                                <p class="text-xs text-secondary">المستخدم</p>
-                                <p class="font-medium text-heading">{{ institution.utilized_amount_currency }}</p>
+                                <p class="text-xs text-secondary">إجمالي المسدد</p>
+                                <p class="font-medium text-heading">{{ institution.repaid_amount_currency }}</p>
                             </div>
                             <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
-                                <p class="text-xs text-secondary">المتاح</p>
-                                <p class="font-medium text-heading">{{ institution.available_amount_currency }}</p>
+                                <p class="text-xs text-secondary">المتبقي للسداد</p>
+                                <p class="font-medium text-heading">{{ institution.remaining_amount_currency }}</p>
                             </div>
                             <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
-                                <p class="text-xs text-secondary">معدل الاستخدام</p>
+                                <p class="text-xs text-secondary">معدل التحصيل</p>
                                 <p class="font-medium text-heading">{{ Number(institution.utilization_rate || 0).toFixed(2) }}%</p>
                             </div>
                         </div>
@@ -190,12 +190,12 @@
                                             <p class="font-medium text-heading">{{ customer.approved_amount_currency }}</p>
                                         </div>
                                         <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
-                                            <p class="text-xs text-secondary">المستخدم</p>
-                                            <p class="font-medium text-heading">{{ customer.utilized_amount_currency }}</p>
+                                            <p class="text-xs text-secondary">إجمالي المسدد</p>
+                                            <p class="font-medium text-heading">{{ customer.repaid_amount_currency }}</p>
                                         </div>
                                         <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
-                                            <p class="text-xs text-secondary">المتاح</p>
-                                            <p class="font-medium text-heading">{{ customer.available_amount_currency }}</p>
+                                            <p class="text-xs text-secondary">المتبقي للسداد</p>
+                                            <p class="font-medium text-heading">{{ customer.remaining_amount_currency }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -244,8 +244,8 @@
                                 <p class="font-medium text-heading">{{ client.approved_amount_currency }}</p>
                             </div>
                             <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
-                                <p class="text-xs text-secondary">المستخدم</p>
-                                <p class="font-medium text-heading">{{ client.utilized_amount_currency }}</p>
+                                <p class="text-xs text-secondary">إجمالي المسدد</p>
+                                <p class="font-medium text-heading">{{ client.repaid_amount_currency }}</p>
                             </div>
                         </div>
                     </div>

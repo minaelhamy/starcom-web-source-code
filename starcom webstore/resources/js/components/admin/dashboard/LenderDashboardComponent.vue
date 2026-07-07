@@ -52,8 +52,8 @@
                                 <p class="font-medium text-heading">{{ customer.approved_amount_currency }}</p>
                             </div>
                             <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
-                                <p class="text-xs text-secondary">المستخدم حالياً</p>
-                                <p class="font-medium text-heading">{{ customer.utilized_amount_currency }}</p>
+                                <p class="text-xs text-secondary">إجمالي المسدد</p>
+                                <p class="font-medium text-heading">{{ customer.repaid_amount_currency }}</p>
                             </div>
                             <div class="rounded-lg bg-[#F8F8FC] px-3 py-2">
                                 <p class="text-xs text-secondary">الائتمان المقترح</p>
@@ -153,7 +153,7 @@ export default {
                     icon: "lab-fill-users text-admin-purple text-2xl lab-font-size-24",
                 },
                 {
-                    title: "قيمة المحافظ",
+                    title: "إجمالي المبالغ المعتمدة",
                     displayValue: this.displayCurrency(this.summary.wallet_value_currency, this.summary.wallet_value),
                     note: "إجمالي حدود التمويل المعتمدة",
                     className: "bg-admin-pink",

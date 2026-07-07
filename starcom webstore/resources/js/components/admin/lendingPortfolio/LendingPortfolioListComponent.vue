@@ -28,8 +28,12 @@
                         <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(totalApprovedAmount) }}</h5>
                     </div>
                     <div class="rounded-lg border border-[#E8E8F3] p-4">
-                        <p class="text-sm text-secondary mb-1">إجمالي المبلغ المستخدم</p>
-                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(totalUtilizedAmount) }}</h5>
+                        <p class="text-sm text-secondary mb-1">إجمالي المسدد</p>
+                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(totalRepaidAmount) }}</h5>
+                    </div>
+                    <div class="rounded-lg border border-[#E8E8F3] p-4">
+                        <p class="text-sm text-secondary mb-1">إجمالي المتبقي للسداد</p>
+                        <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(totalRemainingAmount) }}</h5>
                     </div>
                 </div>
 
@@ -117,10 +121,10 @@
                                 <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('approved_amount')">المعتمد <span>{{ sortIcon('approved_amount') }}</span></button>
                             </th>
                             <th class="db-table-head-th">
-                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('available_amount')">المتاح <span>{{ sortIcon('available_amount') }}</span></button>
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('remaining_due_amount')">المتبقي للسداد <span>{{ sortIcon('remaining_due_amount') }}</span></button>
                             </th>
                             <th class="db-table-head-th">
-                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('utilized_amount')">المستخدم <span>{{ sortIcon('utilized_amount') }}</span></button>
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('repaid_amount')">إجمالي المسدد <span>{{ sortIcon('repaid_amount') }}</span></button>
                             </th>
                             <th class="db-table-head-th">
                                 <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('institution_name')">جهة التمويل <span>{{ sortIcon('institution_name') }}</span></button>
@@ -161,8 +165,8 @@
                             <td class="db-table-body-td">{{ item.national_id_number || "--" }}</td>
                             <td class="db-table-body-td">{{ statusText(item.status) }}</td>
                             <td class="db-table-body-td">{{ item.approved_currency }}</td>
-                            <td class="db-table-body-td">{{ item.available_currency }}</td>
-                            <td class="db-table-body-td">{{ item.utilized_currency }}</td>
+                            <td class="db-table-body-td">{{ item.remaining_due_currency }}</td>
+                            <td class="db-table-body-td">{{ item.repaid_currency }}</td>
                             <td class="db-table-body-td">{{ item.institution?.company_name || item.institution?.name || "--" }}</td>
                             <td class="db-table-body-td">{{ item.employee?.name || "--" }}</td>
                             <td class="db-table-body-td">{{ item.starts_at || "--" }}</td>
@@ -318,8 +322,11 @@ export default {
         totalApprovedAmount: function () {
             return this.sortedTabbedPortfolio.reduce((sum, item) => sum + Number(item.approved_amount || 0), 0);
         },
-        totalUtilizedAmount: function () {
-            return this.sortedTabbedPortfolio.reduce((sum, item) => sum + Number(item.utilized_amount || 0), 0);
+        totalRepaidAmount: function () {
+            return this.sortedTabbedPortfolio.reduce((sum, item) => sum + Number(item.repaid_amount || 0), 0);
+        },
+        totalRemainingAmount: function () {
+            return this.sortedTabbedPortfolio.reduce((sum, item) => sum + Number(item.remaining_due_amount || 0), 0);
         },
         setting: function () {
             return this.$store.getters["frontendSetting/lists"] || {};
@@ -419,8 +426,8 @@ export default {
                 national_id_number: item.national_id_number || "",
                 status: this.statusText(item.status),
                 approved_amount: Number(item.approved_amount || 0),
-                available_amount: Number(item.available_amount || 0),
-                utilized_amount: Number(item.utilized_amount || 0),
+                remaining_due_amount: Number(item.remaining_due_amount || 0),
+                repaid_amount: Number(item.repaid_amount || 0),
                 institution_name: item.institution?.company_name || item.institution?.name || "",
                 employee_name: item.employee?.name || "",
                 starts_at: item.starts_at || "",

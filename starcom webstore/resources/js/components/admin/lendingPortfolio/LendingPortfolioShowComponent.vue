@@ -18,9 +18,8 @@
                         <div><span class="font-semibold">خط الطول:</span> {{ facility.user?.longitude || "--" }}</div>
                         <div><span class="font-semibold">الهاتف:</span> {{ facility.user?.phone || "--" }}</div>
                         <div><span class="font-semibold">المبلغ المعتمد:</span> {{ facility.approved_currency || "--" }}</div>
-                        <div><span class="font-semibold">المتاح:</span> {{ facility.available_currency || "--" }}</div>
-                        <div><span class="font-semibold">المستخدم:</span> {{ facility.utilized_currency || "--" }}</div>
                         <div><span class="font-semibold">إجمالي المسدد:</span> {{ facility.repaid_currency || "--" }}</div>
+                        <div><span class="font-semibold">المتبقي للسداد:</span> {{ facility.remaining_due_currency || "--" }}</div>
                     </div>
                 </div>
                 <div class="col-12 lg:col-6">
@@ -534,7 +533,7 @@ export default {
             return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) &&
                 this.facility.id &&
                 this.facility.status === "approved" &&
-                Number(this.facility.utilized_amount || 0) > 0;
+                Number(this.facility.remaining_due_amount || 0) > 0;
         },
         expectedDueDate: function () {
             if (!this.dateForm.starts_at) {
