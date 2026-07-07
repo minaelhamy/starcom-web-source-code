@@ -1103,7 +1103,16 @@ class CreditApplicationService
 
     public function portfolioQuery(User $actor)
     {
-        $query = CreditFacility::with(['user', 'application', 'institution.financialInstitutionProfile', 'employee']);
+        $query = CreditFacility::with([
+            'user',
+            'user.latestAddress',
+            'application',
+            'application.user',
+            'application.user.latestAddress',
+            'institution.financialInstitutionProfile',
+            'employee',
+            'repayments.creator.financialInstitutionOwner.financialInstitutionProfile',
+        ]);
 
         if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
             $query->where('financial_institution_user_id', $this->resolveInstitutionUserId($actor));
@@ -1216,6 +1225,7 @@ class CreditApplicationService
                     'created_by_user_id'            => $actor->id,
                 ]);
 
+                $currentUtilized = round((float) $facility->utilized_amount, 6);
                 $facility->utilized_amount = max(0, $currentUtilized - $repaymentAmount);
 
                 WalletTransaction::create([
@@ -1238,8 +1248,10 @@ class CreditApplicationService
                     ],
                 ]);
 
-                $repaidAfter = $repaidBefore + $repaymentAmount;
-                if (((float) $facility->approved_amount - $repaidAfter) <= 0.000001) {
+                $repaidAfter = round($repaidBefore + $repaymentAmount, 6);
+                $remainingAfter = max(0, round((float) $facility->approved_amount - $repaidAfter, 6));
+
+                if ($remainingAfter <= 0.000001) {
                     $facility->utilized_amount = 0;
                     $facility->available_amount = 0;
                     $facility->status = CreditFacilityStatus::SETTLED;

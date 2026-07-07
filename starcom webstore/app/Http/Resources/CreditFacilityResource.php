@@ -17,11 +17,7 @@ class CreditFacilityResource extends JsonResource
         $notesHistory = $this->relationLoaded('notesHistory') ? $this->notesHistory : collect();
         $repayments = $this->relationLoaded('repayments')
             ? $this->repayments
-            : (
-                $request->route()?->getActionMethod() !== 'portfolio'
-                    ? $this->repayments()->with(['creator.financialInstitutionOwner.financialInstitutionProfile'])->get()
-                    : collect()
-            );
+            : $this->repayments()->with(['creator.financialInstitutionOwner.financialInstitutionProfile'])->get();
         $lastUpdatedAt = $this->updated_at;
         $lastUpdateLabel = 'تحديث المحفظة التمويلية';
 
