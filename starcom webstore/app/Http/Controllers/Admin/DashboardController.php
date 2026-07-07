@@ -160,6 +160,8 @@ class DashboardController extends AdminController implements HasMiddleware
                 return response(['status' => false, 'message' => trans('all.message.permission_denied')], 403);
             }
 
+            $institutionUserId = (int) ($actor->resolvedFinancialInstitutionUserId() ?: $actor->id);
+
             $lenderQueueQuery = $this->creditApplicationService->lenderOpportunitiesQuery($actor);
             $opportunitiesQuery = $this->creditApplicationService->lenderFreshOpportunitiesQuery($actor);
             $pendingApprovalQuery = $this->creditApplicationService->lenderPendingApprovalQuery($actor);
@@ -176,7 +178,7 @@ class DashboardController extends AdminController implements HasMiddleware
             $pendingApprovalCount = (clone $pendingApprovalQuery)->count();
             $approvedAmount = (float)(clone $fundedFacilitiesQuery)->sum('approved_amount');
             $repaidAmount = (float) CreditFacilityRepayment::query()
-                ->where('financial_institution_user_id', $actor->id)
+                ->where('financial_institution_user_id', $institutionUserId)
                 ->sum('amount');
             $remainingAmount = max(0, $approvedAmount - $repaidAmount);
             $activeCustomersCount = (clone $approvedFacilitiesQuery)->distinct('user_id')->count('user_id');

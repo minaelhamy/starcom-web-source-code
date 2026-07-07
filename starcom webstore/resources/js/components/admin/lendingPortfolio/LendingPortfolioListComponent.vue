@@ -317,16 +317,16 @@ export default {
             });
         },
         totalCustomers: function () {
-            return this.sortedTabbedPortfolio.length;
+            return this.filteredPortfolio.length;
         },
         totalApprovedAmount: function () {
-            return this.sortedTabbedPortfolio.reduce((sum, item) => sum + Number(item.approved_amount || 0), 0);
+            return this.filteredPortfolio.reduce((sum, item) => sum + Number(item.approved_amount || 0), 0);
         },
         totalRepaidAmount: function () {
-            return this.sortedTabbedPortfolio.reduce((sum, item) => sum + Number(item.repaid_amount || 0), 0);
+            return this.filteredPortfolio.reduce((sum, item) => sum + Number(item.repaid_amount || 0), 0);
         },
         totalRemainingAmount: function () {
-            return this.sortedTabbedPortfolio.reduce((sum, item) => sum + Number(item.remaining_due_amount || 0), 0);
+            return this.filteredPortfolio.reduce((sum, item) => sum + Number(item.remaining_due_amount || 0), 0);
         },
         setting: function () {
             return this.$store.getters["frontendSetting/lists"] || {};

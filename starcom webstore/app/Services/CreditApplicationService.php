@@ -54,13 +54,22 @@ class CreditApplicationService
             ->where(function ($query) use ($institutionId) {
                 $query->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
                     $facilityQuery->where('financial_institution_user_id', $institutionId);
-                })->orWhereHas('facilities', function ($facilityQuery) use ($institutionId) {
-                        $facilityQuery->where('financial_institution_user_id', $institutionId)
-                        ->whereIn('status', [
-                            CreditFacilityStatus::PENDING_APPROVAL,
-                            CreditFacilityStatus::DECLINED,
-                            CreditFacilityStatus::SETTLED,
-                        ]);
+                })->orWhere(function ($institutionScopedQuery) use ($institutionId) {
+                    $institutionScopedQuery
+                        ->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
+                            $facilityQuery
+                                ->where('financial_institution_user_id', $institutionId)
+                                ->where('status', CreditFacilityStatus::APPROVED);
+                        })
+                        ->whereHas('facilities', function ($facilityQuery) use ($institutionId) {
+                            $facilityQuery->where('financial_institution_user_id', $institutionId)
+                                ->whereIn('status', [
+                                    CreditFacilityStatus::PENDING_APPROVAL,
+                                    CreditFacilityStatus::DECLINED,
+                                    CreditFacilityStatus::SETTLED,
+                                    CreditFacilityStatus::EXPIRED,
+                                ]);
+                        });
                 });
             });
     }
@@ -80,9 +89,20 @@ class CreditApplicationService
         ])->where(function ($query) use ($institutionId) {
             $query->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
                 $facilityQuery->where('financial_institution_user_id', $institutionId);
-            })->orWhereHas('facilities', function ($facilityQuery) use ($institutionId) {
-                $facilityQuery->where('financial_institution_user_id', $institutionId)
-                    ->where('status', CreditFacilityStatus::SETTLED);
+            })->orWhere(function ($institutionScopedQuery) use ($institutionId) {
+                $institutionScopedQuery
+                    ->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
+                        $facilityQuery
+                            ->where('financial_institution_user_id', $institutionId)
+                            ->where('status', CreditFacilityStatus::APPROVED);
+                    })
+                    ->whereHas('facilities', function ($facilityQuery) use ($institutionId) {
+                        $facilityQuery->where('financial_institution_user_id', $institutionId)
+                            ->whereIn('status', [
+                                CreditFacilityStatus::SETTLED,
+                                CreditFacilityStatus::EXPIRED,
+                            ]);
+                    });
             });
         });
     }
@@ -927,6 +947,7 @@ class CreditApplicationService
                 $application = CreditApplication::lockForUpdate()->findOrFail($creditApplication->id);
                 $existingFacility = CreditFacility::where('credit_application_id', $application->id)
                     ->where('financial_institution_user_id', $institution->id)
+                    ->orderByDesc('id')
                     ->lockForUpdate()
                     ->first();
 
@@ -934,7 +955,10 @@ class CreditApplicationService
                     throw new Exception(trans('all.message.credit_application_already_reviewed'), 422);
                 }
 
-                if ($existingFacility) {
+                if ($existingFacility && in_array($existingFacility->status, [
+                    CreditFacilityStatus::DECLINED,
+                    CreditFacilityStatus::PENDING_APPROVAL,
+                ], true)) {
                     return $this->approveExistingFacility(
                         $existingFacility,
                         $application,
@@ -993,6 +1017,7 @@ class CreditApplicationService
                 $application = CreditApplication::lockForUpdate()->findOrFail($creditApplication->id);
                 $existingFacility = CreditFacility::where('credit_application_id', $application->id)
                     ->where('financial_institution_user_id', $institution->id)
+                    ->orderByDesc('id')
                     ->lockForUpdate()
                     ->first();
 
@@ -1000,7 +1025,10 @@ class CreditApplicationService
                     throw new Exception(trans('all.message.credit_application_already_reviewed'), 422);
                 }
 
-                if ($existingFacility) {
+                if ($existingFacility && in_array($existingFacility->status, [
+                    CreditFacilityStatus::DECLINED,
+                    CreditFacilityStatus::PENDING_APPROVAL,
+                ], true)) {
                     $existingFacility->financial_institution_employee_user_id = $employee->id;
                     $existingFacility->status = CreditFacilityStatus::DECLINED;
                     $existingFacility->approved_amount = 0;
@@ -1068,10 +1096,14 @@ class CreditApplicationService
                 $application = CreditApplication::lockForUpdate()->findOrFail($creditApplication->id);
                 $existingFacility = CreditFacility::where('credit_application_id', $application->id)
                     ->where('financial_institution_user_id', $institution->id)
+                    ->orderByDesc('id')
                     ->lockForUpdate()
                     ->first();
 
-                if ($existingFacility) {
+                if ($existingFacility && in_array($existingFacility->status, [
+                    CreditFacilityStatus::DECLINED,
+                    CreditFacilityStatus::PENDING_APPROVAL,
+                ], true)) {
                     $existingFacility->financial_institution_employee_user_id = $employee->id;
                     $existingFacility->status = CreditFacilityStatus::PENDING_APPROVAL;
                     $existingFacility->approved_amount = 0;
