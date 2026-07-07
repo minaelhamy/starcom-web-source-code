@@ -77,7 +77,16 @@
                             </div>
                             <div>
                                 <label class="db-field-title after:hidden">تاريخ السداد</label>
-                                <input v-model="repaymentForm.paid_at" type="date" class="db-field-control" />
+                                <input
+                                    :value="repaymentForm.paid_at"
+                                    @input="onRepaymentDateInput($event)"
+                                    @keydown.enter.prevent="recordRepayment"
+                                    type="text"
+                                    inputmode="numeric"
+                                    placeholder="YYYY-MM-DD"
+                                    dir="ltr"
+                                    class="db-field-control"
+                                />
                                 <small class="db-field-alert" v-if="repaymentErrors.paid_at">{{ repaymentErrors.paid_at[0] }}</small>
                             </div>
                             <div>
@@ -100,7 +109,7 @@
                             عند السداد الكامل سيتم إغلاق هذا التمويل وإعادة العميل إلى فرص التمويل المفتوحة لهذه الجهة فقط.
                         </div>
                         <div class="mt-3">
-                            <button class="db-btn py-2 text-white bg-primary" @click="recordRepayment">تسجيل السداد</button>
+                            <button type="button" class="db-btn py-2 text-white bg-primary" @click="recordRepayment">تسجيل السداد</button>
                         </div>
                     </div>
                 </div>
@@ -639,6 +648,9 @@ export default {
         onFacilityDateInput: function (event) {
             this.dateForm.starts_at = event?.target?.value || "";
         },
+        onRepaymentDateInput: function (event) {
+            this.repaymentForm.paid_at = this.normalizeFacilityDate(event?.target?.value || "");
+        },
         setContractFiles: function (event) {
             this.contractForm.contract_documents = Array.from(event.target.files || []);
         },
@@ -670,6 +682,10 @@ export default {
             return status || "--";
         },
         recordRepayment: function () {
+            if (document?.activeElement && typeof document.activeElement.blur === "function") {
+                document.activeElement.blur();
+            }
+
             this.loading.isActive = true;
             this.$store.dispatch("creditApplicationReview/recordRepayment", {
                 id: this.facility.id,
