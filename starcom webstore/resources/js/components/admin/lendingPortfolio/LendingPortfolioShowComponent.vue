@@ -78,12 +78,10 @@
                             <div>
                                 <label class="db-field-title after:hidden">تاريخ السداد</label>
                                 <input
-                                    :value="repaymentForm.paid_at"
-                                    @input="onRepaymentDateInput($event)"
+                                    v-model="repaymentForm.paid_at"
                                     @keydown.enter.prevent="recordRepayment"
                                     type="text"
-                                    inputmode="numeric"
-                                    placeholder="YYYY-MM-DD"
+                                    placeholder="YYYY-MM-DD أو 07/07/2026"
                                     dir="ltr"
                                     class="db-field-control"
                                 />
@@ -648,9 +646,6 @@ export default {
         onFacilityDateInput: function (event) {
             this.dateForm.starts_at = event?.target?.value || "";
         },
-        onRepaymentDateInput: function (event) {
-            this.repaymentForm.paid_at = this.normalizeFacilityDate(event?.target?.value || "");
-        },
         setContractFiles: function (event) {
             this.contractForm.contract_documents = Array.from(event.target.files || []);
         },
@@ -686,10 +681,15 @@ export default {
                 document.activeElement.blur();
             }
 
+            const form = {
+                ...this.repaymentForm,
+                paid_at: this.normalizeFacilityDate(this.repaymentForm.paid_at || ""),
+            };
+
             this.loading.isActive = true;
             this.$store.dispatch("creditApplicationReview/recordRepayment", {
                 id: this.facility.id,
-                form: this.repaymentForm,
+                form,
             }).then((res) => {
                 alertService.success(res.data.message || "تم تسجيل السداد بنجاح.");
                 this.resetRepaymentForm();
