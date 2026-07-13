@@ -53,6 +53,16 @@
                         </button>
                     </div>
                 </form>
+                <div v-if="isAdminLike" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div class="rounded-lg border border-[#E8E8F3] p-4">
+                        <p class="text-sm text-secondary mb-1">طلبات ببطاقة شخصية فقط</p>
+                        <h5 class="text-xl font-semibold text-heading">{{ nationalIdOnlyCount }}</h5>
+                    </div>
+                    <div class="rounded-lg border border-[#E8E8F3] p-4">
+                        <p class="text-sm text-secondary mb-1">طلبات ببطاقة شخصية ومستندات إضافية</p>
+                        <h5 class="text-xl font-semibold text-heading">{{ nationalIdWithAdditionalDocumentsCount }}</h5>
+                    </div>
+                </div>
             </div>
             <div class="db-table-responsive">
                 <table class="db-table">
@@ -89,6 +99,9 @@
                                 <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('documents_count')">المستندات <span>{{ sortIcon('documents_count') }}</span></button>
                             </th>
                             <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('identity_documents_status')">حالة مستندات الهوية <span>{{ sortIcon('identity_documents_status') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
                                 <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('decision_state')">القرار <span>{{ sortIcon('decision_state') }}</span></button>
                             </th>
                         </tr>
@@ -122,6 +135,7 @@
                                     <router-link :to="{ name: 'admin.creditRequests.show', params: { id: item.id } }" class="text-primary font-semibold">فتح الملف</router-link>
                                 </div>
                             </td>
+                            <td class="db-table-body-td">{{ identityDocumentsStatusLabel(item) }}</td>
                             <td class="db-table-body-td">
                                 <div v-if="canReview(item)" class="space-y-2 min-w-[240px]">
                                     <input v-model="reviewForms[item.id].approved_amount" type="number" min="1" step="0.01" class="db-field-control" placeholder="المبلغ المعتمد" />
@@ -160,7 +174,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" :colspan="canViewCustomerServiceAttribution ? 11 : 10">لا توجد طلبات جديدة حالياً.</td>
+                            <td class="db-table-body-td text-center" :colspan="canViewCustomerServiceAttribution ? 12 : 11">لا توجد طلبات جديدة حالياً.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -261,6 +275,12 @@ export default {
         canViewCustomerServiceAttribution: function () {
             return this.isAdminLike;
         },
+        nationalIdOnlyCount: function () {
+            return this.tabbedLists.filter((item) => this.identityDocumentsStatusKey(item) === "national_id_only").length;
+        },
+        nationalIdWithAdditionalDocumentsCount: function () {
+            return this.tabbedLists.filter((item) => this.identityDocumentsStatusKey(item) === "national_id_with_additional_documents").length;
+        },
     },
     mounted() {
         this.list();
@@ -312,12 +332,7 @@ export default {
             return this.sortDirection === "asc" ? "↑" : "↓";
         },
         getSortValue: function (item, field) {
-            const documentCount = Number(Boolean(item.national_id_front_document))
-                + Number(Boolean(item.national_id_back_document))
-                + Number((item.commercial_register_documents || []).length)
-                + Number(Boolean(item.tax_card_document))
-                + Number(Boolean(item.rent_contract_document))
-                + Number(Boolean(item.utility_bill_document));
+            const documentCount = this.totalDocumentCount(item);
 
             const decisionState = this.canReview(item) ? "1-review" : this.canReReview(item) ? "2-rereview" : "3-closed";
 
@@ -332,6 +347,7 @@ export default {
                 last_update_label: item.last_update_label || "",
                 approved_amount: Number(item.approved_amount || 0),
                 documents_count: documentCount,
+                identity_documents_status: this.identityDocumentsStatusSortValue(item),
                 decision_state: decisionState,
             };
 
@@ -366,6 +382,57 @@ export default {
                 .toLowerCase()
                 .replace(/[٠-٩]/g, (digit) => englishDigits[arabicDigits.indexOf(digit)] || digit)
                 .replace(/[^\p{L}\p{N}]+/gu, "");
+        },
+        hasNationalIdDocuments: function (item) {
+            return Boolean(item.national_id_front_document) || Boolean(item.national_id_back_document);
+        },
+        additionalDocumentsCount: function (item) {
+            return Number((item.commercial_register_documents || []).length)
+                + Number(Boolean(item.tax_card_document))
+                + Number(Boolean(item.rent_contract_document))
+                + Number(Boolean(item.utility_bill_document));
+        },
+        totalDocumentCount: function (item) {
+            return Number(Boolean(item.national_id_front_document))
+                + Number(Boolean(item.national_id_back_document))
+                + this.additionalDocumentsCount(item);
+        },
+        identityDocumentsStatusKey: function (item) {
+            const hasNationalId = this.hasNationalIdDocuments(item);
+            const additionalCount = this.additionalDocumentsCount(item);
+
+            if (hasNationalId && additionalCount > 0) {
+                return "national_id_with_additional_documents";
+            }
+
+            if (hasNationalId) {
+                return "national_id_only";
+            }
+
+            return "no_national_id";
+        },
+        identityDocumentsStatusLabel: function (item) {
+            const status = this.identityDocumentsStatusKey(item);
+
+            if (status === "national_id_with_additional_documents") {
+                return "بطاقة شخصية + مستندات إضافية";
+            }
+
+            if (status === "national_id_only") {
+                return "بطاقة شخصية فقط";
+            }
+
+            return "لا توجد بطاقة شخصية";
+        },
+        identityDocumentsStatusSortValue: function (item) {
+            const status = this.identityDocumentsStatusKey(item);
+            const sortOrder = {
+                no_national_id: 0,
+                national_id_only: 1,
+                national_id_with_additional_documents: 2,
+            };
+
+            return (sortOrder[status] || 0) * 1000 + this.additionalDocumentsCount(item);
         },
         approve: function (id) {
             this.loading.isActive = true;

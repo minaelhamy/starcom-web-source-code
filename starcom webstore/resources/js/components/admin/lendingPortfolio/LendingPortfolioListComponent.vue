@@ -36,6 +36,16 @@
                         <h5 class="text-xl font-semibold text-heading">{{ displayCurrency(totalRemainingAmount) }}</h5>
                     </div>
                 </div>
+                <div v-if="isAdminLike" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="rounded-lg border border-[#E8E8F3] p-4">
+                        <p class="text-sm text-secondary mb-1">ملفات ببطاقة شخصية فقط</p>
+                        <h5 class="text-xl font-semibold text-heading">{{ nationalIdOnlyCount }}</h5>
+                    </div>
+                    <div class="rounded-lg border border-[#E8E8F3] p-4">
+                        <p class="text-sm text-secondary mb-1">ملفات ببطاقة شخصية ومستندات إضافية</p>
+                        <h5 class="text-xl font-semibold text-heading">{{ nationalIdWithAdditionalDocumentsCount }}</h5>
+                    </div>
+                </div>
 
                 <form class="flex flex-col md:flex-row gap-3 items-start md:items-end" @submit.prevent="submitSearch">
                     <div class="w-full md:flex-1">
@@ -145,6 +155,9 @@
                                 <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('last_update_label')">ما هو آخر تحديث <span>{{ sortIcon('last_update_label') }}</span></button>
                             </th>
                             <th class="db-table-head-th">
+                                <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('identity_documents_status')">حالة مستندات الهوية <span>{{ sortIcon('identity_documents_status') }}</span></button>
+                            </th>
+                            <th class="db-table-head-th">
                                 <button type="button" class="flex items-center gap-1 text-left" @click="toggleSort('has_contract_documents')">العقود <span>{{ sortIcon('has_contract_documents') }}</span></button>
                             </th>
                             <th class="db-table-head-th">
@@ -173,6 +186,7 @@
                             <td class="db-table-body-td">{{ item.due_at || "--" }}</td>
                             <td class="db-table-body-td">{{ item.updated_date || "--" }}</td>
                             <td class="db-table-body-td">{{ item.last_update_label || "--" }}</td>
+                            <td class="db-table-body-td">{{ identityDocumentsStatusLabel(item) }}</td>
                             <td class="db-table-body-td">
                                 <span
                                     class="db-table-badge"
@@ -196,7 +210,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="16">{{ emptyStateText }}</td>
+                            <td class="db-table-body-td text-center" colspan="17">{{ emptyStateText }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -328,6 +342,12 @@ export default {
         totalRemainingAmount: function () {
             return this.filteredPortfolio.reduce((sum, item) => sum + Number(item.remaining_due_amount || 0), 0);
         },
+        nationalIdOnlyCount: function () {
+            return this.tabbedPortfolio.filter((item) => this.identityDocumentsStatusKey(item) === "national_id_only").length;
+        },
+        nationalIdWithAdditionalDocumentsCount: function () {
+            return this.tabbedPortfolio.filter((item) => this.identityDocumentsStatusKey(item) === "national_id_with_additional_documents").length;
+        },
         setting: function () {
             return this.$store.getters["frontendSetting/lists"] || {};
         },
@@ -420,6 +440,7 @@ export default {
             return this.sortDirection === "asc" ? "↑" : "↓";
         },
         getSortValue: function (item, field) {
+            const identityDocumentsStatusSortValue = this.identityDocumentsStatusSortValue(item);
             const sortMap = {
                 customer_name: item.user?.name || "",
                 full_name: item.full_name || "",
@@ -434,6 +455,7 @@ export default {
                 due_at: item.due_at || "",
                 updated_at: item.updated_at || "",
                 last_update_label: item.last_update_label || "",
+                identity_documents_status: identityDocumentsStatusSortValue,
                 has_contract_documents: Number(Boolean(item.has_contract_documents)) * 1000 + Number(item.contract_documents_count || 0),
                 has_signed_contract_documents: Number(Boolean(item.has_signed_contract_documents)) * 1000 + Number(item.signed_contract_documents_count || 0),
                 file_reference: Number(item.id || 0),
@@ -470,6 +492,57 @@ export default {
                 .toLowerCase()
                 .replace(/[٠-٩]/g, (digit) => englishDigits[arabicDigits.indexOf(digit)] || digit)
                 .replace(/[^\p{L}\p{N}]+/gu, "");
+        },
+        applicationDocumentsPayload: function (item) {
+            return item.application || {};
+        },
+        hasNationalIdDocuments: function (item) {
+            const application = this.applicationDocumentsPayload(item);
+            return Boolean(application.national_id_front_document) || Boolean(application.national_id_back_document);
+        },
+        additionalDocumentsCount: function (item) {
+            const application = this.applicationDocumentsPayload(item);
+            return Number((application.commercial_register_documents || []).length)
+                + Number(Boolean(application.tax_card_document))
+                + Number(Boolean(application.rent_contract_document))
+                + Number(Boolean(application.utility_bill_document));
+        },
+        identityDocumentsStatusKey: function (item) {
+            const hasNationalId = this.hasNationalIdDocuments(item);
+            const additionalCount = this.additionalDocumentsCount(item);
+
+            if (hasNationalId && additionalCount > 0) {
+                return "national_id_with_additional_documents";
+            }
+
+            if (hasNationalId) {
+                return "national_id_only";
+            }
+
+            return "no_national_id";
+        },
+        identityDocumentsStatusLabel: function (item) {
+            const status = this.identityDocumentsStatusKey(item);
+
+            if (status === "national_id_with_additional_documents") {
+                return "بطاقة شخصية + مستندات إضافية";
+            }
+
+            if (status === "national_id_only") {
+                return "بطاقة شخصية فقط";
+            }
+
+            return "لا توجد بطاقة شخصية";
+        },
+        identityDocumentsStatusSortValue: function (item) {
+            const status = this.identityDocumentsStatusKey(item);
+            const sortOrder = {
+                no_national_id: 0,
+                national_id_only: 1,
+                national_id_with_additional_documents: 2,
+            };
+
+            return (sortOrder[status] || 0) * 1000 + this.additionalDocumentsCount(item);
         },
         displayCurrency: function (rawAmount = 0) {
             const decimal = Number.isFinite(Number(this.setting.site_digit_after_decimal_point))
