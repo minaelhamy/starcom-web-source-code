@@ -21,7 +21,14 @@ class CreditApplicationStoreRequest extends FormRequest
             'national_id_back_document'       => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'commercial_register_documents'   => ['nullable', 'array', 'max:4'],
             'commercial_register_documents.*' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
-            'tax_card_document'               => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'tax_card_documents'              => ['nullable', 'array', 'max:4'],
+            'tax_card_documents.*'            => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'rent_contract_documents'         => ['nullable', 'array', 'max:4'],
+            'rent_contract_documents.*'       => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'utility_bill_documents'          => ['nullable', 'array', 'max:4'],
+            'utility_bill_documents.*'        => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'additional_documents'            => ['nullable', 'array', 'max:4'],
+            'additional_documents.*'          => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ];
     }
 }

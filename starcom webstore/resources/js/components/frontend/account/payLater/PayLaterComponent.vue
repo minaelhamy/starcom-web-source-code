@@ -55,9 +55,31 @@
                             <small class="db-field-alert" v-if="errors['commercial_register_documents.0']">{{ errors['commercial_register_documents.0'][0] }}</small>
                         </div>
                         <div class="md:col-span-2">
-                            <label class="db-field-title">البطاقة الضريبية (اختياري)</label>
-                            <input class="db-field-control" type="file" accept=".jpg,.jpeg,.png,.pdf" @change="setFile($event, 'tax_card_document')" />
-                            <small class="db-field-alert" v-if="errors.tax_card_document">{{ errors.tax_card_document[0] }}</small>
+                            <h4 class="font-semibold text-heading mb-2">مستندات اضافية</h4>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="db-field-title">رفع البطاقة الضريبية - حتى 4 ملفات</label>
+                            <input class="db-field-control" type="file" multiple accept=".jpg,.jpeg,.png,.pdf" @change="setFiles($event, 'tax_card_documents')" />
+                            <small class="db-field-alert" v-if="errors.tax_card_documents">{{ errors.tax_card_documents[0] }}</small>
+                            <small class="db-field-alert" v-if="errors['tax_card_documents.0']">{{ errors['tax_card_documents.0'][0] }}</small>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="db-field-title">رفع عقد ايجار - حتى 4 ملفات</label>
+                            <input class="db-field-control" type="file" multiple accept=".jpg,.jpeg,.png,.pdf" @change="setFiles($event, 'rent_contract_documents')" />
+                            <small class="db-field-alert" v-if="errors.rent_contract_documents">{{ errors.rent_contract_documents[0] }}</small>
+                            <small class="db-field-alert" v-if="errors['rent_contract_documents.0']">{{ errors['rent_contract_documents.0'][0] }}</small>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="db-field-title">رفع ايصال مرافق - حتى 4 ملفات</label>
+                            <input class="db-field-control" type="file" multiple accept=".jpg,.jpeg,.png,.pdf" @change="setFiles($event, 'utility_bill_documents')" />
+                            <small class="db-field-alert" v-if="errors.utility_bill_documents">{{ errors.utility_bill_documents[0] }}</small>
+                            <small class="db-field-alert" v-if="errors['utility_bill_documents.0']">{{ errors['utility_bill_documents.0'][0] }}</small>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="db-field-title">رفع مستندات اضافية - حتى 4 ملفات</label>
+                            <input class="db-field-control" type="file" multiple accept=".jpg,.jpeg,.png,.pdf" @change="setFiles($event, 'additional_documents')" />
+                            <small class="db-field-alert" v-if="errors.additional_documents">{{ errors.additional_documents[0] }}</small>
+                            <small class="db-field-alert" v-if="errors['additional_documents.0']">{{ errors['additional_documents.0'][0] }}</small>
                         </div>
                         <div class="md:col-span-2">
                             <label class="db-field-title">ملاحظات</label>
@@ -105,11 +127,30 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <a v-if="application.national_id_front_document" :href="application.national_id_front_document" target="_blank" class="db-btn py-2 bg-[#F7F7FC]">بطاقة أمامي</a>
                             <a v-if="application.national_id_back_document" :href="application.national_id_back_document" target="_blank" class="db-btn py-2 bg-[#F7F7FC]">بطاقة خلفي</a>
-                            <a v-if="application.tax_card_document" :href="application.tax_card_document" target="_blank" class="db-btn py-2 bg-[#F7F7FC]">عرض البطاقة الضريبية</a>
                         </div>
                         <div v-if="application.commercial_register_documents?.length" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                             <a v-for="(document, index) in application.commercial_register_documents" :key="document" :href="document" target="_blank" class="db-btn py-2 bg-[#F7F7FC]">
                                 صفحة السجل {{ index + 1 }}
+                            </a>
+                        </div>
+                        <div v-if="application.tax_card_documents?.length" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                            <a v-for="(document, index) in application.tax_card_documents" :key="`tax-${document}`" :href="document" target="_blank" class="db-btn py-2 bg-[#F7F7FC]">
+                                البطاقة الضريبية {{ index + 1 }}
+                            </a>
+                        </div>
+                        <div v-if="application.rent_contract_documents?.length" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                            <a v-for="(document, index) in application.rent_contract_documents" :key="`rent-${document}`" :href="document" target="_blank" class="db-btn py-2 bg-[#F7F7FC]">
+                                عقد الايجار {{ index + 1 }}
+                            </a>
+                        </div>
+                        <div v-if="application.utility_bill_documents?.length" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                            <a v-for="(document, index) in application.utility_bill_documents" :key="`utility-${document}`" :href="document" target="_blank" class="db-btn py-2 bg-[#F7F7FC]">
+                                ايصال المرافق {{ index + 1 }}
+                            </a>
+                        </div>
+                        <div v-if="application.additional_documents?.length" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                            <a v-for="(document, index) in application.additional_documents" :key="`additional-${document}`" :href="document" target="_blank" class="db-btn py-2 bg-[#F7F7FC]">
+                                مستند إضافي {{ index + 1 }}
                             </a>
                         </div>
                         <div class="mt-3 flex flex-wrap gap-2">
@@ -175,7 +216,10 @@ export default {
                 national_id_front_document: null,
                 national_id_back_document: null,
                 commercial_register_documents: [],
-                tax_card_document: null,
+                tax_card_documents: [],
+                rent_contract_documents: [],
+                utility_bill_documents: [],
+                additional_documents: [],
                 notes: "",
             },
             errors: {},
@@ -237,9 +281,18 @@ export default {
             this.form.commercial_register_documents.forEach((document) => {
                 formData.append("commercial_register_documents[]", document);
             });
-            if (this.form.tax_card_document) {
-                formData.append("tax_card_document", this.form.tax_card_document);
-            }
+            this.form.tax_card_documents.forEach((document) => {
+                formData.append("tax_card_documents[]", document);
+            });
+            this.form.rent_contract_documents.forEach((document) => {
+                formData.append("rent_contract_documents[]", document);
+            });
+            this.form.utility_bill_documents.forEach((document) => {
+                formData.append("utility_bill_documents[]", document);
+            });
+            this.form.additional_documents.forEach((document) => {
+                formData.append("additional_documents[]", document);
+            });
             formData.append("full_name", this.form.full_name || "");
             formData.append("national_id_number", this.form.national_id_number || "");
             formData.append("notes", this.form.notes || "");
@@ -258,7 +311,10 @@ export default {
                     national_id_front_document: null,
                     national_id_back_document: null,
                     commercial_register_documents: [],
-                    tax_card_document: null,
+                    tax_card_documents: [],
+                    rent_contract_documents: [],
+                    utility_bill_documents: [],
+                    additional_documents: [],
                     notes: "",
                 };
                 this.fetchData();

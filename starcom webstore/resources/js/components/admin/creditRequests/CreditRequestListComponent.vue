@@ -131,7 +131,10 @@
                                     <a v-if="item.national_id_front_document" :href="item.national_id_front_document" target="_blank" download class="text-primary">تحميل البطاقة أمامي</a>
                                     <a v-if="item.national_id_back_document" :href="item.national_id_back_document" target="_blank" download class="text-primary">تحميل البطاقة خلفي</a>
                                     <a v-for="(document, index) in item.commercial_register_documents || []" :key="document" :href="document" target="_blank" download class="text-primary">تحميل السجل التجاري {{ index + 1 }}</a>
-                                    <a v-if="item.tax_card_document" :href="item.tax_card_document" target="_blank" download class="text-primary">تحميل البطاقة الضريبية</a>
+                                    <a v-for="(document, index) in item.tax_card_documents || []" :key="`tax-${document}`" :href="document" target="_blank" download class="text-primary">تحميل البطاقة الضريبية {{ index + 1 }}</a>
+                                    <a v-for="(document, index) in item.rent_contract_documents || []" :key="`rent-${document}`" :href="document" target="_blank" download class="text-primary">تحميل عقد الايجار {{ index + 1 }}</a>
+                                    <a v-for="(document, index) in item.utility_bill_documents || []" :key="`utility-${document}`" :href="document" target="_blank" download class="text-primary">تحميل ايصال المرافق {{ index + 1 }}</a>
+                                    <a v-for="(document, index) in item.additional_documents || []" :key="`additional-${document}`" :href="document" target="_blank" download class="text-primary">تحميل مستند إضافي {{ index + 1 }}</a>
                                     <router-link :to="{ name: 'admin.creditRequests.show', params: { id: item.id } }" class="text-primary font-semibold">فتح الملف</router-link>
                                 </div>
                             </td>
@@ -388,9 +391,10 @@ export default {
         },
         additionalDocumentsCount: function (item) {
             return Number((item.commercial_register_documents || []).length)
-                + Number(Boolean(item.tax_card_document))
-                + Number(Boolean(item.rent_contract_document))
-                + Number(Boolean(item.utility_bill_document));
+                + Number((item.tax_card_documents || []).length)
+                + Number((item.rent_contract_documents || []).length)
+                + Number((item.utility_bill_documents || []).length)
+                + Number((item.additional_documents || []).length);
         },
         totalDocumentCount: function (item) {
             return Number(Boolean(item.national_id_front_document))

@@ -503,9 +503,10 @@ export default {
         additionalDocumentsCount: function (item) {
             const application = this.applicationDocumentsPayload(item);
             return Number((application.commercial_register_documents || []).length)
-                + Number(Boolean(application.tax_card_document))
-                + Number(Boolean(application.rent_contract_document))
-                + Number(Boolean(application.utility_bill_document));
+                + Number((application.tax_card_documents || []).length)
+                + Number((application.rent_contract_documents || []).length)
+                + Number((application.utility_bill_documents || []).length)
+                + Number((application.additional_documents || []).length);
         },
         identityDocumentsStatusKey: function (item) {
             const hasNationalId = this.hasNationalIdDocuments(item);

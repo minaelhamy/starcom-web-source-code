@@ -70,19 +70,47 @@ class CreditApplication extends Model implements HasMedia
         })->values()->all();
     }
 
+    public function getTaxCardDocumentsAttribute(): array
+    {
+        return $this->getMedia('tax_card_document')->map(function ($media) {
+            return $media->getUrl();
+        })->values()->all();
+    }
+
     public function getTaxCardDocumentAttribute(): ?string
     {
-        return $this->getFirstMediaUrl('tax_card_document') ?: null;
+        return $this->tax_card_documents[0] ?? null;
+    }
+
+    public function getRentContractDocumentsAttribute(): array
+    {
+        return $this->getMedia('rent_contract_document')->map(function ($media) {
+            return $media->getUrl();
+        })->values()->all();
     }
 
     public function getRentContractDocumentAttribute(): ?string
     {
-        return $this->getFirstMediaUrl('rent_contract_document') ?: null;
+        return $this->rent_contract_documents[0] ?? null;
+    }
+
+    public function getUtilityBillDocumentsAttribute(): array
+    {
+        return $this->getMedia('utility_bill_document')->map(function ($media) {
+            return $media->getUrl();
+        })->values()->all();
+    }
+
+    public function getAdditionalDocumentsAttribute(): array
+    {
+        return $this->getMedia('additional_documents')->map(function ($media) {
+            return $media->getUrl();
+        })->values()->all();
     }
 
     public function getUtilityBillDocumentAttribute(): ?string
     {
-        return $this->getFirstMediaUrl('utility_bill_document') ?: null;
+        return $this->utility_bill_documents[0] ?? null;
     }
 
     public function getNationalIdDocumentAttribute(): ?string

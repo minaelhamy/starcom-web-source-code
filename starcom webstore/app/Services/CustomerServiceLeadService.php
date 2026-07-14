@@ -227,8 +227,10 @@ class CustomerServiceLeadService
                     $request->file('national_id_front_document'),
                     $request->file('national_id_back_document'),
                     $request->file('commercial_register_documents', []),
-                    $request->file('tax_card_document'),
-                    $request->file('rent_contract_document')
+                    $request->file('tax_card_documents', []),
+                    $request->file('rent_contract_documents', []),
+                    $request->file('utility_bill_documents', []),
+                    $request->file('additional_documents', [])
                 );
 
                 $lead->prospect_full_name = $request->full_name;
@@ -1000,8 +1002,10 @@ class CustomerServiceLeadService
         UploadedFile $front,
         ?UploadedFile $back = null,
         array $commercialRegisterDocuments = [],
-        ?UploadedFile $taxCardDocument = null,
-        ?UploadedFile $rentContractDocument = null
+        array $taxCardDocuments = [],
+        array $rentContractDocuments = [],
+        array $utilityBillDocuments = [],
+        array $additionalDocuments = []
     ): void
     {
         $application->clearMediaCollection('national_id_front_document');
@@ -1021,14 +1025,40 @@ class CustomerServiceLeadService
             }
         }
 
-        if ($taxCardDocument) {
+        if (!empty($taxCardDocuments)) {
             $application->clearMediaCollection('tax_card_document');
-            $application->addMedia($taxCardDocument)->toMediaCollection('tax_card_document');
+            foreach ($taxCardDocuments as $taxCardDocument) {
+                if ($taxCardDocument instanceof UploadedFile) {
+                    $application->addMedia($taxCardDocument)->toMediaCollection('tax_card_document');
+                }
+            }
         }
 
-        if ($rentContractDocument) {
+        if (!empty($rentContractDocuments)) {
             $application->clearMediaCollection('rent_contract_document');
-            $application->addMedia($rentContractDocument)->toMediaCollection('rent_contract_document');
+            foreach ($rentContractDocuments as $rentContractDocument) {
+                if ($rentContractDocument instanceof UploadedFile) {
+                    $application->addMedia($rentContractDocument)->toMediaCollection('rent_contract_document');
+                }
+            }
+        }
+
+        if (!empty($utilityBillDocuments)) {
+            $application->clearMediaCollection('utility_bill_document');
+            foreach ($utilityBillDocuments as $utilityBillDocument) {
+                if ($utilityBillDocument instanceof UploadedFile) {
+                    $application->addMedia($utilityBillDocument)->toMediaCollection('utility_bill_document');
+                }
+            }
+        }
+
+        if (!empty($additionalDocuments)) {
+            $application->clearMediaCollection('additional_documents');
+            foreach ($additionalDocuments as $additionalDocument) {
+                if ($additionalDocument instanceof UploadedFile) {
+                    $application->addMedia($additionalDocument)->toMediaCollection('additional_documents');
+                }
+            }
         }
     }
 

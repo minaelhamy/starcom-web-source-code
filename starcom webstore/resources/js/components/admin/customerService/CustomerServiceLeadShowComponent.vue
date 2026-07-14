@@ -45,17 +45,25 @@
                                 <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" class="db-field-control" @change="setFile($event, 'national_id_back_document')" />
                             </div>
                             <div>
-                                <label class="db-field-title after:hidden">البطاقة الضريبية</label>
-                                <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" class="db-field-control" @change="setFile($event, 'tax_card_document')" />
+                                <label class="db-field-title after:hidden">رفع البطاقة الضريبية - حتى 4 ملفات</label>
+                                <input type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf" class="db-field-control" @change="setFiles($event, 'tax_card_documents')" />
                             </div>
                             <div>
-                                <label class="db-field-title after:hidden">عقد ايجار</label>
-                                <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" class="db-field-control" @change="setFile($event, 'rent_contract_document')" />
+                                <label class="db-field-title after:hidden">رفع عقد ايجار - حتى 4 ملفات</label>
+                                <input type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf" class="db-field-control" @change="setFiles($event, 'rent_contract_documents')" />
                             </div>
                         </div>
                         <div>
                             <label class="db-field-title after:hidden">السجل التجاري / Commercial Register</label>
                             <input type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf" class="db-field-control" @change="setFiles($event, 'commercial_register_documents')" />
+                        </div>
+                        <div>
+                            <label class="db-field-title after:hidden">رفع ايصال مرافق - حتى 4 ملفات</label>
+                            <input type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf" class="db-field-control" @change="setFiles($event, 'utility_bill_documents')" />
+                        </div>
+                        <div>
+                            <label class="db-field-title after:hidden">رفع مستندات اضافية - حتى 4 ملفات</label>
+                            <input type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf" class="db-field-control" @change="setFiles($event, 'additional_documents')" />
                         </div>
                         <textarea v-model="applicationForm.note" class="db-field-control h-24" placeholder="ملاحظات إضافية"></textarea>
                         <button type="button" class="db-btn text-white bg-primary py-2" @click="submitApplication">رفع البيانات وإنشاء الطلب</button>
@@ -108,8 +116,10 @@ export default {
                 national_id_front_document: null,
                 national_id_back_document: null,
                 commercial_register_documents: [],
-                tax_card_document: null,
-                rent_contract_document: null,
+                tax_card_documents: [],
+                rent_contract_documents: [],
+                utility_bill_documents: [],
+                additional_documents: [],
                 note: "",
             },
             statusOptions: [
@@ -184,12 +194,18 @@ export default {
             this.applicationForm.commercial_register_documents.forEach((document) => {
                 form.append("commercial_register_documents[]", document);
             });
-            if (this.applicationForm.tax_card_document) {
-                form.append("tax_card_document", this.applicationForm.tax_card_document);
-            }
-            if (this.applicationForm.rent_contract_document) {
-                form.append("rent_contract_document", this.applicationForm.rent_contract_document);
-            }
+            this.applicationForm.tax_card_documents.forEach((document) => {
+                form.append("tax_card_documents[]", document);
+            });
+            this.applicationForm.rent_contract_documents.forEach((document) => {
+                form.append("rent_contract_documents[]", document);
+            });
+            this.applicationForm.utility_bill_documents.forEach((document) => {
+                form.append("utility_bill_documents[]", document);
+            });
+            this.applicationForm.additional_documents.forEach((document) => {
+                form.append("additional_documents[]", document);
+            });
 
             this.loading.isActive = true;
             this.$store.dispatch("customerServiceCrm/submitApplication", {

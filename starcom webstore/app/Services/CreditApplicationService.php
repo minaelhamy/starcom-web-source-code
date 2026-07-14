@@ -177,8 +177,20 @@ class CreditApplicationService
                 $application->addMedia($commercialRegisterDocument)->toMediaCollection('commercial_register_documents');
             }
 
-            if ($request->hasFile('tax_card_document')) {
-                $application->addMedia($request->file('tax_card_document'))->toMediaCollection('tax_card_document');
+            foreach ($request->file('tax_card_documents', []) as $taxCardDocument) {
+                $application->addMedia($taxCardDocument)->toMediaCollection('tax_card_document');
+            }
+
+            foreach ($request->file('rent_contract_documents', []) as $rentContractDocument) {
+                $application->addMedia($rentContractDocument)->toMediaCollection('rent_contract_document');
+            }
+
+            foreach ($request->file('utility_bill_documents', []) as $utilityBillDocument) {
+                $application->addMedia($utilityBillDocument)->toMediaCollection('utility_bill_document');
+            }
+
+            foreach ($request->file('additional_documents', []) as $additionalDocument) {
+                $application->addMedia($additionalDocument)->toMediaCollection('additional_documents');
             }
 
             User::role(EnumRole::FINANCIAL_INSTITUTION)->get()->each(function (User $institutionUser) use ($application) {
@@ -235,19 +247,32 @@ class CreditApplicationService
                 }
             }
 
-            if ($request->hasFile('tax_card_document')) {
+            if ($request->hasFile('tax_card_documents')) {
                 $creditApplication->clearMediaCollection('tax_card_document');
-                $creditApplication->addMedia($request->file('tax_card_document'))->toMediaCollection('tax_card_document');
+                foreach ($request->file('tax_card_documents', []) as $taxCardDocument) {
+                    $creditApplication->addMedia($taxCardDocument)->toMediaCollection('tax_card_document');
+                }
             }
 
-            if ($request->hasFile('rent_contract_document')) {
+            if ($request->hasFile('rent_contract_documents')) {
                 $creditApplication->clearMediaCollection('rent_contract_document');
-                $creditApplication->addMedia($request->file('rent_contract_document'))->toMediaCollection('rent_contract_document');
+                foreach ($request->file('rent_contract_documents', []) as $rentContractDocument) {
+                    $creditApplication->addMedia($rentContractDocument)->toMediaCollection('rent_contract_document');
+                }
             }
 
-            if ($request->hasFile('utility_bill_document')) {
+            if ($request->hasFile('utility_bill_documents')) {
                 $creditApplication->clearMediaCollection('utility_bill_document');
-                $creditApplication->addMedia($request->file('utility_bill_document'))->toMediaCollection('utility_bill_document');
+                foreach ($request->file('utility_bill_documents', []) as $utilityBillDocument) {
+                    $creditApplication->addMedia($utilityBillDocument)->toMediaCollection('utility_bill_document');
+                }
+            }
+
+            if ($request->hasFile('additional_documents')) {
+                $creditApplication->clearMediaCollection('additional_documents');
+                foreach ($request->file('additional_documents', []) as $additionalDocument) {
+                    $creditApplication->addMedia($additionalDocument)->toMediaCollection('additional_documents');
+                }
             }
 
             return $creditApplication->load([
@@ -307,21 +332,35 @@ class CreditApplicationService
                 $documentsUpdated = true;
             }
 
-            if ($request->hasFile('tax_card_document')) {
+            if ($request->hasFile('tax_card_documents')) {
                 $creditApplication->clearMediaCollection('tax_card_document');
-                $creditApplication->addMedia($request->file('tax_card_document'))->toMediaCollection('tax_card_document');
+                foreach ($request->file('tax_card_documents', []) as $taxCardDocument) {
+                    $creditApplication->addMedia($taxCardDocument)->toMediaCollection('tax_card_document');
+                }
                 $documentsUpdated = true;
             }
 
-            if ($request->hasFile('rent_contract_document')) {
+            if ($request->hasFile('rent_contract_documents')) {
                 $creditApplication->clearMediaCollection('rent_contract_document');
-                $creditApplication->addMedia($request->file('rent_contract_document'))->toMediaCollection('rent_contract_document');
+                foreach ($request->file('rent_contract_documents', []) as $rentContractDocument) {
+                    $creditApplication->addMedia($rentContractDocument)->toMediaCollection('rent_contract_document');
+                }
                 $documentsUpdated = true;
             }
 
-            if ($request->hasFile('utility_bill_document')) {
+            if ($request->hasFile('utility_bill_documents')) {
                 $creditApplication->clearMediaCollection('utility_bill_document');
-                $creditApplication->addMedia($request->file('utility_bill_document'))->toMediaCollection('utility_bill_document');
+                foreach ($request->file('utility_bill_documents', []) as $utilityBillDocument) {
+                    $creditApplication->addMedia($utilityBillDocument)->toMediaCollection('utility_bill_document');
+                }
+                $documentsUpdated = true;
+            }
+
+            if ($request->hasFile('additional_documents')) {
+                $creditApplication->clearMediaCollection('additional_documents');
+                foreach ($request->file('additional_documents', []) as $additionalDocument) {
+                    $creditApplication->addMedia($additionalDocument)->toMediaCollection('additional_documents');
+                }
                 $documentsUpdated = true;
             }
 
@@ -1405,6 +1444,7 @@ class CreditApplicationService
                 $application->clearMediaCollection('tax_card_document');
                 $application->clearMediaCollection('rent_contract_document');
                 $application->clearMediaCollection('utility_bill_document');
+                $application->clearMediaCollection('additional_documents');
                 $application->delete();
             });
         } catch (Exception $exception) {
