@@ -51,6 +51,13 @@ class CreditApplicationResource extends JsonResource
                 $reviewedByMe = (bool)$myFacility;
                 $myReviewStatus = $myFacility?->status;
                 $queueStatus = $myReviewStatus ?: \App\Enums\CreditApplicationStatus::PENDING;
+
+                if (in_array($myReviewStatus, ['settled', 'expired'], true)) {
+                    $queueStatus = \App\Enums\CreditApplicationStatus::PENDING;
+                    $reviewedByMe = false;
+                    $myReviewStatus = null;
+                }
+
                 $visibleFacilities = $myFacility ? collect([$myFacility]) : collect();
                 $visibleNotesHistory = $visibleNotesHistory->filter(function ($note) use ($myFacility) {
                     if (!$myFacility) {
