@@ -58,31 +58,41 @@
                 </div>
                 <div class="col-12 md:col-6 mt-3">
                     <label class="db-field-title after:hidden">رفع السجل التجاري</label>
-                    <input type="file" multiple class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFiles($event, 'commercial_register_documents')" />
+                    <div class="space-y-2">
+                        <input v-for="slot in 4" :key="`commercial-${slot}`" type="file" class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFileAtIndex($event, 'commercial_register_documents', slot - 1)" />
+                    </div>
                     <small class="db-field-alert" v-if="identityErrors.commercial_register_documents">{{ identityErrors.commercial_register_documents[0] }}</small>
                     <small class="db-field-alert" v-if="identityErrors['commercial_register_documents.0']">{{ identityErrors['commercial_register_documents.0'][0] }}</small>
                 </div>
                 <div class="col-12 md:col-6 mt-3">
                     <label class="db-field-title after:hidden">رفع البطاقة الضريبية</label>
-                    <input type="file" multiple class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFiles($event, 'tax_card_documents')" />
+                    <div class="space-y-2">
+                        <input v-for="slot in 4" :key="`tax-${slot}`" type="file" class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFileAtIndex($event, 'tax_card_documents', slot - 1)" />
+                    </div>
                     <small class="db-field-alert" v-if="identityErrors.tax_card_documents">{{ identityErrors.tax_card_documents[0] }}</small>
                     <small class="db-field-alert" v-if="identityErrors['tax_card_documents.0']">{{ identityErrors['tax_card_documents.0'][0] }}</small>
                 </div>
                 <div class="col-12 md:col-6 mt-3">
                     <label class="db-field-title after:hidden">رفع عقد ايجار</label>
-                    <input type="file" multiple class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFiles($event, 'rent_contract_documents')" />
+                    <div class="space-y-2">
+                        <input v-for="slot in 4" :key="`rent-${slot}`" type="file" class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFileAtIndex($event, 'rent_contract_documents', slot - 1)" />
+                    </div>
                     <small class="db-field-alert" v-if="identityErrors.rent_contract_documents">{{ identityErrors.rent_contract_documents[0] }}</small>
                     <small class="db-field-alert" v-if="identityErrors['rent_contract_documents.0']">{{ identityErrors['rent_contract_documents.0'][0] }}</small>
                 </div>
                 <div class="col-12 md:col-6 mt-3">
                     <label class="db-field-title after:hidden">رفع ايصال مرافق</label>
-                    <input type="file" multiple class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFiles($event, 'utility_bill_documents')" />
+                    <div class="space-y-2">
+                        <input v-for="slot in 4" :key="`utility-${slot}`" type="file" class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFileAtIndex($event, 'utility_bill_documents', slot - 1)" />
+                    </div>
                     <small class="db-field-alert" v-if="identityErrors.utility_bill_documents">{{ identityErrors.utility_bill_documents[0] }}</small>
                     <small class="db-field-alert" v-if="identityErrors['utility_bill_documents.0']">{{ identityErrors['utility_bill_documents.0'][0] }}</small>
                 </div>
                 <div class="col-12 md:col-6 mt-3">
                     <label class="db-field-title after:hidden">رفع مستندات اضافية</label>
-                    <input type="file" multiple class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFiles($event, 'additional_documents')" />
+                    <div class="space-y-2">
+                        <input v-for="slot in 4" :key="`additional-${slot}`" type="file" class="db-field-control" accept=".jpg,.jpeg,.png,.pdf" @change="setIdentityFileAtIndex($event, 'additional_documents', slot - 1)" />
+                    </div>
                     <small class="db-field-alert" v-if="identityErrors.additional_documents">{{ identityErrors.additional_documents[0] }}</small>
                     <small class="db-field-alert" v-if="identityErrors['additional_documents.0']">{{ identityErrors['additional_documents.0'][0] }}</small>
                 </div>
@@ -285,11 +295,11 @@ export default {
                 national_id_number: "",
                 national_id_front_document: null,
                 national_id_back_document: null,
-                commercial_register_documents: [],
-                tax_card_documents: [],
-                rent_contract_documents: [],
-                utility_bill_documents: [],
-                additional_documents: [],
+                commercial_register_documents: [null, null, null, null],
+                tax_card_documents: [null, null, null, null],
+                rent_contract_documents: [null, null, null, null],
+                utility_bill_documents: [null, null, null, null],
+                additional_documents: [null, null, null, null],
             },
             identityErrors: {},
         };
@@ -350,15 +360,21 @@ export default {
             this.identityForm.national_id_number = this.application.national_id_number || "";
             this.identityForm.national_id_front_document = null;
             this.identityForm.national_id_back_document = null;
-            this.identityForm.commercial_register_documents = [];
-            this.identityForm.tax_card_documents = [];
-            this.identityForm.rent_contract_documents = [];
-            this.identityForm.utility_bill_documents = [];
-            this.identityForm.additional_documents = [];
+            this.identityForm.commercial_register_documents = [null, null, null, null];
+            this.identityForm.tax_card_documents = [null, null, null, null];
+            this.identityForm.rent_contract_documents = [null, null, null, null];
+            this.identityForm.utility_bill_documents = [null, null, null, null];
+            this.identityForm.additional_documents = [null, null, null, null];
             this.identityErrors = {};
         },
         setIdentityFile: function (event, field) {
             this.identityForm[field] = event.target.files?.[0] || null;
+        },
+        setIdentityFileAtIndex: function (event, field, index) {
+            if (!Array.isArray(this.identityForm[field])) {
+                this.identityForm[field] = [null, null, null, null];
+            }
+            this.identityForm[field].splice(index, 1, event.target.files?.[0] || null);
         },
         setIdentityFiles: function (event, field) {
             this.identityForm[field] = Array.from(event.target.files || []);
@@ -447,19 +463,19 @@ export default {
             if (this.identityForm.national_id_back_document) {
                 form.append("national_id_back_document", this.identityForm.national_id_back_document);
             }
-            this.identityForm.commercial_register_documents.forEach((document) => {
+            this.identityForm.commercial_register_documents.filter(Boolean).forEach((document) => {
                 form.append("commercial_register_documents[]", document);
             });
-            this.identityForm.tax_card_documents.forEach((document) => {
+            this.identityForm.tax_card_documents.filter(Boolean).forEach((document) => {
                 form.append("tax_card_documents[]", document);
             });
-            this.identityForm.rent_contract_documents.forEach((document) => {
+            this.identityForm.rent_contract_documents.filter(Boolean).forEach((document) => {
                 form.append("rent_contract_documents[]", document);
             });
-            this.identityForm.utility_bill_documents.forEach((document) => {
+            this.identityForm.utility_bill_documents.filter(Boolean).forEach((document) => {
                 form.append("utility_bill_documents[]", document);
             });
-            this.identityForm.additional_documents.forEach((document) => {
+            this.identityForm.additional_documents.filter(Boolean).forEach((document) => {
                 form.append("additional_documents[]", document);
             });
 
