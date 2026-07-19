@@ -44,10 +44,12 @@ class CreditApplicationResource extends JsonResource
             $canViewCustomerServiceAttribution = $actor->hasRole(\App\Enums\Role::ADMIN) || $actor->hasRole(\App\Enums\Role::MANAGER);
             if ($actor->hasRole(\App\Enums\Role::FINANCIAL_INSTITUTION)) {
                 $institutionId = $actor->resolvedFinancialInstitutionUserId();
-                $myFacility = $this->facilities->first(function ($facility) use ($institutionId, $actor) {
-                    return (int)$facility->financial_institution_user_id === (int)$institutionId ||
-                        (int)$facility->financial_institution_employee_user_id === (int)$actor->id;
-                });
+                $myFacility = $this->facilities
+                    ->sortByDesc('id')
+                    ->first(function ($facility) use ($institutionId, $actor) {
+                        return (int)$facility->financial_institution_user_id === (int)$institutionId ||
+                            (int)$facility->financial_institution_employee_user_id === (int)$actor->id;
+                    });
                 $reviewedByMe = (bool)$myFacility;
                 $myReviewStatus = $myFacility?->status;
                 $queueStatus = $myReviewStatus ?: \App\Enums\CreditApplicationStatus::PENDING;
