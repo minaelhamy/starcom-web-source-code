@@ -13,6 +13,9 @@ class CreditFacilityResource extends JsonResource
     public function toArray($request): array
     {
         $showInstitution = Auth::check() && !Auth::user()->hasRole(Role::CUSTOMER);
+        $isLimitedLender = Auth::check() &&
+            Auth::user()->hasRole(Role::FINANCIAL_INSTITUTION) &&
+            Auth::user()->normalizedFinancialInstitutionRole() === \App\Enums\FinancialInstitutionUserRole::LIMITED_EMPLOYEE;
         $application = $this->relationLoaded('application') ? $this->application : null;
         $notesHistory = $this->relationLoaded('notesHistory') ? $this->notesHistory : collect();
         $repayments = $this->relationLoaded('repayments')
@@ -141,23 +144,23 @@ class CreditFacilityResource extends JsonResource
                 'created_date'                  => $application->created_at ? AppLibrary::date($application->created_at) : null,
                 'notes'                         => $application->notes,
                 'notes_history'                 => CreditApplicationNoteResource::collection($application->relationLoaded('notesHistory') ? $application->notesHistory : collect()),
-                'national_id_front_document'    => $application->national_id_front_document,
-                'national_id_back_document'     => $application->national_id_back_document,
-                'commercial_register_documents' => $application->commercial_register_documents,
-                'tax_card_documents'            => $application->tax_card_documents,
-                'rent_contract_documents'       => $application->rent_contract_documents,
-                'utility_bill_documents'        => $application->utility_bill_documents,
-                'additional_documents'          => $application->additional_documents,
-                'tax_card_document'             => $application->tax_card_document,
-                'rent_contract_document'        => $application->rent_contract_document,
-                'utility_bill_document'         => $application->utility_bill_document,
+                'national_id_front_document'    => $isLimitedLender ? null : $application->national_id_front_document,
+                'national_id_back_document'     => $isLimitedLender ? null : $application->national_id_back_document,
+                'commercial_register_documents' => $isLimitedLender ? [] : $application->commercial_register_documents,
+                'tax_card_documents'            => $isLimitedLender ? [] : $application->tax_card_documents,
+                'rent_contract_documents'       => $isLimitedLender ? [] : $application->rent_contract_documents,
+                'utility_bill_documents'        => $isLimitedLender ? [] : $application->utility_bill_documents,
+                'additional_documents'          => $isLimitedLender ? [] : $application->additional_documents,
+                'tax_card_document'             => $isLimitedLender ? null : $application->tax_card_document,
+                'rent_contract_document'        => $isLimitedLender ? null : $application->rent_contract_document,
+                'utility_bill_document'         => $isLimitedLender ? null : $application->utility_bill_document,
             ] : null,
-            'has_contract_documents' => count($this->contract_documents) > 0,
-            'contract_documents_count' => count($this->contract_documents),
-            'contract_documents' => $this->contract_documents,
-            'has_signed_contract_documents' => count($this->signed_contract_documents) > 0,
-            'signed_contract_documents_count' => count($this->signed_contract_documents),
-            'signed_contract_documents' => $this->signed_contract_documents,
+            'has_contract_documents' => $isLimitedLender ? false : count($this->contract_documents) > 0,
+            'contract_documents_count' => $isLimitedLender ? 0 : count($this->contract_documents),
+            'contract_documents' => $isLimitedLender ? [] : $this->contract_documents,
+            'has_signed_contract_documents' => $isLimitedLender ? false : count($this->signed_contract_documents) > 0,
+            'signed_contract_documents_count' => $isLimitedLender ? 0 : count($this->signed_contract_documents),
+            'signed_contract_documents' => $isLimitedLender ? [] : $this->signed_contract_documents,
         ];
     }
 

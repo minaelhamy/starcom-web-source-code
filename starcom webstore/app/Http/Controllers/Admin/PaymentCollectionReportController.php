@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\Role as EnumRole;
+use App\Enums\FinancialInstitutionUserRole;
 use App\Http\Requests\PaginateRequest;
 use App\Http\Resources\PaymentCollectionReportResource;
 use App\Models\CreditFacilityRepayment;
@@ -29,6 +30,14 @@ class PaymentCollectionReportController extends AdminController implements HasMi
     {
         try {
             $actor = Auth::user();
+
+            if (
+                $actor?->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                $actor->normalizedFinancialInstitutionRole() === FinancialInstitutionUserRole::LIMITED_EMPLOYEE
+            ) {
+                return response(['status' => false, 'message' => trans('all.message.permission_denied')], 403);
+            }
+
             $paginate = (int) $request->get('paginate', 1) === 1;
             $perPage = max(1, (int) $request->get('per_page', 10));
 

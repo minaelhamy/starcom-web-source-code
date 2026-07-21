@@ -1,6 +1,8 @@
 import axios from "axios";
 import roleEnum from "../../enums/modules/roleEnum";
 
+const limitedLenderRole = "limited_employee";
+
 const lenderDashboardPermission = {
     id: "lender-dashboard",
     title: "Dashboard",
@@ -21,8 +23,59 @@ const lenderDashboardMenu = {
     priority: 0,
 };
 
+const limitedLenderAllowedUrls = new Set([
+    "lending-portfolio",
+    "lending-portfolio/show",
+]);
+
+const isLimitedLender = function (authInfo) {
+    return authInfo?.role_id === roleEnum.FINANCIAL_INSTITUTION &&
+        authInfo?.financial_institution_role === limitedLenderRole;
+};
+
+const restrictLimitedLenderAccess = function (state) {
+    if (!isLimitedLender(state.authInfo)) {
+        return;
+    }
+
+    const permissions = Array.isArray(state.authPermission) ? state.authPermission : [];
+    state.authPermission = permissions
+        .map((permission) => {
+            if (permission?.url === "dashboard") {
+                return { ...permission, access: false };
+            }
+
+            if (permission?.url && !limitedLenderAllowedUrls.has(permission.url)) {
+                return { ...permission, access: false };
+            }
+
+            return permission;
+        })
+        .filter((permission) => permission?.url ? limitedLenderAllowedUrls.has(permission.url) : false);
+
+    const menus = Array.isArray(state.authMenu) ? state.authMenu : [];
+    state.authMenu = menus.filter((menu) => menu?.url && limitedLenderAllowedUrls.has(menu.url));
+
+    state.authDefaultMenu = {
+        id: "lending-portfolio",
+        name: "Lending Portfolio",
+        language: "lending_portfolio",
+        url: "lending-portfolio",
+        icon: "lab lab-line-wallet",
+        status: 1,
+        parent: null,
+        type: null,
+        priority: 0,
+    };
+};
+
 const augmentLenderDashboardAccess = function (state) {
     if (state.authInfo?.role_id !== roleEnum.FINANCIAL_INSTITUTION) {
+        return;
+    }
+
+    if (isLimitedLender(state.authInfo)) {
+        restrictLimitedLenderAccess(state);
         return;
     }
 
@@ -347,6 +400,7 @@ export const auth = {
         },
         authInfo: function (state, payload) {
             state.authInfo = payload;
+            augmentLenderDashboardAccess(state);
         },
         phone: function (state, payload) {
             state.phone.otp = payload;

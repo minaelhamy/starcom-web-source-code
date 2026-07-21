@@ -125,17 +125,30 @@ const lenderLandingPath = function () {
     return "/admin/dashboard";
 };
 
+const limitedLenderLandingPath = function () {
+    return "/admin/lending-portfolio";
+};
+
 router.beforeEach((to, from, next) => {
     const isAuthenticated = store.getters.authStatus;
     const authInfo = store.getters.authInfo || {};
     const isLender = authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION;
+    const isLimitedLender = isLender && authInfo.financial_institution_role === "limited_employee";
 
     if (to.meta.auth === true) {
         if (!isAuthenticated) {
             next({ name: "auth.login" });
         } else {
+            if (
+                isLimitedLender &&
+                to.meta.isFrontend === false &&
+                !to.path.startsWith("/admin/lending-portfolio")
+            ) {
+                next({ path: limitedLenderLandingPath() });
+                return;
+            }
             if (isLender && to.meta.isFrontend === true) {
-                next({ path: lenderLandingPath() });
+                next({ path: isLimitedLender ? limitedLenderLandingPath() : lenderLandingPath() });
                 return;
             }
             if (to.meta.isFrontend === false) {
@@ -156,9 +169,9 @@ router.beforeEach((to, from, next) => {
             to.name === "auth.forgotPassword") &&
         isAuthenticated
     ) {
-        next(isLender ? { path: lenderLandingPath() } : { name: "frontend.home" });
+        next(isLender ? { path: isLimitedLender ? limitedLenderLandingPath() : lenderLandingPath() } : { name: "frontend.home" });
     } else if (isAuthenticated && isLender && to.meta.isFrontend === true) {
-        next({ path: lenderLandingPath() });
+        next({ path: isLimitedLender ? limitedLenderLandingPath() : lenderLandingPath() });
     } else {
         next();
     }

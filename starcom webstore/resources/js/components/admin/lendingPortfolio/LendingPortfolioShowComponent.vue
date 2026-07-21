@@ -195,7 +195,7 @@
             </div>
         </div>
 
-        <div class="db-card mb-4">
+        <div class="db-card mb-4" v-if="canViewDocuments">
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">المستندات</h3>
             </div>
@@ -534,6 +534,10 @@ export default {
             return this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION &&
                 this.authInfo.financial_institution_role === "manager";
         },
+        isFinancialInstitutionLimitedEmployee: function () {
+            return this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION &&
+                this.authInfo.financial_institution_role === "limited_employee";
+        },
         canManageIdentity: function () {
             return this.isAdminLike;
         },
@@ -543,10 +547,13 @@ export default {
                 Number(this.facility.utilized_amount || 0) === 0;
         },
         canAddNote: function () {
-            return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) && this.facility.id;
+            return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) &&
+                !this.isFinancialInstitutionLimitedEmployee &&
+                this.facility.id;
         },
         canUploadContracts: function () {
             return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) &&
+                !this.isFinancialInstitutionLimitedEmployee &&
                 this.facility.id &&
                 this.facility.status === "approved";
         },
@@ -567,9 +574,13 @@ export default {
         },
         canRecordRepayment: function () {
             return (this.isAdminLike || this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) &&
+                !this.isFinancialInstitutionLimitedEmployee &&
                 this.facility.id &&
                 this.facility.status === "approved" &&
                 Number(this.facility.remaining_due_amount || 0) > 0;
+        },
+        canViewDocuments: function () {
+            return !this.isFinancialInstitutionLimitedEmployee;
         },
         expectedDueDate: function () {
             if (!this.dateForm.starts_at) {

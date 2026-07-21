@@ -65,6 +65,12 @@ export default {
         },
         menus: function () {
             const menus = Array.isArray(this.$store.getters.authMenu) ? [...this.$store.getters.authMenu] : [];
+            const isLimitedLender = this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION &&
+                this.authInfo.financial_institution_role === "limited_employee";
+
+            if (isLimitedLender) {
+                return menus.filter((menu) => menu?.url === "lending-portfolio");
+            }
 
             if (this.authInfo.role_id === roleEnum.FINANCIAL_INSTITUTION) {
                 const hasDashboardMenu = menus.some((menu) => menu?.url === "dashboard");

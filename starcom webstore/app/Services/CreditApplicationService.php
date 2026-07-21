@@ -756,6 +756,13 @@ class CreditApplicationService
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
 
+            if (
+                $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                $this->isFinancialInstitutionLimitedEmployee($actor)
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
             if ($creditFacility->status !== CreditFacilityStatus::APPROVED) {
                 throw new Exception('يمكن رفع العقود غير الموقعة فقط بعد اعتماد التمويل.', 422);
             }
@@ -980,6 +987,13 @@ class CreditApplicationService
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
 
+            if (
+                $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                $this->isFinancialInstitutionLimitedEmployee($actor)
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
             [$institution, $employee] = $this->resolveAssignmentActors($actor, $request);
 
             $facility = DB::transaction(function () use ($creditApplication, $institution, $employee, $request) {
@@ -1047,6 +1061,13 @@ class CreditApplicationService
         try {
             $actor = Auth::user();
             if (!$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) && !$actor->hasRole(EnumRole::ADMIN)) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if (
+                $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                $this->isFinancialInstitutionLimitedEmployee($actor)
+            ) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
 
@@ -1122,6 +1143,13 @@ class CreditApplicationService
         try {
             $actor = Auth::user();
             if (!$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) && !$actor->hasRole(EnumRole::ADMIN)) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if (
+                $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                $this->isFinancialInstitutionLimitedEmployee($actor)
+            ) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
 
@@ -1242,6 +1270,13 @@ class CreditApplicationService
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
 
+            if (
+                $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                $this->isFinancialInstitutionLimitedEmployee($actor)
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
             DB::transaction(function () use ($creditFacility, $actor, $request) {
                 $facility = CreditFacility::with('application')->lockForUpdate()->findOrFail($creditFacility->id);
                 $note = trim((string)$request->note);
@@ -1276,6 +1311,13 @@ class CreditApplicationService
             if (
                 $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
                 (int) $creditFacility->financial_institution_user_id !== (int) $this->resolveInstitutionUserId($actor)
+            ) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if (
+                $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+                $this->isFinancialInstitutionLimitedEmployee($actor)
             ) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
@@ -1473,6 +1515,11 @@ class CreditApplicationService
     protected function isFinancialInstitutionManager(User $actor): bool
     {
         return $actor->isFinancialInstitutionManager();
+    }
+
+    protected function isFinancialInstitutionLimitedEmployee(User $actor): bool
+    {
+        return $actor->normalizedFinancialInstitutionRole() === FinancialInstitutionUserRole::LIMITED_EMPLOYEE;
     }
 
     protected function resolveAssignmentActors(User $actor, CreditApplicationDecisionRequest $request, bool $requireInstitutionForAdmin = true): array

@@ -33,6 +33,7 @@ class EmployeeResource extends JsonResource
             "financial_institution_role_name" => match ($this->normalizedFinancialInstitutionRole()) {
                 'manager' => 'مدير',
                 'employee' => 'موظف',
+                'limited_employee' => 'موظف محدود الصلاحيات',
                 default => null,
             },
             "financial_institution_owner" => $this->financialInstitutionOwner ? [

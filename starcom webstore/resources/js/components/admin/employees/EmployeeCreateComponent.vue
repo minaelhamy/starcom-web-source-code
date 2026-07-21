@@ -160,11 +160,12 @@
                             <option value="">--</option>
                             <option value="manager">مدير</option>
                             <option value="employee">موظف</option>
+                            <option value="limited_employee">موظف محدود الصلاحيات</option>
                         </select>
                         <small class="db-field-alert" v-if="errors.financial_institution_role">
                             {{ errors.financial_institution_role[0] }}
                         </small>
-                        <small class="text-xs text-text">حدد هل هذا الحساب مدير داخل جهة التمويل أو موظف عادي.</small>
+                        <small class="text-xs text-text">حدد هل هذا الحساب مدير داخل جهة التمويل أو موظف عادي أو موظف مشاهدة فقط.</small>
                     </div>
 
                     <div class="form-col-12">

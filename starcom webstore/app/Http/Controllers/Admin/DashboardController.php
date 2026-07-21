@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\CreditApplicationStatus;
 use App\Enums\CreditFacilityStatus;
+use App\Enums\FinancialInstitutionUserRole;
 use App\Enums\Role as EnumRole;
 use Exception;
 use Illuminate\Http\Request;
@@ -157,6 +158,10 @@ class DashboardController extends AdminController implements HasMiddleware
             $actor = Auth::user();
 
             if (!$actor || !$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
+                return response(['status' => false, 'message' => trans('all.message.permission_denied')], 403);
+            }
+
+            if ($actor->normalizedFinancialInstitutionRole() === FinancialInstitutionUserRole::LIMITED_EMPLOYEE) {
                 return response(['status' => false, 'message' => trans('all.message.permission_denied')], 403);
             }
 

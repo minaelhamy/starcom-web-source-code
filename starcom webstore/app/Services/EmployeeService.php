@@ -234,6 +234,7 @@ class EmployeeService
         if (!in_array($resolvedRole, [
             FinancialInstitutionUserRole::MANAGER,
             FinancialInstitutionUserRole::EMPLOYEE,
+            FinancialInstitutionUserRole::LIMITED_EMPLOYEE,
         ], true)) {
             throw new Exception('يرجى اختيار دور الموظف داخل جهة التمويل.', 422);
         }

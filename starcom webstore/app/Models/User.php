@@ -242,6 +242,11 @@ class User extends Authenticatable implements HasMedia
         return $this->normalizedFinancialInstitutionRole() === \App\Enums\FinancialInstitutionUserRole::MANAGER;
     }
 
+    public function isFinancialInstitutionLimitedEmployee(): bool
+    {
+        return $this->normalizedFinancialInstitutionRole() === \App\Enums\FinancialInstitutionUserRole::LIMITED_EMPLOYEE;
+    }
+
 
     public function getMyRoleAttribute()
     {

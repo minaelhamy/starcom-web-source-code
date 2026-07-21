@@ -16,6 +16,9 @@ use App\Http\Resources\CreditFacilityResource;
 use App\Models\CreditApplication;
 use App\Models\CreditFacility;
 use App\Services\CreditApplicationService;
+use App\Enums\Role as EnumRole;
+use App\Enums\FinancialInstitutionUserRole;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\Response;
@@ -43,6 +46,7 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
     public function index(PaginateRequest $request): Response|\Illuminate\Http\Resources\Json\AnonymousResourceCollection|Application|ResponseFactory
     {
         try {
+            $this->denyLimitedFinancialInstitutionFromCreditRequests();
             return CreditApplicationResource::collection($this->creditApplicationService->queueList($request));
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
@@ -61,6 +65,7 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
     public function show(CreditApplication $creditApplication): CreditApplicationResource|Response|Application|ResponseFactory
     {
         try {
+            $this->denyLimitedFinancialInstitutionFromCreditRequests();
             return new CreditApplicationResource($this->creditApplicationService->show($creditApplication));
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
@@ -79,6 +84,7 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
     public function assignmentOptions(): Response|Application|ResponseFactory
     {
         try {
+            $this->denyLimitedFinancialInstitutionFromCreditRequests();
             return response([
                 'status' => true,
                 'data' => $this->creditApplicationService->assignmentOptions(),
@@ -91,6 +97,7 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
     public function updateIdentity(CreditApplication $creditApplication, CreditApplicationIdentityRequest $request): CreditApplicationResource|Response|Application|ResponseFactory
     {
         try {
+            $this->denyLimitedFinancialInstitutionFromCreditRequests();
             return response([
                 'status' => true,
                 'message' => 'تم تحديث بيانات الهوية بنجاح.',
@@ -104,6 +111,7 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
     public function approve(CreditApplication $creditApplication, CreditApplicationDecisionRequest $request): CreditFacilityResource|Response|Application|ResponseFactory
     {
         try {
+            $this->denyLimitedFinancialInstitutionFromCreditRequests();
             return new CreditFacilityResource($this->creditApplicationService->approve($creditApplication, $request));
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
@@ -113,6 +121,7 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
     public function decline(CreditApplication $creditApplication, CreditApplicationDecisionRequest $request): CreditFacilityResource|Response|Application|ResponseFactory
     {
         try {
+            $this->denyLimitedFinancialInstitutionFromCreditRequests();
             return new CreditFacilityResource($this->creditApplicationService->decline($creditApplication, $request));
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
@@ -122,9 +131,23 @@ class CreditApplicationController extends AdminController implements HasMiddlewa
     public function markPendingApproval(CreditApplication $creditApplication, CreditApplicationDecisionRequest $request): CreditFacilityResource|Response|Application|ResponseFactory
     {
         try {
+            $this->denyLimitedFinancialInstitutionFromCreditRequests();
             return new CreditFacilityResource($this->creditApplicationService->markPendingApproval($creditApplication, $request));
         } catch (\Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    protected function denyLimitedFinancialInstitutionFromCreditRequests(): void
+    {
+        $actor = Auth::user();
+
+        if (
+            $actor &&
+            $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
+            $actor->normalizedFinancialInstitutionRole() === FinancialInstitutionUserRole::LIMITED_EMPLOYEE
+        ) {
+            throw new \Exception(trans('all.message.permission_denied'), 403);
         }
     }
 

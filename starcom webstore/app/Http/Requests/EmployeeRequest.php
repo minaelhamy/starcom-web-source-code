@@ -65,6 +65,7 @@ class EmployeeRequest extends FormRequest
             'financial_institution_role' => ['nullable', Rule::in([
                 FinancialInstitutionUserRole::MANAGER,
                 FinancialInstitutionUserRole::EMPLOYEE,
+                FinancialInstitutionUserRole::LIMITED_EMPLOYEE,
             ])],
         ];
     }
@@ -85,6 +86,7 @@ class EmployeeRequest extends FormRequest
             if (!in_array((string)$this->input('financial_institution_role'), [
                 FinancialInstitutionUserRole::MANAGER,
                 FinancialInstitutionUserRole::EMPLOYEE,
+                FinancialInstitutionUserRole::LIMITED_EMPLOYEE,
             ], true)) {
                 $validator->errors()->add('financial_institution_role', 'يرجى اختيار دور الموظف داخل جهة التمويل.');
                 return;

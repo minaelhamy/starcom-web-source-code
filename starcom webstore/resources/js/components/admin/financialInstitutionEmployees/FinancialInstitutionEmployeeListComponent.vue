@@ -47,6 +47,7 @@
                                 <option value="">--</option>
                                 <option value="manager">مدير</option>
                                 <option value="employee">موظف</option>
+                                <option value="limited_employee">موظف محدود الصلاحيات</option>
                             </select>
                         </div>
                         <div class="col-12">
