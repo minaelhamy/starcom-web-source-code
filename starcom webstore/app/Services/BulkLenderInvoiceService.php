@@ -246,30 +246,9 @@ class BulkLenderInvoiceService
             })
             ->values();
 
-        $approvedUserIds = CreditFacility::query()
-            ->where('status', 'approved')
-            ->distinct()
-            ->pluck('user_id');
-
-        $customers = User::query()
-            ->with(['latestAddress', 'creditApplications'])
-            ->whereIn('id', $approvedUserIds)
-            ->get();
-
-        $applications = CreditApplication::query()
-            ->whereIn('user_id', $approvedUserIds)
-            ->orderByDesc('id')
-            ->get()
-            ->groupBy('user_id');
-
-        $customers = $customers->map(function (User $user) use ($applications) {
-            $user->setRelation('creditApplications', $applications->get($user->id, collect()));
-            return $user;
-        });
-
         $matched = collect();
         foreach ($records as $record) {
-            $match = $this->matchWorkbookCustomer($record, $customers);
+            $match = $this->matchWorkbookCustomerByNationalId($record);
             if ($match) {
                 $matched->push($match->setAttribute('invoice_seed_meta', [
                     'sheet_customer_name' => $this->normalizeWorkbookValue($record['العميل'] ?? null),
@@ -508,75 +487,21 @@ class BulkLenderInvoiceService
         return min($this->availableStock($product), 1000);
     }
 
-    protected function matchWorkbookCustomer(array $record, Collection $customers): ?User
+    protected function matchWorkbookCustomerByNationalId(array $record): ?User
     {
         $nationalId = $this->normalizeDigits((string) ($record['الرقم القومي'] ?? ''));
-        $fullName = $this->normalizeLooseText((string) ($record['الاسم رباعي'] ?? ''));
-        $customerName = $this->normalizeLooseText((string) ($record['العميل'] ?? ''));
-        $address = $this->normalizeLooseText((string) ($record['العنوان'] ?? ''));
 
-        if ($nationalId !== '') {
-            $byNationalId = $customers->first(function (User $user) use ($nationalId) {
-                return $user->creditApplications->contains(function (CreditApplication $application) use ($nationalId) {
-                    return $this->normalizeDigits((string) $application->national_id_number) === $nationalId;
-                });
-            });
-
-            if ($byNationalId) {
-                return $byNationalId;
-            }
+        if ($nationalId === '') {
+            return null;
         }
 
-        $fullNameCandidates = $customers->filter(function (User $user) use ($fullName) {
-            if ($fullName === '') {
-                return false;
-            }
+        $application = CreditApplication::query()
+            ->with(['user.latestAddress'])
+            ->where('national_id_number', $nationalId)
+            ->orderByDesc('id')
+            ->first();
 
-            return $user->creditApplications->contains(function (CreditApplication $application) use ($fullName) {
-                return $this->normalizeLooseText((string) $application->full_name) === $fullName;
-            });
-        });
-
-        if ($fullNameCandidates->count() === 1) {
-            return $fullNameCandidates->first();
-        }
-
-        $scored = $customers->map(function (User $user) use ($customerName, $fullName, $address) {
-            $score = 0;
-            $userName = $this->normalizeLooseText((string) $user->name);
-            $userAddress = $this->normalizeLooseText((string) $user->display_address);
-            $applicationFullNames = $user->creditApplications
-                ->pluck('full_name')
-                ->map(fn ($value) => $this->normalizeLooseText((string) $value))
-                ->filter();
-
-            if ($customerName !== '' && $userName === $customerName) {
-                $score += 3;
-            } elseif ($customerName !== '' && Str::contains($userName, $customerName)) {
-                $score += 2;
-            }
-
-            if ($fullName !== '' && $applicationFullNames->contains($fullName)) {
-                $score += 4;
-            }
-
-            if ($address !== '' && $userAddress !== '') {
-                similar_text($address, $userAddress, $percent);
-                if ($percent >= 70) {
-                    $score += 3;
-                } elseif ($percent >= 50) {
-                    $score += 1;
-                }
-            }
-
-            return ['user' => $user, 'score' => $score];
-        })->sortByDesc('score')->values();
-
-        if (($scored[0]['score'] ?? 0) >= 5) {
-            return $scored[0]['user'];
-        }
-
-        return null;
+        return $application?->user;
     }
 
     protected function storeInvoicePdf(Order $order, string $batchName): string
