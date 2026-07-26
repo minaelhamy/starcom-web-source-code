@@ -524,7 +524,7 @@ class CustomerServiceLeadService
             ]);
     }
 
-    public function importCairoUsersWorkbook(string $path, bool $assign = true, int $perAgent = 300): array
+    public function importCairoUsersWorkbook(string $path, bool $assign = true, ?int $perAgent = null): array
     {
         if (!file_exists($path)) {
             throw new Exception("Workbook not found: {$path}", 422);
@@ -1087,6 +1087,16 @@ class CustomerServiceLeadService
             ->where('status', 5)
             ->get()
             ->map(function (User $agent) use ($dateFrom, $dateTo) {
+                $currentAssignedLeads = CustomerServiceLead::with([
+                    'user.creditApplications.facilities.repayments',
+                    'user.creditApplications.facilities.institution.financialInstitutionProfile',
+                    'user.creditApplications.facilities.employee',
+                    'user.orders',
+                    'user.latestAddress',
+                ])
+                    ->where('assigned_to_user_id', $agent->id)
+                    ->get();
+
                 $activities = $agent->customerServiceLeadActivities()
                     ->whereBetween('created_at', [$dateFrom, $dateTo])
                     ->orderBy('created_at')
@@ -1182,6 +1192,86 @@ class CustomerServiceLeadService
                     ->unique()
                     ->count();
 
+                $assignedCustomers = $currentAssignedLeads
+                    ->map(function (CustomerServiceLead $lead) {
+                        $snapshot = $this->pipelineSnapshot($lead);
+
+                        return [
+                            'lead_id' => $lead->id,
+                            'user_id' => $lead->user_id,
+                            'customer_name' => $lead->user?->name,
+                            'phone' => trim(($lead->user?->country_code ?: '') . ' ' . ($lead->user?->phone ?: '')),
+                            'address' => $lead->user?->display_address,
+                            'status_label' => self::statusLabels()[$lead->status ?: CustomerServiceLeadStatus::NOT_APPROACHED] ?? ($lead->status ?: '--'),
+                            'pipeline_label' => $snapshot['stage_label'] ?? '--',
+                            'average_purchase' => (float) ($lead->user?->estimated_average_monthly_purchase ?? 0),
+                        ];
+                    })
+                    ->sortBy('customer_name')
+                    ->values()
+                    ->all();
+
+                $submittedCustomers = CreditApplication::with('user')
+                    ->where('submitted_by_customer_service_user_id', $agent->id)
+                    ->whereBetween('submitted_by_customer_service_at', [$dateFrom, $dateTo])
+                    ->get()
+                    ->map(function (CreditApplication $application) {
+                        return [
+                            'application_id' => $application->id,
+                            'customer_name' => $application->user?->name,
+                            'full_name' => $application->full_name,
+                            'national_id_number' => $application->national_id_number,
+                            'submitted_at' => $application->submitted_by_customer_service_at?->toDateTimeString(),
+                            'status' => $application->status,
+                        ];
+                    })
+                    ->values()
+                    ->all();
+
+                $approvedCustomers = $currentAssignedLeads
+                    ->map(function (CustomerServiceLead $lead) {
+                        $snapshot = $this->pipelineSnapshot($lead);
+                        $facility = $snapshot['facility'] ?? null;
+                        if (!$facility || !in_array($facility->status, ['approved', 'settled', 'expired'], true)) {
+                            return null;
+                        }
+
+                        return [
+                            'lead_id' => $lead->id,
+                            'customer_name' => $lead->user?->name,
+                            'institution_name' => $facility->institution?->name,
+                            'employee_name' => $facility->employee?->name,
+                            'approved_amount' => (float) ($facility->approved_amount ?? 0),
+                            'remaining_due' => (float) ($snapshot['remaining_due'] ?? 0),
+                            'pipeline_label' => $snapshot['stage_label'] ?? '--',
+                        ];
+                    })
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                $collectionCustomers = $currentAssignedLeads
+                    ->map(function (CustomerServiceLead $lead) {
+                        $snapshot = $this->pipelineSnapshot($lead);
+                        $facility = $snapshot['facility'] ?? null;
+                        if (!$facility || (($snapshot['repaid_amount'] ?? 0) <= 0 && ($snapshot['remaining_due'] ?? 0) <= 0)) {
+                            return null;
+                        }
+
+                        return [
+                            'lead_id' => $lead->id,
+                            'customer_name' => $lead->user?->name,
+                            'approved_amount' => (float) ($facility->approved_amount ?? 0),
+                            'repaid_amount' => (float) ($snapshot['repaid_amount'] ?? 0),
+                            'remaining_due' => (float) ($snapshot['remaining_due'] ?? 0),
+                            'repayments_count' => (int) ($snapshot['repayments_count'] ?? 0),
+                            'pipeline_label' => $snapshot['stage_label'] ?? '--',
+                        ];
+                    })
+                    ->filter()
+                    ->values()
+                    ->all();
+
                 return [
                     'agent_id' => $agent->id,
                     'agent_name' => $agent->name,
@@ -1203,6 +1293,12 @@ class CustomerServiceLeadService
                     'today_updates_count' => $distinctActiveDaysCount,
                     'week_updates_count' => $distinctActiveDaysCount,
                     'last_activity_at' => $lastActivityAt?->toDateTimeString(),
+                    'details' => [
+                        'assigned_customers' => $assignedCustomers,
+                        'submitted_customers' => $submittedCustomers,
+                        'approved_customers' => $approvedCustomers,
+                        'collection_customers' => $collectionCustomers,
+                    ],
                 ];
             })
             ->values()

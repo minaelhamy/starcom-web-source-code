@@ -294,12 +294,11 @@ Artisan::command('customer-service:redistribute', function (CustomerServiceLeadS
     return self::SUCCESS;
 })->purpose('Distribute only unassigned new/no-answer/closed-phone customer service leads across the active team');
 
-Artisan::command('customer-service:import-cairo-users {--file=} {--assign} {--per-agent=300}', function (CustomerServiceLeadService $service) {
+Artisan::command('customer-service:import-cairo-users {--file=} {--assign}', function (CustomerServiceLeadService $service) {
     $filePath = (string)($this->option('file') ?: base_path('Cairo-users.xlsx'));
     $summary = $service->importCairoUsersWorkbook(
         $filePath,
-        (bool) $this->option('assign'),
-        (int) $this->option('per-agent')
+        (bool) $this->option('assign')
     );
 
     $this->table(
@@ -316,12 +315,11 @@ Artisan::command('customer-service:import-cairo-users {--file=} {--assign} {--pe
 
     if (!empty($summary['assignment'])) {
         $this->table(
-            ['Agents', 'Assigned', 'Unassigned', 'Per Agent'],
+            ['Agents', 'Assigned', 'Unassigned'],
             [[
                 $summary['assignment']['agents_count'] ?? 0,
                 $summary['assignment']['assigned_count'] ?? 0,
                 $summary['assignment']['remaining_unassigned_count'] ?? 0,
-                $summary['assignment']['per_agent'] ?? (int) $this->option('per-agent'),
             ]]
         );
     }

@@ -112,7 +112,7 @@ export default {
             if ([roleEnum.ADMIN, roleEnum.MANAGER].includes(this.authInfo.role_id)) {
                 if (!menus.some((menu) => menu?.url === "customer-service-reports")) {
                     menus.push({
-                        name: "Customer Service Reports",
+                        name: "متابعة أداء خدمة العملاء",
                         language: "customer_service_reports",
                         url: "customer-service-reports",
                         icon: "lab lab-line-chart",
