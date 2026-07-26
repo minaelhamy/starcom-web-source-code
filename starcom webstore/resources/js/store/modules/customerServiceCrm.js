@@ -54,6 +54,14 @@ export const customerServiceCrm = {
                 }).catch(reject);
             });
         },
+        updateProfile(context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.post(`admin/customer-service-leads/profile/${payload.id}`, payload.form).then((res) => {
+                    context.commit("show", res.data.data);
+                    resolve(res);
+                }).catch(reject);
+            });
+        },
         submitApplication(context, payload) {
             return new Promise((resolve, reject) => {
                 axios.post(`admin/customer-service-leads/application/${payload.id}`, payload.form, {

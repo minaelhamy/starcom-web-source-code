@@ -621,6 +621,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/report-summary', [CustomerServiceLeadController::class, 'reportSummary']);
         Route::get('/show/{customerServiceLead}', [CustomerServiceLeadController::class, 'show']);
         Route::post('/status/{customerServiceLead}', [CustomerServiceLeadController::class, 'updateStatus']);
+        Route::post('/profile/{customerServiceLead}', [CustomerServiceLeadController::class, 'updateProfile']);
         Route::post('/application/{customerServiceLead}', [CustomerServiceLeadController::class, 'submitApplication']);
         Route::post('/redistribute', [CustomerServiceLeadController::class, 'redistribute']);
     });

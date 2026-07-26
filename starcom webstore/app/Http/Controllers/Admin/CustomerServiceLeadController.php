@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Requests\CustomerServiceLeadApplicationRequest;
+use App\Http\Requests\CustomerServiceLeadProfileRequest;
 use App\Http\Requests\CustomerServiceLeadStatusRequest;
 use App\Http\Requests\PaginateRequest;
 use App\Http\Resources\CustomerServiceLeadResource;
@@ -27,7 +28,7 @@ class CustomerServiceLeadController extends AdminController implements HasMiddle
     {
         return [
             new Middleware('permission:customer-service-leads', only: ['index', 'show', 'dashboardSummary']),
-            new Middleware('permission:customer-service-leads_update', only: ['updateStatus']),
+            new Middleware('permission:customer-service-leads_update', only: ['updateStatus', 'updateProfile']),
             new Middleware('permission:customer-service-leads_submit', only: ['submitApplication']),
             new Middleware('permission:customer-service-reports', only: ['reportSummary']),
             new Middleware('permission:customer-service-redistribute', only: ['redistribute']),
@@ -56,6 +57,15 @@ class CustomerServiceLeadController extends AdminController implements HasMiddle
     {
         try {
             return new CustomerServiceLeadResource($this->customerServiceLeadService->updateStatus($customerServiceLead, $request));
+        } catch (Exception $exception) {
+            return response(['status' => false, 'message' => $exception->getMessage()], 422);
+        }
+    }
+
+    public function updateProfile(CustomerServiceLeadProfileRequest $request, CustomerServiceLead $customerServiceLead): Response|CustomerServiceLeadResource|Application|ResponseFactory
+    {
+        try {
+            return new CustomerServiceLeadResource($this->customerServiceLeadService->updateProfile($customerServiceLead, $request));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

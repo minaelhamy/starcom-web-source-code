@@ -20,6 +20,8 @@ class CustomerServiceLead extends Model
         'prospect_full_name',
         'prospect_national_id_number',
         'documents_status',
+        'last_pipeline_stage',
+        'last_pipeline_stage_at',
         'latest_note',
         'source_sheet',
         'source_status',
@@ -35,6 +37,7 @@ class CustomerServiceLead extends Model
         'assigned_at' => 'datetime',
         'last_contacted_at' => 'datetime',
         'next_follow_up_at' => 'datetime',
+        'last_pipeline_stage_at' => 'datetime',
         'imported_at' => 'datetime',
         'meta' => 'array',
     ];

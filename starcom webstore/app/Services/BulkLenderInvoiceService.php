@@ -33,6 +33,7 @@ class BulkLenderInvoiceService
         $batchName = $this->normalizeBatchName($options['batch'] ?? null);
         $minTotal = round((float) ($options['min_total'] ?? 70000), 2);
         $dryRun = (bool) ($options['dry_run'] ?? false);
+        $ignoreStockLimits = (bool) ($options['ignore_stock_limits'] ?? true);
 
         $requiredProducts = $this->resolveRequiredProducts($options);
         $customers = $this->resolveCustomers($options);
@@ -66,7 +67,8 @@ class BulkLenderInvoiceService
                     customer: $customer,
                     requiredProducts: $requiredProducts,
                     extraProducts: $extraProducts,
-                    minTotal: $minTotal
+                    minTotal: $minTotal,
+                    ignoreStockLimits: $ignoreStockLimits
                 );
 
                 $totals = $this->calculateTotals($lineItems);
@@ -83,7 +85,7 @@ class BulkLenderInvoiceService
                     continue;
                 }
 
-                $order = DB::transaction(function () use ($customer, $lineItems, $invoiceDate, $totals) {
+                $order = DB::transaction(function () use ($customer, $lineItems, $invoiceDate, $totals, $ignoreStockLimits) {
                     $order = new Order();
                     $order->fill([
                         'user_id' => $customer->id,
@@ -107,7 +109,9 @@ class BulkLenderInvoiceService
                     ]);
                     $order->save();
 
-                    app(OrderStockService::class)->assertProductsAvailable($lineItems, true);
+                    if (!$ignoreStockLimits) {
+                        app(OrderStockService::class)->assertProductsAvailable($lineItems, true);
+                    }
 
                     foreach ($lineItems as $lineItem) {
                         $stock = Stock::create([
@@ -301,7 +305,7 @@ class BulkLenderInvoiceService
             ->where('can_purchasable', Ask::YES)
             ->whereNotIn('id', $excludedIds)
             ->get()
-            ->filter(fn (Product $product) => $this->availableStock($product) > 0 && $this->currentPrice($product) > 0)
+            ->filter(fn (Product $product) => $this->currentPrice($product) > 0)
             ->shuffle()
             ->values();
     }
@@ -316,11 +320,11 @@ class BulkLenderInvoiceService
 
         if (!blank($explicitId)) {
             $product = $query->find((int) $explicitId);
-            if ($product && $this->availableStock($product) > 0) {
+            if ($product) {
                 return $product;
             }
 
-            throw new Exception("Required product id {$explicitId} is missing or out of stock.");
+            throw new Exception("Required product id {$explicitId} was not found.");
         }
 
         $product = $query
@@ -331,17 +335,17 @@ class BulkLenderInvoiceService
                 }
             })
             ->get()
-            ->sortByDesc(fn (Product $product) => $this->availableStock($product))
-            ->first(fn (Product $product) => $this->availableStock($product) > 0);
+            ->sortByDesc(fn (Product $product) => $this->currentPrice($product))
+            ->first(fn (Product $product) => $this->currentPrice($product) > 0);
 
         if (!$product) {
-            throw new Exception('Could not find one of the required products in stock. Use explicit product ids for the command.');
+            throw new Exception('Could not find one of the required products. Use explicit product ids for the command.');
         }
 
         return $product;
     }
 
-    protected function buildInvoiceLines($customer, Collection $requiredProducts, Collection $extraProducts, float $minTotal): array
+    protected function buildInvoiceLines($customer, Collection $requiredProducts, Collection $extraProducts, float $minTotal, bool $ignoreStockLimits = true): array
     {
         $lines = [];
 
@@ -349,9 +353,9 @@ class BulkLenderInvoiceService
         $milk1 = $requiredProducts['milk_1l'];
         $milk05 = $requiredProducts['milk_05l'];
 
-        $lines[] = $this->buildLineItem($sugar, $this->defaultSugarQuantity($sugar));
-        $lines[] = $this->buildLineItem($milk1, min($this->availableStock($milk1), 24));
-        $lines[] = $this->buildLineItem($milk05, min($this->availableStock($milk05), 24));
+        $lines[] = $this->buildLineItem($sugar, $this->defaultSugarQuantity($sugar, $ignoreStockLimits), $ignoreStockLimits);
+        $lines[] = $this->buildLineItem($milk1, 24, $ignoreStockLimits);
+        $lines[] = $this->buildLineItem($milk05, 24, $ignoreStockLimits);
 
         $totals = $this->calculateTotals($lines);
         if ($totals['total'] >= $minTotal) {
@@ -367,14 +371,13 @@ class BulkLenderInvoiceService
             }
 
             $price = $this->currentPrice($product);
-            $stock = $this->availableStock($product);
-            if ($price <= 0 || $stock <= 0) {
+            if ($price <= 0) {
                 continue;
             }
 
             $targetContribution = max($remainingTarget / 3, $price);
-            $quantity = min($stock, max(1, (float) ceil($targetContribution / max($price, 0.01))));
-            $lines[] = $this->buildLineItem($product, $quantity);
+            $quantity = max(1, (float) ceil($targetContribution / max($price, 0.01)));
+            $lines[] = $this->buildLineItem($product, $quantity, $ignoreStockLimits);
             $usedProductIds[] = $product->id;
 
             $totals = $this->calculateTotals($lines);
@@ -393,11 +396,11 @@ class BulkLenderInvoiceService
         return $lines;
     }
 
-    protected function buildLineItem(Product $product, float $quantity): object
+    protected function buildLineItem(Product $product, float $quantity, bool $ignoreStockLimits = true): object
     {
-        $quantity = round(min($this->availableStock($product), $quantity), 2);
+        $quantity = round($ignoreStockLimits ? $quantity : min($this->availableStock($product), $quantity), 2);
         if ($quantity <= 0) {
-            throw new Exception("{$product->name} is out of stock.");
+            throw new Exception("{$product->name} has an invalid requested quantity.");
         }
 
         $price = round($this->currentPrice($product), 2);
@@ -472,19 +475,19 @@ class BulkLenderInvoiceService
         return max(0, round((float) ($product->stock_items_sum_quantity ?? 0), 2));
     }
 
-    protected function defaultSugarQuantity(Product $product): float
+    protected function defaultSugarQuantity(Product $product, bool $ignoreStockLimits = true): float
     {
         $unit = Str::lower((string) ($product->unit?->name ?? ''));
 
         if (Str::contains($unit, ['طن', 'ton'])) {
-            return min($this->availableStock($product), 1);
+            return $ignoreStockLimits ? 1 : min($this->availableStock($product), 1);
         }
 
         if (Str::contains($unit, ['كجم', 'كيلو', 'kg', 'kilo'])) {
-            return min($this->availableStock($product), 1000);
+            return $ignoreStockLimits ? 1000 : min($this->availableStock($product), 1000);
         }
 
-        return min($this->availableStock($product), 1000);
+        return $ignoreStockLimits ? 1000 : min($this->availableStock($product), 1000);
     }
 
     protected function matchWorkbookCustomerByNationalId(array $record): ?User

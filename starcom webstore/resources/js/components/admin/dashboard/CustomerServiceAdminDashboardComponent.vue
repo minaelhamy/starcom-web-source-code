@@ -23,6 +23,25 @@
             </div>
         </div>
 
+        <div class="p-4 pt-0 grid grid-cols-2 xl:grid-cols-4 gap-3">
+            <div class="rounded-lg border border-[#E8E8F3] p-4">
+                <p class="text-xs text-secondary mb-1">قيد التعديل مع العميل</p>
+                <h5 class="text-2xl font-semibold text-heading">{{ summary.pending_customer_update_count || 0 }}</h5>
+            </div>
+            <div class="rounded-lg border border-[#E8E8F3] p-4">
+                <p class="text-xs text-secondary mb-1">تمت الموافقة</p>
+                <h5 class="text-2xl font-semibold text-heading">{{ summary.approved_count || 0 }}</h5>
+            </div>
+            <div class="rounded-lg border border-[#E8E8F3] p-4">
+                <p class="text-xs text-secondary mb-1">الفواتير المصدرة</p>
+                <h5 class="text-2xl font-semibold text-heading">{{ summary.invoice_issued_count || 0 }}</h5>
+            </div>
+            <div class="rounded-lg border border-[#E8E8F3] p-4">
+                <p class="text-xs text-secondary mb-1">التحصيل مكتمل</p>
+                <h5 class="text-2xl font-semibold text-heading">{{ summary.collections_completed_count || 0 }}</h5>
+            </div>
+        </div>
+
         <div class="p-4 pt-0 grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div class="rounded-lg border border-[#E8E8F3] p-4">
                 <h4 class="font-semibold text-heading mb-3">توزيع الحالات</h4>
@@ -34,12 +53,21 @@
                 </div>
             </div>
             <div class="rounded-lg border border-[#E8E8F3] p-4">
+                <h4 class="font-semibold text-heading mb-3">دورة العملاء</h4>
+                <div class="space-y-3">
+                    <div v-for="item in pipelineItems" :key="item.stage" class="flex items-center justify-between text-sm">
+                        <span class="text-secondary">{{ item.label }}</span>
+                        <span class="font-semibold text-heading">{{ item.count }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="rounded-lg border border-[#E8E8F3] p-4">
                 <h4 class="font-semibold text-heading mb-3">أفضل أداء حالياً</h4>
                 <div class="space-y-3" v-if="(summary.top_agents || []).length">
                     <div v-for="agent in summary.top_agents" :key="agent.agent_id" class="flex items-center justify-between text-sm">
                         <div>
                             <p class="font-semibold text-heading">{{ agent.agent_name }}</p>
-                            <p class="text-secondary">تحديثات الفترة: {{ agent.period_updates_count }}</p>
+                            <p class="text-secondary">تحديثات الفترة: {{ agent.period_updates_count }} | تقديمات: {{ agent.period_applications_submitted_count }}</p>
                         </div>
                         <span class="text-primary font-semibold">{{ agent.assigned_leads_count }} عميل</span>
                     </div>
@@ -68,6 +96,9 @@ export default {
     computed: {
         summary() {
             return this.$store.getters["customerServiceCrm/dashboard"] || {};
+        },
+        pipelineItems() {
+            return Object.values(this.summary.pipeline_breakdown || {});
         },
     },
     mounted() {

@@ -20,12 +20,43 @@
             </div>
         </div>
 
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="rounded-lg bg-white p-4 border border-[#E8E8F3]">
+                <p class="text-xs text-secondary mb-1">تم التقديم</p>
+                <h4 class="text-2xl font-semibold text-heading">{{ summary.applications_submitted_count || 0 }}</h4>
+            </div>
+            <div class="rounded-lg bg-white p-4 border border-[#E8E8F3]">
+                <p class="text-xs text-secondary mb-1">تمت الموافقة</p>
+                <h4 class="text-2xl font-semibold text-heading">{{ summary.approved_count || 0 }}</h4>
+            </div>
+            <div class="rounded-lg bg-white p-4 border border-[#E8E8F3]">
+                <p class="text-xs text-secondary mb-1">تم إصدار فاتورة</p>
+                <h4 class="text-2xl font-semibold text-heading">{{ summary.invoice_issued_count || 0 }}</h4>
+            </div>
+            <div class="rounded-lg bg-white p-4 border border-[#E8E8F3]">
+                <p class="text-xs text-secondary mb-1">التحصيل مكتمل</p>
+                <h4 class="text-2xl font-semibold text-heading">{{ summary.collections_completed_count || 0 }}</h4>
+            </div>
+        </div>
+
         <div class="db-card">
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">توزيع الحالات</h3>
             </div>
             <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div v-for="item in summary.status_breakdown || []" :key="item.status" class="rounded-lg border border-[#E8E8F3] p-3">
+                    <p class="text-sm text-secondary mb-1">{{ item.label }}</p>
+                    <h5 class="text-xl font-semibold text-heading">{{ item.count }}</h5>
+                </div>
+            </div>
+        </div>
+
+        <div class="db-card">
+            <div class="db-card-header border-none">
+                <h3 class="db-card-title">مراحل دورة العميل</h3>
+            </div>
+            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div v-for="item in pipelineItems" :key="item.stage" class="rounded-lg border border-[#E8E8F3] p-3">
                     <p class="text-sm text-secondary mb-1">{{ item.label }}</p>
                     <h5 class="text-xl font-semibold text-heading">{{ item.count }}</h5>
                 </div>
@@ -76,6 +107,9 @@ export default {
     computed: {
         summary() {
             return this.$store.getters["customerServiceCrm/dashboard"] || {};
+        },
+        pipelineItems() {
+            return Object.values(this.summary.pipeline_breakdown || {});
         },
     },
     mounted() {

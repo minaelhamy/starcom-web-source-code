@@ -4,7 +4,7 @@
         <div class="db-card">
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">تقارير خدمة العملاء</h3>
-                <button type="button" class="db-btn text-white bg-primary py-2" @click="redistribute">إعادة توزيع العملاء</button>
+                <button type="button" class="db-btn text-white bg-primary py-2" @click="redistribute">توزيع العملاء غير الموزعين</button>
             </div>
             <div class="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
@@ -56,6 +56,11 @@
                             <th class="db-table-head-th">في انتظار الأوراق خلال الفترة</th>
                             <th class="db-table-head-th">مرفوض / مغلق خلال الفترة</th>
                             <th class="db-table-head-th">التقديمات خلال الفترة</th>
+                            <th class="db-table-head-th">الموافقات خلال الفترة</th>
+                            <th class="db-table-head-th">رفض جهة التمويل</th>
+                            <th class="db-table-head-th">الفواتير خلال الفترة</th>
+                            <th class="db-table-head-th">العقود الموقعة</th>
+                            <th class="db-table-head-th">دفعات التحصيل</th>
                             <th class="db-table-head-th">أيام النشاط خلال الفترة</th>
                             <th class="db-table-head-th">تحديثات الفترة</th>
                             <th class="db-table-head-th">آخر تحديث في الفترة</th>
@@ -70,6 +75,11 @@
                             <td class="db-table-body-td">{{ agent.waiting_documents_count }}</td>
                             <td class="db-table-body-td">{{ agent.refused_count }}</td>
                             <td class="db-table-body-td">{{ agent.period_applications_submitted_count }}</td>
+                            <td class="db-table-body-td">{{ agent.approved_facilities_count }}</td>
+                            <td class="db-table-body-td">{{ agent.declined_applications_count }}</td>
+                            <td class="db-table-body-td">{{ agent.invoices_issued_count }}</td>
+                            <td class="db-table-body-td">{{ agent.signed_contracts_count }}</td>
+                            <td class="db-table-body-td">{{ agent.repayments_recorded_count }}</td>
                             <td class="db-table-body-td">{{ agent.active_days_count }}</td>
                             <td class="db-table-body-td">{{ agent.period_updates_count }}</td>
                             <td class="db-table-body-td">{{ formatDateTime(agent.last_activity_at) }}</td>
@@ -77,7 +87,7 @@
                     </tbody>
                     <tbody class="db-table-body" v-else>
                         <tr class="db-table-body-tr">
-                            <td class="db-table-body-td text-center" colspan="10">لا توجد بيانات لعرضها.</td>
+                            <td class="db-table-body-td text-center" colspan="15">لا توجد بيانات لعرضها.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -209,11 +219,11 @@ export default {
         },
         redistribute() {
             this.loading.isActive = true;
-            this.$store.dispatch("customerServiceCrm/redistribute", { per_agent: 300 }).then((res) => {
-                alertService.success(`تمت إعادة توزيع ${res.data.data.assigned_count} عميل بنجاح`);
+            this.$store.dispatch("customerServiceCrm/redistribute", {}).then((res) => {
+                alertService.success(`تم توزيع ${res.data.data.assigned_count} عميل غير موزع بنجاح`);
                 this.fetchReports();
             }).catch((error) => {
-                alertService.error(error.response?.data?.message || "تعذر إعادة التوزيع");
+                alertService.error(error.response?.data?.message || "تعذر توزيع العملاء غير الموزعين");
                 this.loading.isActive = false;
             });
         },

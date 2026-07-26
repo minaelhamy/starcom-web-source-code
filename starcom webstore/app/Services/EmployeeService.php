@@ -245,7 +245,7 @@ class EmployeeService
     private function syncCustomerServiceAutomation(User $user, int $roleId): void
     {
         if ($roleId === EnumRole::CUSTOMER_SERVICE && (int)$user->status === 5) {
-            $this->customerServiceLeadService->assignFreshLeadsToAgent($user, 300);
+            $this->customerServiceLeadService->assignFreshLeadsToAgent($user);
             return;
         }
 

@@ -24,6 +24,10 @@ class StarcomIntelligenceCalculator
 
     private static function averageMonthlyPurchaseForUser(?User $user): int
     {
+        if ($user && !is_null($user->estimated_average_monthly_purchase)) {
+            return (int) round((float) $user->estimated_average_monthly_purchase);
+        }
+
         $seed = $user?->phone ?: ($user?->id ? (string)$user->id : 'starcom-default');
         $hash = abs(crc32($seed));
         $range = self::MAX_AVERAGE_MONTHLY_PURCHASE - self::MIN_AVERAGE_MONTHLY_PURCHASE;

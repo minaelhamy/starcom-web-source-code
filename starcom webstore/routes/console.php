@@ -269,7 +269,7 @@ Artisan::command('customer-service:import-workbook {--file=} {--redistribute}', 
     return self::SUCCESS;
 })->purpose('Import customer service CRM history from عملا التمويل workbook');
 
-Artisan::command('customer-service:redistribute {--per-agent=300}', function (CustomerServiceLeadService $service) {
+Artisan::command('customer-service:redistribute', function (CustomerServiceLeadService $service) {
     $admin = User::role(RoleEnum::ADMIN)->orderBy('id')->first();
     if (!$admin) {
         $this->error('No admin user was found, so redistribution could not run.');
@@ -280,20 +280,56 @@ Artisan::command('customer-service:redistribute {--per-agent=300}', function (Cu
     $distribution = $service->redistribute((int)$this->option('per-agent'));
 
     $this->table(
-        ['Cycle', 'Agents', 'Per Agent', 'Assigned', 'Unassigned'],
+        ['Cycle', 'Agents', 'Assigned', 'Unassigned'],
         [[
             $distribution['cycle'],
             $distribution['agents_count'],
-            $distribution['per_agent'],
             $distribution['assigned_count'],
             $distribution['remaining_unassigned_count'],
         ]]
     );
 
-    $this->info('Customer service CRM redistribution completed.');
+    $this->info('Customer service CRM unassigned distribution completed.');
 
     return self::SUCCESS;
-})->purpose('Redistribute unresolved customer service leads across the active team');
+})->purpose('Distribute only unassigned new/no-answer/closed-phone customer service leads across the active team');
+
+Artisan::command('customer-service:import-cairo-users {--file=} {--assign} {--per-agent=300}', function (CustomerServiceLeadService $service) {
+    $filePath = (string)($this->option('file') ?: base_path('Cairo-users.xlsx'));
+    $summary = $service->importCairoUsersWorkbook(
+        $filePath,
+        (bool) $this->option('assign'),
+        (int) $this->option('per-agent')
+    );
+
+    $this->table(
+        ['Rows', 'Created Users', 'Updated Users', 'Created Leads', 'Updated Leads', 'Skipped'],
+        [[
+            $summary['rows_total'],
+            $summary['created_users'],
+            $summary['updated_users'],
+            $summary['created_leads'],
+            $summary['updated_leads'],
+            $summary['skipped_rows'],
+        ]]
+    );
+
+    if (!empty($summary['assignment'])) {
+        $this->table(
+            ['Agents', 'Assigned', 'Unassigned', 'Per Agent'],
+            [[
+                $summary['assignment']['agents_count'] ?? 0,
+                $summary['assignment']['assigned_count'] ?? 0,
+                $summary['assignment']['remaining_unassigned_count'] ?? 0,
+                $summary['assignment']['per_agent'] ?? (int) $this->option('per-agent'),
+            ]]
+        );
+    }
+
+    $this->info('Cairo users import completed successfully.');
+
+    return self::SUCCESS;
+})->purpose('Import Cairo users workbook, create customer accounts, create CRM leads, and assign them to the active customer service team');
 
 Artisan::command('starcom:generate-finance-invoices
     {--approved-file= : Path to the approved clients workbook}
