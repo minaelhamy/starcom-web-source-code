@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\BulkLenderInvoiceService;
 use App\Services\CartonaCustomerOnboardingService;
 use App\Services\CustomerServiceLeadService;
 use App\Models\User;
@@ -293,3 +294,75 @@ Artisan::command('customer-service:redistribute {--per-agent=300}', function (Cu
 
     return self::SUCCESS;
 })->purpose('Redistribute unresolved customer service leads across the active team');
+
+Artisan::command('starcom:generate-finance-invoices
+    {--approved-file= : Path to the approved clients workbook}
+    {--user-ids= : Comma-separated approved customer user ids}
+    {--limit= : Limit number of customers}
+    {--invoice-date=2026-07-25 : Invoice date in YYYY-MM-DD}
+    {--min-total=70000 : Minimum invoice total in EGP}
+    {--batch= : Optional batch name}
+    {--dry-run : Preview only without creating orders or PDFs}
+    {--sugar-product-id=22 : Explicit product id for sugar}
+    {--milk1-product-id=35 : Explicit product id for Bkhiero 1L}
+    {--milk05-product-id=34 : Explicit product id for Bkhiero 0.5L}
+    {--sugar-keywords=سكر,sugar : Fallback keywords for sugar}
+    {--milk1-keywords=بخيرو,bkhiero,bkhiro,1l,1 l,1 لتر : Fallback keywords for Bkhiero 1L}
+    {--milk05-keywords=بخيرو,bkhiero,bkhiro,0.5,0.5l,500,500ml,500 ml,نصف لتر : Fallback keywords for Bkhiero 0.5L}', function (BulkLenderInvoiceService $service) {
+    $summary = $service->generate([
+        'approved_file' => $this->option('approved-file'),
+        'user_ids' => $this->option('user-ids'),
+        'limit' => $this->option('limit'),
+        'invoice_date' => $this->option('invoice-date'),
+        'min_total' => $this->option('min-total'),
+        'batch' => $this->option('batch'),
+        'dry_run' => (bool) $this->option('dry-run'),
+        'sugar_product_id' => $this->option('sugar-product-id'),
+        'milk1_product_id' => $this->option('milk1-product-id'),
+        'milk05_product_id' => $this->option('milk05-product-id'),
+        'sugar_keywords' => $this->option('sugar-keywords'),
+        'milk1_keywords' => $this->option('milk1-keywords'),
+        'milk05_keywords' => $this->option('milk05-keywords'),
+    ]);
+
+    $this->table(
+        ['Batch', 'Invoice Date', 'Min Total', 'Processed', 'Created', 'Skipped', 'Dry Run'],
+        [[
+            $summary['batch'],
+            $summary['invoice_date'],
+            $summary['min_total'],
+            $summary['processed'],
+            $summary['created'],
+            $summary['skipped'],
+            $summary['dry_run'] ? 'yes' : 'no',
+        ]]
+    );
+
+    $this->table(
+        ['Customer', 'Order Serial', 'Total', 'Status', 'PDF', 'Message'],
+        collect($summary['rows'])->map(function ($row) {
+            return [
+                $row['customer_name'] ?? '',
+                $row['order_serial_no'] ?? '',
+                $row['total'] ?? '',
+                $row['status'] ?? '',
+                $row['pdf_path'] ?? '',
+                $row['message'] ?? '',
+            ];
+        })->all()
+    );
+
+    if (!$summary['dry_run']) {
+        if ($summary['pdf_directory']) {
+            $this->info('PDF folder: ' . $summary['pdf_directory']);
+        }
+        if ($summary['csv_path']) {
+            $this->info('Summary CSV: ' . $summary['csv_path']);
+        }
+        if ($summary['zip_path']) {
+            $this->info('Batch ZIP: ' . $summary['zip_path']);
+        }
+    }
+
+    return self::SUCCESS;
+})->purpose('Create bulk POS invoices and PDFs for approved finance customers');
