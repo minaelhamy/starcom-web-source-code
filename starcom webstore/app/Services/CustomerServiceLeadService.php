@@ -658,6 +658,130 @@ class CustomerServiceLeadService
         return $stats + ['assignment' => $assignment];
     }
 
+    public function deleteUsersFromWorkbookByPhone(string $path, bool $dryRun = true): array
+    {
+        if (!file_exists($path)) {
+            throw new Exception("Workbook not found: {$path}", 422);
+        }
+
+        $spreadsheet = IOFactory::load($path);
+        $sheet = $spreadsheet->getSheet(0);
+        $rows = $sheet->toArray(null, true, true, false);
+        if (empty($rows)) {
+            throw new Exception('الملف لا يحتوي على بيانات.', 422);
+        }
+
+        $header = array_map(fn ($value) => trim((string) $value), $rows[0]);
+        $phones = collect(array_slice($rows, 1))
+            ->map(function ($row) use ($header) {
+                $assoc = [];
+                foreach ($header as $index => $key) {
+                    $assoc[$key !== '' ? $key : 'Unnamed: ' . $index] = $row[$index] ?? null;
+                }
+
+                return $this->normalizePhone($this->extractWorkbookValue($assoc, [
+                    'phone', 'phone number', 'mobile', 'رقم الهاتف', 'الهاتف', 'رقم الموبايل', 'رقم التليفون', 'تليفون',
+                ]));
+            })
+            ->filter(fn (?string $phone) => !blank($phone))
+            ->unique()
+            ->values();
+
+        if ($phones->isEmpty()) {
+            throw new Exception('لم يتم العثور على أي أرقام هاتف صالحة داخل الملف.', 422);
+        }
+
+        $users = User::withTrashed()
+            ->with([
+                'customerServiceLead',
+                'creditApplications.media',
+            ])
+            ->whereIn('phone', $phones->all())
+            ->get();
+
+        $stats = [
+            'phones_in_file' => $phones->count(),
+            'matched_users' => $users->count(),
+            'deleted_users' => 0,
+            'skipped_missing_users' => $phones->count() - $users->count(),
+            'skipped_protected_users' => 0,
+            'already_deleted_users' => 0,
+            'deleted_leads' => 0,
+            'deleted_activities' => 0,
+        ];
+
+        $protectedRows = [];
+        $deletedRows = [];
+        $missingPhones = $phones
+            ->diff($users->pluck('phone')->filter()->map(fn ($phone) => $this->normalizePhone($phone))->unique())
+            ->values()
+            ->all();
+
+        $operation = function () use ($users, $dryRun, &$stats, &$protectedRows, &$deletedRows) {
+            foreach ($users as $user) {
+                $protectionReasons = $this->userNationalIdProtectionReasons($user);
+
+                if (!empty($protectionReasons)) {
+                    $stats['skipped_protected_users']++;
+                    $protectedRows[] = [
+                        'user_id' => $user->id,
+                        'name' => $user->name,
+                        'phone' => trim(($user->country_code ?: '') . ' ' . ($user->phone ?: '')),
+                        'reason' => implode(' | ', $protectionReasons),
+                    ];
+                    continue;
+                }
+
+                if ($user->trashed()) {
+                    $stats['already_deleted_users']++;
+                    $deletedRows[] = [
+                        'user_id' => $user->id,
+                        'name' => $user->name,
+                        'phone' => trim(($user->country_code ?: '') . ' ' . ($user->phone ?: '')),
+                        'status' => 'already_deleted',
+                    ];
+                    continue;
+                }
+
+                $lead = $user->customerServiceLead;
+                if ($lead) {
+                    $activitiesCount = $lead->activities()->count();
+                    if (!$dryRun) {
+                        $lead->activities()->delete();
+                        $lead->delete();
+                    }
+                    $stats['deleted_activities'] += $activitiesCount;
+                    $stats['deleted_leads']++;
+                }
+
+                if (!$dryRun) {
+                    $user->delete();
+                }
+
+                $stats['deleted_users']++;
+                $deletedRows[] = [
+                    'user_id' => $user->id,
+                    'name' => $user->name,
+                    'phone' => trim(($user->country_code ?: '') . ' ' . ($user->phone ?: '')),
+                    'status' => $dryRun ? 'dry_run' : 'deleted',
+                ];
+            }
+        };
+
+        if ($dryRun) {
+            $operation();
+        } else {
+            DB::transaction($operation);
+        }
+
+        return $stats + [
+            'dry_run' => $dryRun,
+            'deleted_rows' => $deletedRows,
+            'protected_rows' => $protectedRows,
+            'missing_phones' => $missingPhones,
+        ];
+    }
+
     public function importWorkbook(string $path): array
     {
         if (!file_exists($path)) {
@@ -1452,6 +1576,32 @@ class CustomerServiceLeadService
         }
 
         return $digits;
+    }
+
+    protected function userNationalIdProtectionReasons(User $user): array
+    {
+        $reasons = [];
+
+        $lead = $user->customerServiceLead;
+        if (!blank($lead?->prospect_national_id_number)) {
+            $reasons[] = 'تم حفظ الرقم القومي في متابعة خدمة العملاء';
+        }
+
+        foreach ($user->creditApplications as $application) {
+            if (!blank($application->national_id_number)) {
+                $reasons[] = 'يوجد رقم قومي محفوظ في طلب اشتري بالآجل';
+            }
+
+            if ($application->getFirstMedia('national_id_front_document')) {
+                $reasons[] = 'تم رفع صورة البطاقة الأمامية';
+            }
+
+            if ($application->getFirstMedia('national_id_back_document')) {
+                $reasons[] = 'تم رفع صورة البطاقة الخلفية';
+            }
+        }
+
+        return array_values(array_unique($reasons));
     }
 
     protected function normalizeArabicDigits(string $value): string

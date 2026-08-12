@@ -329,6 +329,64 @@ Artisan::command('customer-service:import-cairo-users {--file=} {--assign}', fun
     return self::SUCCESS;
 })->purpose('Import Cairo users workbook, create customer accounts, create CRM leads, and assign them to the active customer service team');
 
+Artisan::command('customer-service:delete-cairo-users {--file=} {--dry-run}', function (CustomerServiceLeadService $service) {
+    $filePath = (string)($this->option('file') ?: base_path('Cairo-users.xlsx'));
+    $summary = $service->deleteUsersFromWorkbookByPhone(
+        $filePath,
+        (bool) $this->option('dry-run')
+    );
+
+    $this->table(
+        ['Phones In File', 'Matched Users', 'Deleted Users', 'Protected Users', 'Missing Users', 'Already Deleted', 'Dry Run'],
+        [[
+            $summary['phones_in_file'],
+            $summary['matched_users'],
+            $summary['deleted_users'],
+            $summary['skipped_protected_users'],
+            $summary['skipped_missing_users'],
+            $summary['already_deleted_users'],
+            $summary['dry_run'] ? 'yes' : 'no',
+        ]]
+    );
+
+    if (!empty($summary['protected_rows'])) {
+        $this->warn('Protected users were skipped because they already have national ID data in the system.');
+        $this->table(
+            ['User ID', 'Customer', 'Phone', 'Reason'],
+            collect($summary['protected_rows'])->map(fn ($row) => [
+                $row['user_id'] ?? '',
+                $row['name'] ?? '',
+                $row['phone'] ?? '',
+                $row['reason'] ?? '',
+            ])->all()
+        );
+    }
+
+    if (!empty($summary['missing_phones'])) {
+        $this->warn('These phone numbers were not found in the users table:');
+        foreach ($summary['missing_phones'] as $phone) {
+            $this->line('- ' . $phone);
+        }
+    }
+
+    $this->table(
+        ['User ID', 'Customer', 'Phone', 'Status'],
+        collect($summary['deleted_rows'])->map(fn ($row) => [
+            $row['user_id'] ?? '',
+            $row['name'] ?? '',
+            $row['phone'] ?? '',
+            $row['status'] ?? '',
+        ])->all()
+    );
+
+    $this->info($summary['dry_run']
+        ? 'Dry run completed. No records were deleted.'
+        : 'Workbook users deletion completed successfully.'
+    );
+
+    return self::SUCCESS;
+})->purpose('Delete users listed in Cairo-users.xlsx by phone unless national ID data already exists');
+
 Artisan::command('starcom:generate-finance-invoices
     {--approved-file= : Path to the approved clients workbook}
     {--user-ids= : Comma-separated approved customer user ids}
