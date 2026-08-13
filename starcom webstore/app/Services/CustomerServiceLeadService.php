@@ -393,24 +393,38 @@ class CustomerServiceLeadService
             ];
         }
 
-        $base = $this->baseLeadQuery($actor, true);
-        $all = (clone $base)->get();
+        $base = CustomerServiceLead::query()
+            ->whereHas('user', function (Builder $userQuery) {
+                $userQuery->whereHas('roles', fn (Builder $roleQuery) => $roleQuery->where('id', EnumRole::CUSTOMER))
+                    ->whereNull('deleted_at');
+            });
+
         $agents = User::role(EnumRole::CUSTOMER_SERVICE)->where('status', 5)->count();
-        $stageBreakdown = $this->pipelineBreakdown($all);
+        $totalOpenLeads = (clone $base)->count();
+        $unassignedCount = (clone $base)->whereNull('assigned_to_user_id')->count();
+        $callbacksCount = (clone $base)->whereIn('status', self::callbackStatuses())->count();
+        $waitingDocumentsCount = (clone $base)->whereIn('status', self::waitingStatuses())->count();
+        $refusedCount = (clone $base)->whereIn('status', self::refusedStatuses())->count();
+        $notApproachedCount = (clone $base)->where(function (Builder $query) {
+            $query->where('status', CustomerServiceLeadStatus::NOT_APPROACHED)
+                ->orWhereNull('status');
+        })->count();
+        $statusBreakdown = $this->statusBreakdownFromQuery($base);
+        $stageBreakdown = $this->pipelineBreakdownFromQuery($base);
 
         return [
             'mode' => 'manager',
-            'total_open_leads' => $all->count(),
+            'total_open_leads' => $totalOpenLeads,
             'active_agents_count' => $agents,
-            'unassigned_count' => $all->whereNull('assigned_to_user_id')->count(),
-            'callbacks_count' => $all->whereIn('status', self::callbackStatuses())->count(),
-            'waiting_documents_count' => $all->whereIn('status', self::waitingStatuses())->count(),
-            'refused_count' => $all->whereIn('status', self::refusedStatuses())->count(),
-            'not_approached_count' => $all->where('status', CustomerServiceLeadStatus::NOT_APPROACHED)->count() + $all->whereNull('status')->count(),
+            'unassigned_count' => $unassignedCount,
+            'callbacks_count' => $callbacksCount,
+            'waiting_documents_count' => $waitingDocumentsCount,
+            'refused_count' => $refusedCount,
+            'not_approached_count' => $notApproachedCount,
             'today_updates_count' => CustomerServiceLeadActivity::whereDate('created_at', today())->count(),
             'week_updates_count' => CustomerServiceLeadActivity::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
             'applications_submitted_count' => CreditApplication::whereNotNull('submitted_by_customer_service_user_id')->count(),
-            'status_breakdown' => $this->statusBreakdown($all),
+            'status_breakdown' => $statusBreakdown,
             'pipeline_breakdown' => $stageBreakdown,
             'approved_count' => ($stageBreakdown[self::PIPELINE_APPROVED_WAITING_INVOICE]['count'] ?? 0) + ($stageBreakdown[self::PIPELINE_INVOICE_ISSUED]['count'] ?? 0) + ($stageBreakdown[self::PIPELINE_SIGNED_CONTRACTS_PENDING]['count'] ?? 0) + ($stageBreakdown[self::PIPELINE_COLLECTION_IN_PROGRESS]['count'] ?? 0) + ($stageBreakdown[self::PIPELINE_COLLECTION_COMPLETED]['count'] ?? 0),
             'pending_customer_update_count' => $stageBreakdown[self::PIPELINE_PENDING_CUSTOMER_UPDATE]['count'] ?? 0,
@@ -419,7 +433,7 @@ class CustomerServiceLeadService
             'collections_in_progress_count' => $stageBreakdown[self::PIPELINE_COLLECTION_IN_PROGRESS]['count'] ?? 0,
             'collections_completed_count' => $stageBreakdown[self::PIPELINE_COLLECTION_COMPLETED]['count'] ?? 0,
             'rejected_by_lender_count' => $stageBreakdown[self::PIPELINE_REJECTED_BY_LENDER]['count'] ?? 0,
-            'top_agents' => $this->agentPerformanceCollection(request()),
+            'top_agents' => $this->agentDashboardCollection(),
         ];
     }
 
@@ -1133,6 +1147,32 @@ class CustomerServiceLeadService
         return $breakdown;
     }
 
+    protected function statusBreakdownFromQuery(Builder $base): array
+    {
+        $labels = self::statusLabels();
+        $counts = (clone $base)
+            ->select('status', DB::raw('COUNT(*) as aggregate'))
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $breakdown = [];
+        foreach ($labels as $status => $label) {
+            $breakdown[] = [
+                'status' => $status,
+                'label' => $label,
+                'count' => (int) ($counts[$status] ?? 0),
+            ];
+        }
+
+        $breakdown[] = [
+            'status' => CustomerServiceLeadStatus::NOT_APPROACHED,
+            'label' => $labels[CustomerServiceLeadStatus::NOT_APPROACHED],
+            'count' => (int) ($counts[null] ?? 0),
+        ];
+
+        return $breakdown;
+    }
+
     protected function pipelineBreakdown(Collection $leads): array
     {
         $labels = self::pipelineStageLabels();
@@ -1160,6 +1200,64 @@ class CustomerServiceLeadService
         }
 
         return $breakdown;
+    }
+
+    protected function pipelineBreakdownFromQuery(Builder $base): array
+    {
+        $labels = self::pipelineStageLabels();
+        $breakdown = [];
+
+        foreach ($labels as $stage => $label) {
+            $breakdown[$stage] = [
+                'stage' => $stage,
+                'label' => $label,
+                'count' => 0,
+            ];
+        }
+
+        $counts = (clone $base)
+            ->select(DB::raw("COALESCE(last_pipeline_stage, '" . self::PIPELINE_NOT_APPROACHED . "') as stage"), DB::raw('COUNT(*) as aggregate'))
+            ->groupBy('stage')
+            ->get();
+
+        foreach ($counts as $row) {
+            $stage = (string) $row->stage;
+            if (!isset($breakdown[$stage])) {
+                $breakdown[$stage] = [
+                    'stage' => $stage,
+                    'label' => $labels[$stage] ?? $stage,
+                    'count' => 0,
+                ];
+            }
+            $breakdown[$stage]['count'] = (int) $row->aggregate;
+        }
+
+        return $breakdown;
+    }
+
+    protected function agentDashboardCollection(): array
+    {
+        $dateFrom = now()->startOfWeek();
+        $dateTo = now()->endOfWeek();
+
+        return User::role(EnumRole::CUSTOMER_SERVICE)
+            ->where('status', 5)
+            ->get()
+            ->map(function (User $agent) use ($dateFrom, $dateTo) {
+                return [
+                    'agent_id' => $agent->id,
+                    'agent_name' => $agent->name,
+                    'assigned_leads_count' => CustomerServiceLead::where('assigned_to_user_id', $agent->id)->count(),
+                    'period_updates_count' => $agent->customerServiceLeadActivities()->whereBetween('created_at', [$dateFrom, $dateTo])->count(),
+                    'period_applications_submitted_count' => CreditApplication::where('submitted_by_customer_service_user_id', $agent->id)->whereBetween('submitted_by_customer_service_at', [$dateFrom, $dateTo])->count(),
+                ];
+            })
+            ->sortByDesc(function (array $agent) {
+                return ($agent['period_updates_count'] ?? 0) + ($agent['period_applications_submitted_count'] ?? 0);
+            })
+            ->take(8)
+            ->values()
+            ->all();
     }
 
     protected function pipelineSnapshot(CustomerServiceLead $lead): array
