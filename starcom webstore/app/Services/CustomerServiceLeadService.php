@@ -465,13 +465,13 @@ class CustomerServiceLeadService
             throw new Exception('لا يوجد موظفو خدمة عملاء نشطون لإعادة التوزيع.', 422);
         }
 
-        return DB::transaction(function () use ($agents) {
-            $distribution = $this->assignFreshLeadsAcrossActiveAgents();
+        return DB::transaction(function () use ($agents, $perAgent) {
+            $distribution = $this->assignUnassignedLeadsAcrossActiveAgents($perAgent);
 
             return [
                 'cycle' => max((int) CustomerServiceLead::max('assignment_cycle'), 1),
                 'agents_count' => $agents->count(),
-                'per_agent' => null,
+                'per_agent' => $distribution['per_agent'] ?? $perAgent,
                 'assigned_count' => $distribution['assigned_count'] ?? 0,
                 'remaining_unassigned_count' => $distribution['remaining_unassigned_count'] ?? 0,
             ];
@@ -1701,6 +1701,77 @@ class CustomerServiceLeadService
             'agents_count' => $agents->count(),
             'assigned_count' => $assignedCount,
             'remaining_unassigned_count' => $this->preferredUnassignedLeadQuery()->count(),
+            'per_agent' => $perAgent,
+        ];
+    }
+
+    protected function assignUnassignedLeadsAcrossActiveAgents(?int $perAgent = null): array
+    {
+        $agents = User::role(EnumRole::CUSTOMER_SERVICE)->where('status', 5)->get();
+        if ($agents->isEmpty()) {
+            return [
+                'agents_count' => 0,
+                'assigned_count' => 0,
+                'remaining_unassigned_count' => $this->unassignedLeadQuery()->count(),
+                'per_agent' => $perAgent,
+            ];
+        }
+
+        $pool = $this->unassignedLeadQuery()->get()->values();
+        if ($pool->isEmpty()) {
+            return [
+                'agents_count' => $agents->count(),
+                'assigned_count' => 0,
+                'remaining_unassigned_count' => 0,
+                'per_agent' => $perAgent,
+            ];
+        }
+
+        $assignmentCycle = max((int) CustomerServiceLead::max('assignment_cycle'), 1);
+        $chunks = array_fill(0, $agents->count(), []);
+        $limitPerAgent = !is_null($perAgent) && $perAgent > 0 ? $perAgent : null;
+
+        $agentIndexes = $agents->keys()->values();
+        $assignedPerAgent = array_fill(0, $agents->count(), 0);
+        $cursor = 0;
+
+        foreach ($pool as $lead) {
+            $attempts = 0;
+            while ($attempts < $agents->count()) {
+                $index = $agentIndexes[$cursor % $agents->count()];
+                $cursor++;
+                $attempts++;
+
+                if (!is_null($limitPerAgent) && $assignedPerAgent[$index] >= $limitPerAgent) {
+                    continue;
+                }
+
+                $chunks[$index][] = $lead->id;
+                $assignedPerAgent[$index]++;
+                break;
+            }
+        }
+
+        $assignedCount = 0;
+        foreach ($agents->values() as $index => $agent) {
+            $leadIds = $chunks[$index] ?? [];
+            if (empty($leadIds)) {
+                continue;
+            }
+
+            CustomerServiceLead::whereIn('id', $leadIds)->update([
+                'assigned_to_user_id' => $agent->id,
+                'assigned_at' => now(),
+                'assignment_cycle' => $assignmentCycle,
+            ]);
+
+            $assignedCount += count($leadIds);
+        }
+
+        return [
+            'agents_count' => $agents->count(),
+            'assigned_count' => $assignedCount,
+            'remaining_unassigned_count' => $this->unassignedLeadQuery()->count(),
             'per_agent' => $perAgent,
         ];
     }

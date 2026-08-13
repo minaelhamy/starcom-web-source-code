@@ -269,7 +269,7 @@ Artisan::command('customer-service:import-workbook {--file=} {--redistribute}', 
     return self::SUCCESS;
 })->purpose('Import customer service CRM history from عملا التمويل workbook');
 
-Artisan::command('customer-service:redistribute', function (CustomerServiceLeadService $service) {
+Artisan::command('customer-service:redistribute {--per-agent=}', function (CustomerServiceLeadService $service) {
     $admin = User::role(RoleEnum::ADMIN)->orderBy('id')->first();
     if (!$admin) {
         $this->error('No admin user was found, so redistribution could not run.');
