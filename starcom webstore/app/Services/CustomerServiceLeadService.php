@@ -732,7 +732,14 @@ class CustomerServiceLeadService
                 'customerServiceLead',
                 'creditApplications.media',
             ])
-            ->whereIn('phone', $phones->all())
+            ->withCount([
+                'creditApplications',
+                'orders',
+            ])
+            ->where(function (Builder $query) use ($phones) {
+                $query->whereIn('phone', $phones->all())
+                    ->orWhereIn('username', $phones->all());
+            })
             ->get();
 
         $stats = [
@@ -748,8 +755,15 @@ class CustomerServiceLeadService
 
         $protectedRows = [];
         $deletedRows = [];
+        $matchedPhones = $users
+            ->map(function (User $user) {
+                return $this->normalizePhone($user->phone ?: $user->username ?: '');
+            })
+            ->filter()
+            ->unique();
+
         $missingPhones = $phones
-            ->diff($users->pluck('phone')->filter()->map(fn ($phone) => $this->normalizePhone($phone))->unique())
+            ->diff($matchedPhones)
             ->values()
             ->all();
 
@@ -1617,6 +1631,14 @@ class CustomerServiceLeadService
     protected function userNationalIdProtectionReasons(User $user): array
     {
         $reasons = [];
+
+        if ((int) ($user->credit_applications_count ?? 0) > 0) {
+            $reasons[] = 'لديه طلب تمويل مسجل بالفعل';
+        }
+
+        if ((int) ($user->orders_count ?? 0) > 0) {
+            $reasons[] = 'لديه فواتير أو طلبات مسجلة بالفعل';
+        }
 
         $lead = $user->customerServiceLead;
         if (!blank($lead?->prospect_national_id_number)) {
