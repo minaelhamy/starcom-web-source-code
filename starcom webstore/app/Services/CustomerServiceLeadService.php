@@ -538,6 +538,8 @@ class CustomerServiceLeadService
         }
 
         $header = array_map(fn ($value) => trim((string) $value), $rows[0]);
+        $sourceFileName = basename($path);
+        $sourceSheetName = pathinfo($sourceFileName, PATHINFO_FILENAME);
         $dataRows = collect(array_slice($rows, 1))
             ->map(function ($row) use ($header) {
                 $assoc = [];
@@ -553,14 +555,41 @@ class CustomerServiceLeadService
             })
             ->values();
 
-        $stats = DB::transaction(function () use ($dataRows) {
+        $phoneCounts = $dataRows
+            ->map(function (array $row) {
+                return $this->normalizePhone($this->extractWorkbookValue($row, [
+                    'phone', 'phone number', 'mobile', 'رقم الهاتف', 'الهاتف', 'رقم الموبايل', 'رقم التليفون', 'تليفون',
+                ]));
+            })
+            ->filter()
+            ->countBy();
+
+        $duplicatePhoneRowsSkipped = $dataRows->filter(function (array $row) use ($phoneCounts) {
+            $phone = $this->normalizePhone($this->extractWorkbookValue($row, [
+                'phone', 'phone number', 'mobile', 'رقم الهاتف', 'الهاتف', 'رقم الموبايل', 'رقم التليفون', 'تليفون',
+            ]));
+
+            return $phone !== '' && (($phoneCounts[$phone] ?? 0) > 1);
+        })->count();
+
+        $duplicatePhoneUniqueCount = $phoneCounts->filter(fn (int $count) => $count > 1)->count();
+
+        $cleanRows = $dataRows->filter(function (array $row) use ($phoneCounts) {
+            $phone = $this->normalizePhone($this->extractWorkbookValue($row, [
+                'phone', 'phone number', 'mobile', 'رقم الهاتف', 'الهاتف', 'رقم الموبايل', 'رقم التليفون', 'تليفون',
+            ]));
+
+            return $phone !== '' && (($phoneCounts[$phone] ?? 0) === 1);
+        })->values();
+
+        $stats = DB::transaction(function () use ($cleanRows, $sourceFileName, $sourceSheetName) {
             $createdUsers = 0;
             $updatedUsers = 0;
             $createdLeads = 0;
             $updatedLeads = 0;
             $skippedRows = 0;
 
-            foreach ($dataRows as $row) {
+            foreach ($cleanRows as $row) {
                 $phone = $this->normalizePhone($this->extractWorkbookValue($row, [
                     'phone', 'phone number', 'mobile', 'رقم الهاتف', 'الهاتف', 'رقم الموبايل', 'رقم التليفون', 'تليفون',
                 ]));
@@ -570,11 +599,15 @@ class CustomerServiceLeadService
                     continue;
                 }
 
-                $name = $this->extractWorkbookValue($row, ['name', 'user name', 'customer name', 'العميل', 'اسم العميل', 'الاسم', 'اسم التاجر']) ?: ('عميل القاهرة ' . $phone);
+                $name = $this->extractWorkbookValue($row, ['name', 'user name', 'customer name', 'العميل', 'اسم العميل', 'الاسم', 'اسم التاجر', 'اسم النشاط']) ?: ('عميل القاهرة ' . $phone);
                 $address = $this->extractWorkbookValue($row, ['address', 'العنوان', 'عنوان', 'location address', 'branch address']);
                 $city = $this->extractWorkbookValue($row, ['city', 'المدينة', 'المحافظة']);
                 $area = $this->extractWorkbookValue($row, ['area', 'المنطقة', 'district']);
                 $distributionRoute = $this->extractWorkbookValue($row, ['distribution route', 'route', 'route name', 'خط التوزيع']);
+                $latitude = $this->extractWorkbookValue($row, ['latitude', 'lat', 'خط العرض']);
+                $longitude = $this->extractWorkbookValue($row, ['longitude', 'long', 'lng', 'خط الطول']);
+                $classification = $this->extractWorkbookValue($row, ['classification', 'class', 'التصنيف']);
+                $businessType = $this->extractWorkbookValue($row, ['business type', 'activity type', 'نوع النشاط']);
                 $estimatedAverageMonthlyPurchase = $this->extractWorkbookNumericValue($row, [
                     '12 month average purchase', 'average monthly purchase', 'average_monthly_purchase', 'متوسط الشراء الشهري', 'متوسط الشراء الشهري من ستاركوم في آخر ١٢ شهر',
                 ]);
@@ -611,6 +644,12 @@ class CustomerServiceLeadService
                 if (blank($user->distribution_route) && !blank($distributionRoute)) {
                     $user->distribution_route = $distributionRoute;
                 }
+                if (blank($user->latitude) && !blank($latitude)) {
+                    $user->latitude = $latitude;
+                }
+                if (blank($user->longitude) && !blank($longitude)) {
+                    $user->longitude = $longitude;
+                }
                 if (!is_null($estimatedAverageMonthlyPurchase) && is_null($user->estimated_average_monthly_purchase)) {
                     $user->estimated_average_monthly_purchase = $estimatedAverageMonthlyPurchase;
                 }
@@ -631,9 +670,13 @@ class CustomerServiceLeadService
                 }
 
                 $meta = $lead->meta ?: [];
-                $meta['import_sheets'] = array_values(array_unique(array_filter(array_merge($meta['import_sheets'] ?? [], ['Cairo-users']))));
-                $meta['import_source_file'] = 'Cairo-users.xlsx';
-                $lead->source_sheet = 'Cairo-users';
+                $meta['import_sheets'] = array_values(array_unique(array_filter(array_merge($meta['import_sheets'] ?? [], [$sourceSheetName]))));
+                $meta['import_source_file'] = $sourceFileName;
+                $meta['classification'] = $classification ?: ($meta['classification'] ?? null);
+                $meta['business_type'] = $businessType ?: ($meta['business_type'] ?? null);
+                $meta['imported_latitude'] = $latitude ?: ($meta['imported_latitude'] ?? null);
+                $meta['imported_longitude'] = $longitude ?: ($meta['imported_longitude'] ?? null);
+                $lead->source_sheet = $sourceSheetName;
                 $lead->imported_at = now();
                 $lead->meta = $meta;
                 $lead->save();
@@ -641,7 +684,7 @@ class CustomerServiceLeadService
             }
 
             return [
-                'rows_total' => $dataRows->count(),
+                'rows_total' => $cleanRows->count(),
                 'created_users' => $createdUsers,
                 'updated_users' => $updatedUsers,
                 'created_leads' => $createdLeads,
@@ -655,7 +698,12 @@ class CustomerServiceLeadService
             $assignment = $this->assignFreshLeadsAcrossActiveAgents();
         }
 
-        return $stats + ['assignment' => $assignment];
+        return $stats + [
+            'assignment' => $assignment,
+            'original_rows_total' => $dataRows->count(),
+            'duplicate_phone_rows_skipped' => $duplicatePhoneRowsSkipped,
+            'duplicate_phone_unique_count' => $duplicatePhoneUniqueCount,
+        ];
     }
 
     public function deleteUsersFromWorkbookByPhone(string $path, bool $dryRun = true): array
