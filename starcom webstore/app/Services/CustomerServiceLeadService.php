@@ -612,7 +612,14 @@ class CustomerServiceLeadService
                     '12 month average purchase', 'average monthly purchase', 'average_monthly_purchase', 'متوسط الشراء الشهري', 'متوسط الشراء الشهري من ستاركوم في آخر ١٢ شهر',
                 ]);
 
-                $user = User::with('roles')->where('phone', $phone)->first();
+                $user = User::withTrashed()
+                    ->with('roles')
+                    ->where(function (Builder $query) use ($phone) {
+                        $query->where('phone', $phone)
+                            ->orWhere('username', $phone);
+                    })
+                    ->first();
+
                 if (!$user) {
                     $user = new User();
                     $user->name = $name;
@@ -626,9 +633,19 @@ class CustomerServiceLeadService
                     $user->email_verified_at = now();
                     $createdUsers++;
                 } else {
+                    if (method_exists($user, 'trashed') && $user->trashed()) {
+                        $user->restore();
+                    }
+
                     $updatedUsers++;
                     if (blank($user->name)) {
                         $user->name = $name;
+                    }
+                    if (blank($user->phone)) {
+                        $user->phone = $phone;
+                    }
+                    if (blank($user->username)) {
+                        $user->username = $phone;
                     }
                 }
 
