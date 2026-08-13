@@ -302,16 +302,15 @@ Artisan::command('customer-service:import-cairo-users {--file=} {--assign}', fun
     );
 
     $this->table(
-        ['Original Rows', 'Imported Rows', 'Duplicate Rows Skipped', 'Duplicate Phones Skipped', 'Created Users', 'Updated Users', 'Created Leads', 'Updated Leads', 'Skipped'],
+        ['Original Rows', 'Unique Phone Rows', 'Duplicate Rows Skipped', 'Duplicate Phones Skipped', 'Created Users', 'Skipped Existing Users', 'Created Leads', 'Skipped'],
         [[
             $summary['original_rows_total'] ?? $summary['rows_total'],
             $summary['rows_total'],
             $summary['duplicate_phone_rows_skipped'] ?? 0,
             $summary['duplicate_phone_unique_count'] ?? 0,
             $summary['created_users'],
-            $summary['updated_users'],
+            $summary['skipped_existing_users'] ?? 0,
             $summary['created_leads'],
-            $summary['updated_leads'],
             $summary['skipped_rows'],
         ]]
     );

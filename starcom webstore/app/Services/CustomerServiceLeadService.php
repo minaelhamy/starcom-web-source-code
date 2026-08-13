@@ -584,9 +584,8 @@ class CustomerServiceLeadService
 
         $stats = DB::transaction(function () use ($cleanRows, $sourceFileName, $sourceSheetName) {
             $createdUsers = 0;
-            $updatedUsers = 0;
+            $skippedExistingUsers = 0;
             $createdLeads = 0;
-            $updatedLeads = 0;
             $skippedRows = 0;
 
             foreach ($cleanRows as $row) {
@@ -620,57 +619,32 @@ class CustomerServiceLeadService
                     })
                     ->first();
 
-                if (!$user) {
-                    $user = new User();
-                    $user->name = $name;
-                    $user->email = null;
-                    $user->phone = $phone;
-                    $user->username = $phone;
-                    $user->password = Hash::make('123456');
-                    $user->status = 5;
-                    $user->country_code = '+20';
-                    $user->is_guest = 10;
-                    $user->email_verified_at = now();
-                    $createdUsers++;
-                } else {
-                    if (method_exists($user, 'trashed') && $user->trashed()) {
-                        $user->restore();
-                    }
-
-                    $updatedUsers++;
-                    if (blank($user->name)) {
-                        $user->name = $name;
-                    }
-                    if (blank($user->phone)) {
-                        $user->phone = $phone;
-                    }
-                    if (blank($user->username)) {
-                        $user->username = $phone;
-                    }
+                if ($user) {
+                    $skippedExistingUsers++;
+                    continue;
                 }
 
-                if (blank($user->address) && !blank($address)) {
-                    $user->address = $address;
-                }
-                if (blank($user->city) && !blank($city)) {
-                    $user->city = $city;
-                }
-                if (blank($user->area) && !blank($area)) {
-                    $user->area = $area;
-                }
-                if (blank($user->distribution_route) && !blank($distributionRoute)) {
-                    $user->distribution_route = $distributionRoute;
-                }
-                if (blank($user->latitude) && !blank($latitude)) {
-                    $user->latitude = $latitude;
-                }
-                if (blank($user->longitude) && !blank($longitude)) {
-                    $user->longitude = $longitude;
-                }
-                if (!is_null($estimatedAverageMonthlyPurchase) && is_null($user->estimated_average_monthly_purchase)) {
+                $user = new User();
+                $user->name = $name;
+                $user->email = null;
+                $user->phone = $phone;
+                $user->username = $phone;
+                $user->password = Hash::make('123456');
+                $user->status = 5;
+                $user->country_code = '+20';
+                $user->is_guest = 10;
+                $user->email_verified_at = now();
+                $user->address = $address;
+                $user->city = $city;
+                $user->area = $area;
+                $user->distribution_route = $distributionRoute;
+                $user->latitude = $latitude;
+                $user->longitude = $longitude;
+                if (!is_null($estimatedAverageMonthlyPurchase)) {
                     $user->estimated_average_monthly_purchase = $estimatedAverageMonthlyPurchase;
                 }
                 $user->save();
+                $createdUsers++;
 
                 if (!$user->hasRole(EnumRole::CUSTOMER)) {
                     $user->assignRole(EnumRole::CUSTOMER);
@@ -682,8 +656,6 @@ class CustomerServiceLeadService
                     $createdLeads++;
                     $lead->status = CustomerServiceLeadStatus::NOT_APPROACHED;
                     $lead->priority_order = $this->priorityForStatus(CustomerServiceLeadStatus::NOT_APPROACHED);
-                } else {
-                    $updatedLeads++;
                 }
 
                 $meta = $lead->meta ?: [];
@@ -703,9 +675,8 @@ class CustomerServiceLeadService
             return [
                 'rows_total' => $cleanRows->count(),
                 'created_users' => $createdUsers,
-                'updated_users' => $updatedUsers,
+                'skipped_existing_users' => $skippedExistingUsers,
                 'created_leads' => $createdLeads,
-                'updated_leads' => $updatedLeads,
                 'skipped_rows' => $skippedRows,
             ];
         });
