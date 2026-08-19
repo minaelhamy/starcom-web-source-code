@@ -101,7 +101,8 @@ class CustomerServiceLeadController extends AdminController implements HasMiddle
     public function redistribute(Request $request): Response|array|Application|ResponseFactory
     {
         try {
-            return ['data' => $this->customerServiceLeadService->redistribute((int)$request->get('per_agent', 300))];
+            $perAgent = $request->filled('per_agent') ? (int) $request->get('per_agent') : null;
+            return ['data' => $this->customerServiceLeadService->redistribute($perAgent)];
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
         }

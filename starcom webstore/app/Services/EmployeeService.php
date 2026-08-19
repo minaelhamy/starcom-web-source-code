@@ -107,7 +107,7 @@ class EmployeeService
                     $this->user->assignRole($request->role_id);
                 });
 
-                $this->syncCustomerServiceAutomation($this->user, (int)$request->role_id);
+                $this->syncCustomerServiceAutomation($this->user, (int)$request->role_id, false, false);
                 return $this->user;
             } else {
                 throw new Exception(trans('all.message.permission_denied'), 422);
@@ -129,6 +129,9 @@ class EmployeeService
                 optional($employee->roles[0])->id,
                 $this->blockRoles
             )) {
+                $wasCustomerService = $employee->hasRole(EnumRole::CUSTOMER_SERVICE);
+                $wasActive = (int) $employee->status === 5;
+
                 DB::transaction(function () use ($employee, $request) {
                     $this->user               = $employee;
                     $this->user->name         = $request->name;
@@ -144,7 +147,7 @@ class EmployeeService
                     $this->user->save();
                 });
                 $this->user->syncRoles($request->role_id);
-                $this->syncCustomerServiceAutomation($this->user, (int)$request->role_id);
+                $this->syncCustomerServiceAutomation($this->user, (int)$request->role_id, $wasCustomerService, $wasActive);
                 return $this->user;
             } else {
                 throw new Exception(trans('all.message.permission_denied'), 422);
@@ -242,10 +245,16 @@ class EmployeeService
         return $resolvedRole;
     }
 
-    private function syncCustomerServiceAutomation(User $user, int $roleId): void
+    private function syncCustomerServiceAutomation(User $user, int $roleId, bool $wasCustomerService = false, bool $wasActive = false): void
     {
-        if ($roleId === EnumRole::CUSTOMER_SERVICE && (int)$user->status === 5) {
-            $this->customerServiceLeadService->assignFreshLeadsToAgent($user);
+        $isActiveCustomerService = $roleId === EnumRole::CUSTOMER_SERVICE && (int)$user->status === 5;
+
+        if ($isActiveCustomerService) {
+            $isNewlyActivatedCustomerService = !$wasCustomerService || !$wasActive;
+
+            if ($isNewlyActivatedCustomerService) {
+                $this->customerServiceLeadService->redistribute();
+            }
             return;
         }
 

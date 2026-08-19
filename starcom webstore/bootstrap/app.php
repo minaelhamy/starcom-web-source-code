@@ -34,11 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withSchedule(function (Schedule $schedule): void {
-        $schedule->command('customer-service:redistribute --per-agent=300')
-            ->fridays()
-            ->at('08:00')
-            ->timezone('Africa/Cairo')
-            ->withoutOverlapping();
+        
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append([]);

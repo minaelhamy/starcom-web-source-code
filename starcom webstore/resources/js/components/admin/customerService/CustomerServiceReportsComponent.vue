@@ -357,10 +357,10 @@ export default {
         redistribute() {
             this.loading.isActive = true;
             this.$store.dispatch("customerServiceCrm/redistribute", {}).then((res) => {
-                alertService.success(`تم توزيع ${res.data.data.assigned_count} عميل غير موزع بنجاح`);
+                alertService.success(`تمت إعادة توزيع ${res.data.data.assigned_count} عميل قابل لإعادة التوزيع بنجاح`);
                 this.fetchReports();
             }).catch((error) => {
-                alertService.error(error.response?.data?.message || "تعذر توزيع العملاء غير الموزعين");
+                alertService.error(error.response?.data?.message || "تعذر إعادة توزيع العملاء القابلين لإعادة التوزيع");
                 this.loading.isActive = false;
             });
         },
