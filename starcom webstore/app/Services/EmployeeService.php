@@ -254,6 +254,7 @@ class EmployeeService
 
             if ($isNewlyActivatedCustomerService) {
                 $this->customerServiceLeadService->redistribute();
+                $this->customerServiceLeadService->ensureRedistributableLeadsForAgent($user);
             }
             return;
         }

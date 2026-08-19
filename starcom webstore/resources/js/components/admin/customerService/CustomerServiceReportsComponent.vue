@@ -4,7 +4,7 @@
         <div class="db-card">
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">متابعة أداء خدمة العملاء</h3>
-                <button type="button" class="db-btn text-white bg-primary py-2" @click="redistribute">توزيع العملاء غير الموزعين</button>
+                <button type="button" class="db-btn text-white bg-primary py-2" @click="redistribute">إعادة توزيع العملاء</button>
             </div>
             <div class="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>

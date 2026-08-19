@@ -528,6 +528,76 @@ class CustomerServiceLeadService
         });
     }
 
+    public function ensureRedistributableLeadsForAgent(User $agent, ?int $limit = null): array
+    {
+        if (!$agent->hasRole(EnumRole::CUSTOMER_SERVICE) || (int) $agent->status !== 5) {
+            return [
+                'agent_id' => $agent->id,
+                'assigned_count' => 0,
+                'current_assigned_count' => 0,
+                'target_assigned_count' => 0,
+            ];
+        }
+
+        return DB::transaction(function () use ($agent, $limit) {
+            $activeAgents = User::role(EnumRole::CUSTOMER_SERVICE)
+                ->where('status', 5)
+                ->get();
+
+            $eligibleBaseQuery = $this->redistributionEligibleLeadBaseQuery();
+            $totalEligibleCount = (clone $eligibleBaseQuery)->count();
+            if ($totalEligibleCount === 0 || $activeAgents->isEmpty()) {
+                return [
+                    'agent_id' => $agent->id,
+                    'assigned_count' => 0,
+                    'current_assigned_count' => 0,
+                    'target_assigned_count' => 0,
+                ];
+            }
+
+            $currentAssignedCount = (clone $eligibleBaseQuery)
+                ->where('assigned_to_user_id', $agent->id)
+                ->count();
+
+            $targetAssignedCount = !is_null($limit) && $limit > 0
+                ? $limit
+                : (int) ceil($totalEligibleCount / max($activeAgents->count(), 1));
+
+            $neededCount = max($targetAssignedCount - $currentAssignedCount, 0);
+            if ($neededCount === 0) {
+                return [
+                    'agent_id' => $agent->id,
+                    'assigned_count' => 0,
+                    'current_assigned_count' => $currentAssignedCount,
+                    'target_assigned_count' => $targetAssignedCount,
+                ];
+            }
+
+            $donorLeadIds = $this->redistributionEligibleLeadQuery()
+                ->whereNotNull('assigned_to_user_id')
+                ->where('assigned_to_user_id', '!=', $agent->id)
+                ->limit($neededCount)
+                ->pluck('id');
+
+            if ($donorLeadIds->isNotEmpty()) {
+                $assignmentCycle = max((int) CustomerServiceLead::max('assignment_cycle'), 0) + 1;
+
+                CustomerServiceLead::whereIn('id', $donorLeadIds)->update([
+                    'assigned_to_user_id' => $agent->id,
+                    'assigned_at' => now(),
+                    'assignment_cycle' => $assignmentCycle,
+                ]);
+            }
+
+            return [
+                'agent_id' => $agent->id,
+                'assigned_count' => $donorLeadIds->count(),
+                'current_assigned_count' => $currentAssignedCount + $donorLeadIds->count(),
+                'target_assigned_count' => $targetAssignedCount,
+            ];
+        });
+    }
+
     public function releaseAgentLeads(User $agent): int
     {
         return CustomerServiceLead::query()
@@ -1653,7 +1723,7 @@ class CustomerServiceLeadService
             ->latest('updated_at');
     }
 
-    protected function redistributionEligibleLeadQuery(): Builder
+    protected function redistributionEligibleLeadBaseQuery(): Builder
     {
         return $this->redistributableLeadQuery()
             ->where(function (Builder $query) {
@@ -1661,7 +1731,12 @@ class CustomerServiceLeadService
                     ->orWhere('status', CustomerServiceLeadStatus::NOT_APPROACHED)
                     ->orWhereIn('status', self::callbackStatuses())
                     ->orWhere('status', CustomerServiceLeadStatus::CLOSED);
-            })
+            });
+    }
+
+    protected function redistributionEligibleLeadQuery(): Builder
+    {
+        return $this->redistributionEligibleLeadBaseQuery()
             ->orderByRaw('CASE WHEN last_contacted_at IS NULL THEN 0 ELSE 1 END')
             ->orderBy('priority_order')
             ->orderByRaw('CASE WHEN next_follow_up_at IS NULL THEN 1 ELSE 0 END')
@@ -1854,6 +1929,16 @@ class CustomerServiceLeadService
 
             $assignedCount += count($leadIds);
         }
+
+        $agents->each(function (User $agent) use ($perAgent) {
+            $currentEligibleAssignedCount = $this->redistributionEligibleLeadBaseQuery()
+                ->where('assigned_to_user_id', $agent->id)
+                ->count();
+
+            if ($currentEligibleAssignedCount === 0) {
+                $this->ensureRedistributableLeadsForAgent($agent, $perAgent);
+            }
+        });
 
         return [
             'cycle' => $assignmentCycle,
