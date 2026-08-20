@@ -141,6 +141,12 @@
                             <td class="db-table-body-td">{{ identityDocumentsStatusLabel(item) }}</td>
                             <td class="db-table-body-td">
                                 <div v-if="canReview(item)" class="space-y-2 min-w-[240px]">
+                                    <div
+                                        v-if="(effectiveStatus(item) === 'pending_approval' || effectiveStatus(item) === 'declined') && item.latest_review_note"
+                                        class="text-text text-sm whitespace-pre-line rounded-lg bg-[#F7F7FC] p-3"
+                                    >
+                                        {{ item.latest_review_note }}
+                                    </div>
                                     <input v-model="reviewForms[item.id].approved_amount" type="number" min="1" step="0.01" class="db-field-control" placeholder="المبلغ المعتمد" />
                                     <input v-model="reviewForms[item.id].duration_days" type="number" min="30" class="db-field-control" placeholder="المدة بالأيام" />
                                     <textarea v-model="reviewForms[item.id].notes" class="db-field-control h-20" placeholder="ملاحظات"></textarea>
