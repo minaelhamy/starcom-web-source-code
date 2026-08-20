@@ -74,6 +74,8 @@ class CreditApplicationResource extends JsonResource
             }
         }
 
+        $latestVisibleNote = $visibleNotesHistory->sortByDesc('created_at')->first();
+
         return [
             'id'                           => $this->id,
             'full_name'                    => $this->full_name,
@@ -81,6 +83,10 @@ class CreditApplicationResource extends JsonResource
             'status'                       => $this->status,
             'queue_status'                 => $queueStatus,
             'notes'                        => $this->notes,
+            'latest_review_note'           => $latestVisibleNote?->note,
+            'latest_review_note_created_at'=> $latestVisibleNote?->created_at instanceof \Carbon\CarbonInterface
+                ? $latestVisibleNote->created_at->toDateTimeString()
+                : null,
             'created_at'                   => $this->created_at ? $this->created_at->toDateTimeString() : null,
             'created_date'                 => $this->created_at ? AppLibrary::date($this->created_at) : null,
             'updated_at'                   => $lastUpdatedAt ? $lastUpdatedAt->toDateTimeString() : null,

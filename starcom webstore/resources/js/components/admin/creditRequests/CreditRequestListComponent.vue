@@ -152,9 +152,9 @@
                                     </div>
                                 </div>
                                 <div v-else-if="canReReview(item)" class="space-y-2 min-w-[240px]">
-                                    <div class="text-text text-sm">
+                                    <div class="text-text text-sm whitespace-pre-line">
                                         {{ effectiveStatus(item) === 'pending_approval'
-                                            ? 'هذا الطلب قيد التعديل من حسابك. يمكنك فتح الملف وقراءة الملاحظات ومراجعته بعد استكمال البيانات.'
+                                            ? (item.latest_review_note || 'هذا الطلب قيد التعديل من حسابك. يمكنك فتح الملف وقراءة الملاحظات ومراجعته بعد استكمال البيانات.')
                                             : 'تم رفض الطلب سابقاً من حسابك. يمكنك مراجعة الملف والاطلاع على الملاحظات السابقة ثم اتخاذ قرار جديد.' }}
                                     </div>
                                     <div class="flex gap-2 flex-wrap">
