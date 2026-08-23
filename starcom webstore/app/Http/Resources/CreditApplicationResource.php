@@ -54,6 +54,12 @@ class CreditApplicationResource extends JsonResource
                 $myReviewStatus = $myFacility?->status;
                 $queueStatus = $myReviewStatus ?: \App\Enums\CreditApplicationStatus::PENDING;
 
+                if ($myReviewStatus === \App\Enums\CreditFacilityStatus::READY_FOR_REVIEW) {
+                    $queueStatus = \App\Enums\CreditApplicationStatus::PENDING;
+                    $reviewedByMe = false;
+                    $myReviewStatus = null;
+                }
+
                 if (in_array($myReviewStatus, ['settled', 'expired'], true)) {
                     $queueStatus = \App\Enums\CreditApplicationStatus::PENDING;
                     $reviewedByMe = false;

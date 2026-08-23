@@ -201,6 +201,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/top-products', [DashboardController::class, 'topProducts']);
     });
 
+    Route::prefix('internal-notifications')->name('internal-notifications.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\InternalNotificationController::class, 'index']);
+        Route::patch('/{notification}/read', [\App\Http\Controllers\Admin\InternalNotificationController::class, 'markAsRead']);
+        Route::patch('/read-all', [\App\Http\Controllers\Admin\InternalNotificationController::class, 'markAllAsRead']);
+    });
+
     Route::prefix('setting')->name('setting.')->group(function () {
         Route::prefix('company')->name('company.')->group(function () {
             Route::get('/', [CompanyController::class, 'index']);

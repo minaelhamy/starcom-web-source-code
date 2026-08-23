@@ -25,6 +25,7 @@ use App\Models\CreditFacility;
 use App\Models\CreditFacilityRepayment;
 use App\Models\User;
 use App\Notifications\CreditApplicationApprovedNotification;
+use App\Notifications\CreditApplicationAmendedNotification;
 use App\Notifications\CreditApplicationDeclinedNotification;
 use App\Notifications\NewCreditApplicationSubmittedNotification;
 use Exception;
@@ -65,6 +66,7 @@ class CreditApplicationService
                             $facilityQuery->where('financial_institution_user_id', $institutionId)
                                 ->whereIn('status', [
                                     CreditFacilityStatus::PENDING_APPROVAL,
+                                    CreditFacilityStatus::READY_FOR_REVIEW,
                                     CreditFacilityStatus::DECLINED,
                                     CreditFacilityStatus::SETTLED,
                                     CreditFacilityStatus::EXPIRED,
@@ -99,6 +101,7 @@ class CreditApplicationService
                     ->whereHas('facilities', function ($facilityQuery) use ($institutionId) {
                         $facilityQuery->where('financial_institution_user_id', $institutionId)
                             ->whereIn('status', [
+                                CreditFacilityStatus::READY_FOR_REVIEW,
                                 CreditFacilityStatus::SETTLED,
                                 CreditFacilityStatus::EXPIRED,
                             ]);
@@ -368,8 +371,23 @@ class CreditApplicationService
                 $request->boolean('return_to_review') &&
                 $creditApplication->status === CreditApplicationStatus::PENDING_APPROVAL
             ) {
-                $creditApplication->status = CreditApplicationStatus::PENDING;
-                $creditApplication->save();
+                $facilitiesReadyForReview = $creditApplication->facilities()
+                    ->where('status', CreditFacilityStatus::PENDING_APPROVAL)
+                    ->get();
+
+                DB::transaction(function () use ($creditApplication, $facilitiesReadyForReview) {
+                    $creditApplication->status = CreditApplicationStatus::PENDING;
+                    $creditApplication->save();
+
+                    $creditApplication->facilities()
+                        ->whereIn('id', $facilitiesReadyForReview->pluck('id'))
+                        ->update([
+                            'status' => CreditFacilityStatus::READY_FOR_REVIEW,
+                            'updated_at' => now(),
+                        ]);
+                });
+
+                $this->notifyInstitutionsApplicationIsReadyForReview($creditApplication, $facilitiesReadyForReview);
             }
 
             if ($documentsUpdated) {
@@ -1011,6 +1029,7 @@ class CreditApplicationService
                 if ($existingFacility && in_array($existingFacility->status, [
                     CreditFacilityStatus::DECLINED,
                     CreditFacilityStatus::PENDING_APPROVAL,
+                    CreditFacilityStatus::READY_FOR_REVIEW,
                 ], true)) {
                     return $this->approveExistingFacility(
                         $existingFacility,
@@ -1088,6 +1107,7 @@ class CreditApplicationService
                 if ($existingFacility && in_array($existingFacility->status, [
                     CreditFacilityStatus::DECLINED,
                     CreditFacilityStatus::PENDING_APPROVAL,
+                    CreditFacilityStatus::READY_FOR_REVIEW,
                 ], true)) {
                     $existingFacility->financial_institution_employee_user_id = $employee->id;
                     $existingFacility->status = CreditFacilityStatus::DECLINED;
@@ -1170,6 +1190,7 @@ class CreditApplicationService
                 if ($existingFacility && in_array($existingFacility->status, [
                     CreditFacilityStatus::DECLINED,
                     CreditFacilityStatus::PENDING_APPROVAL,
+                    CreditFacilityStatus::READY_FOR_REVIEW,
                 ], true)) {
                     $existingFacility->financial_institution_employee_user_id = $employee->id;
                     $existingFacility->status = CreditFacilityStatus::PENDING_APPROVAL;
@@ -1446,6 +1467,31 @@ class CreditApplicationService
         }
 
         $creditApplication->save();
+    }
+
+    protected function notifyInstitutionsApplicationIsReadyForReview(CreditApplication $creditApplication, $facilities): void
+    {
+        $institutionIds = $facilities
+            ->pluck('financial_institution_user_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($institutionIds->isEmpty()) {
+            return;
+        }
+
+        User::role(EnumRole::FINANCIAL_INSTITUTION)
+            ->where('status', 5)
+            ->where(function ($query) use ($institutionIds) {
+                $query->whereIn('id', $institutionIds)
+                    ->orWhereIn('financial_institution_owner_user_id', $institutionIds);
+            })
+            ->get()
+            ->reject(fn (User $user) => $this->isFinancialInstitutionLimitedEmployee($user))
+            ->each(function (User $user) use ($creditApplication) {
+                $this->safeNotify($user, new CreditApplicationAmendedNotification($creditApplication));
+            });
     }
 
     protected function destroyApplication(CreditApplication $creditApplication, bool $isAdmin): void

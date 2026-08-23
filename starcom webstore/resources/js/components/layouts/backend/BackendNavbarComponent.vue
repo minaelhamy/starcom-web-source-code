@@ -36,6 +36,40 @@
             </div>
             <button @click="toggleSidebar" class="fa-solid fa-align-left db-header-nav w-9 h-9 rounded-lg text-primary bg-primary/5"></button>
 
+            <div v-if="isFinancialInstitution" class="dropdown-group">
+                <button @click.stop="toggleInternalNotifications"
+                    class="relative w-9 h-9 rounded-lg flex items-center justify-center text-primary bg-primary/5"
+                    aria-label="الإشعارات">
+                    <i class="fa-regular fa-bell"></i>
+                    <span v-if="internalNotificationUnreadCount > 0"
+                        class="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-primary text-white text-[10px] leading-4">
+                        {{ internalNotificationUnreadCount > 99 ? '99+' : internalNotificationUnreadCount }}
+                    </span>
+                </button>
+                <div v-if="internalNotificationsOpen"
+                    class="fixed sm:absolute top-[75px] sm:top-12 ltr:right-0 rtl:left-0 z-[60] w-full sm:w-[390px] max-h-[70vh] overflow-y-auto p-3 rounded-xl shadow-paper bg-white border border-[#EFF0F6]">
+                    <div class="flex items-center justify-between gap-3 pb-3 border-b border-[#EFF0F6]">
+                        <h3 class="text-sm font-semibold text-heading">إشعارات التمويل</h3>
+                        <button v-if="internalNotificationUnreadCount > 0" @click="markAllInternalNotificationsRead"
+                            class="text-xs text-primary">تحديد الكل كمقروء</button>
+                    </div>
+                    <div v-if="internalNotifications.length === 0" class="py-6 text-sm text-center text-text">
+                        لا توجد إشعارات جديدة.
+                    </div>
+                    <button v-for="notification in internalNotifications" :key="notification.id"
+                        @click="openInternalNotification(notification)"
+                        class="w-full text-right p-3 border-b last:border-none border-[#EFF0F6] hover:bg-primary/5 transition"
+                        :class="notification.read_at ? '' : 'bg-primary/5'">
+                        <div class="flex items-start justify-between gap-3">
+                            <h4 class="text-sm font-semibold text-heading">{{ notification.title }}</h4>
+                            <span v-if="!notification.read_at" class="w-2 h-2 mt-1 rounded-full bg-primary flex-shrink-0"></span>
+                        </div>
+                        <p class="mt-1 text-xs leading-5 text-text">{{ notification.message }}</p>
+                        <p v-if="notification.created_at" class="mt-1 text-[11px] text-text">{{ formatNotificationDate(notification.created_at) }}</p>
+                    </button>
+                </div>
+            </div>
+
             <div class="dropdown-group">
                 <button class="dropdown-btn dropdown-custom-btn flex items-center gap-2">
                     <img class="flex-shrink-0 w-9 h-9 object-cover rounded-lg" :src="authInfo.image" alt="avatar">
@@ -147,6 +181,10 @@ export default {
                 permission: false,
                 url: ""
             },
+            internalNotificationsOpen: false,
+            internalNotifications: [],
+            internalNotificationUnreadCount: 0,
+            internalNotificationsTimer: null,
             defaultThemeLogo: "/images/required/theme-logo.png",
             languageProps: {
                 paginate: 0,
@@ -175,6 +213,9 @@ export default {
         authInfo: function () {
             return this.$store.getters.authInfo;
         },
+        isFinancialInstitution: function () {
+            return this.authInfo?.role_id === roleEnum.FINANCIAL_INSTITUTION;
+        },
         languages: function () {
             return this.$store.getters['frontendLanguage/lists'];
         },
@@ -185,10 +226,27 @@ export default {
             return this.$store.getters.authPermission;
         }
     },
+    watch: {
+        isFinancialInstitution: function (isFinancialInstitution) {
+            if (isFinancialInstitution && !this.internalNotificationsTimer) {
+                this.fetchInternalNotifications();
+                this.internalNotificationsTimer = window.setInterval(() => this.fetchInternalNotifications(), 60000);
+            }
+
+            if (!isFinancialInstitution && this.internalNotificationsTimer) {
+                window.clearInterval(this.internalNotificationsTimer);
+                this.internalNotificationsTimer = null;
+            }
+        }
+    },
     mounted() {
         appService.responsiveLoad();
         this.posPermissionCheck();
         this.orderPermissionCheck();
+        if (this.isFinancialInstitution) {
+            this.fetchInternalNotifications();
+            this.internalNotificationsTimer = window.setInterval(() => this.fetchInternalNotifications(), 60000);
+        }
 
                 this.$store.dispatch('frontendSetting/lists').then(res => {
             let defaultLanguage = res.data.data.site_default_language;
@@ -253,6 +311,11 @@ export default {
             }
         }, 5000);
     },
+    beforeUnmount() {
+        if (this.internalNotificationsTimer) {
+            window.clearInterval(this.internalNotificationsTimer);
+        }
+    },
     methods: {
         textShortener: function (text, number = 30) {
             return appService.textShortener(text, number);
@@ -306,6 +369,54 @@ export default {
         closeOrderNotificationModal: function (id, cClass) {
             targetService.hideTarget(id, cClass);
             this.orderNotificationStatus = false;
+        },
+        fetchInternalNotifications: function () {
+            if (!this.isFinancialInstitution) {
+                return;
+            }
+
+            axios.get('admin/internal-notifications').then((res) => {
+                this.internalNotifications = res.data.data || [];
+                this.internalNotificationUnreadCount = Number(res.data.unread_count || 0);
+            }).catch(() => {});
+        },
+        toggleInternalNotifications: function () {
+            this.internalNotificationsOpen = !this.internalNotificationsOpen;
+            if (this.internalNotificationsOpen) {
+                this.fetchInternalNotifications();
+            }
+        },
+        markAllInternalNotificationsRead: function () {
+            axios.patch('admin/internal-notifications/read-all').then(() => {
+                this.internalNotifications = this.internalNotifications.map((notification) => ({
+                    ...notification,
+                    read_at: notification.read_at || new Date().toISOString(),
+                }));
+                this.internalNotificationUnreadCount = 0;
+            }).catch(() => {});
+        },
+        openInternalNotification: function (notification) {
+            const openTarget = () => {
+                this.internalNotificationsOpen = false;
+                if (notification.url) {
+                    this.$router.push(notification.url);
+                }
+            };
+
+            if (notification.read_at) {
+                openTarget();
+                return;
+            }
+
+            axios.patch(`admin/internal-notifications/${notification.id}/read`).then(() => {
+                notification.read_at = new Date().toISOString();
+                this.internalNotificationUnreadCount = Math.max(this.internalNotificationUnreadCount - 1, 0);
+                openTarget();
+            }).catch(() => openTarget());
+        },
+        formatNotificationDate: function (value) {
+            const date = new Date(value.replace(' ', 'T'));
+            return Number.isNaN(date.getTime()) ? value : date.toLocaleString('ar-EG');
         },
         saveImage: function () {
             if (this.$refs.imageProperty.files[0]) {
