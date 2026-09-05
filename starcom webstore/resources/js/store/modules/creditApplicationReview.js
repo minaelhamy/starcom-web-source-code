@@ -214,6 +214,18 @@ export const creditApplicationReview = {
                 });
             });
         },
+        uploadFacilityClientPhotos: function (context, payload) {
+            return new Promise((resolve, reject) => {
+                axios.post(`admin/credit-application/portfolio/client-photos/${payload.id}`, payload.form, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                }).then((res) => {
+                    context.commit("portfolioShow", res.data.data);
+                    resolve(res);
+                }).catch((err) => {
+                    reject(err);
+                });
+            });
+        },
         updateFacilityDates: function (context, payload) {
             return new Promise((resolve, reject) => {
                 axios.post(`admin/credit-application/portfolio/dates/${payload.id}`, payload.form).then((res) => {

@@ -101,4 +101,26 @@ class CreditFacility extends Model implements HasMedia
             ];
         })->values()->all();
     }
+
+    public function getClientProfilePictureAttribute(): ?array
+    {
+        $media = $this->getFirstMedia('facility_client_profile_picture');
+
+        return $media ? [
+            'id' => $media->id,
+            'name' => $media->file_name,
+            'url' => $media->getUrl(),
+        ] : null;
+    }
+
+    public function getClientSigningPictureAttribute(): ?array
+    {
+        $media = $this->getFirstMedia('facility_client_signing_picture');
+
+        return $media ? [
+            'id' => $media->id,
+            'name' => $media->file_name,
+            'url' => $media->getUrl(),
+        ] : null;
+    }
 }

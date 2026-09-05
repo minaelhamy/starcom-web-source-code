@@ -161,6 +161,8 @@ class CreditFacilityResource extends JsonResource
             'has_signed_contract_documents' => $isLimitedLender ? false : count($this->signed_contract_documents) > 0,
             'signed_contract_documents_count' => $isLimitedLender ? 0 : count($this->signed_contract_documents),
             'signed_contract_documents' => $isLimitedLender ? [] : $this->signed_contract_documents,
+            'client_profile_picture' => $isLimitedLender ? null : $this->client_profile_picture,
+            'client_signing_picture' => $isLimitedLender ? null : $this->client_signing_picture,
         ];
     }
 

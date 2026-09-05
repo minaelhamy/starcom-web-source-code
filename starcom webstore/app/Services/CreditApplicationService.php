@@ -11,6 +11,7 @@ use App\Http\Requests\CreditApplicationIdentityRequest;
 use App\Http\Requests\CreditApplicationNoteRequest;
 use App\Http\Requests\CreditFacilityAssignmentRequest;
 use App\Http\Requests\CreditFacilityContractRequest;
+use App\Http\Requests\CreditFacilityClientPhotosRequest;
 use App\Http\Requests\CreditFacilityDatesRequest;
 use App\Http\Requests\CreditFacilityRepaymentRequest;
 use App\Http\Requests\CreditFacilitySignedContractRequest;
@@ -845,6 +846,50 @@ class CreditApplicationService
                 'institution.financialInstitutionProfile',
                 'employee',
             ]);
+        } catch (Exception $exception) {
+            Log::info($exception->getMessage());
+            throw new Exception(QueryExceptionLibrary::message($exception), 422);
+        }
+    }
+
+    public function uploadFacilityClientPhotos(CreditFacility $creditFacility, CreditFacilityClientPhotosRequest $request): CreditFacility
+    {
+        try {
+            $actor = Auth::user();
+
+            if (!$actor->hasRole(EnumRole::ADMIN) && !$actor->hasRole(EnumRole::MANAGER)) {
+                throw new Exception(trans('all.message.permission_denied'), 422);
+            }
+
+            if ($creditFacility->status !== CreditFacilityStatus::APPROVED) {
+                throw new Exception('يمكن رفع صور العميل والتوقيع فقط بعد اعتماد التمويل.', 422);
+            }
+
+            $hasProfilePicture = (bool) $creditFacility->getFirstMedia('facility_client_profile_picture');
+            $hasSigningPicture = (bool) $creditFacility->getFirstMedia('facility_client_signing_picture');
+
+            if (!$request->hasFile('profile_picture') && !$hasProfilePicture) {
+                throw new Exception('يرجى رفع صورة العميل الشخصية.', 422);
+            }
+
+            if (!$request->hasFile('signing_picture') && !$hasSigningPicture) {
+                throw new Exception('يرجى رفع صورة توقيع العميل.', 422);
+            }
+
+            if ($request->hasFile('profile_picture')) {
+                $creditFacility->clearMediaCollection('facility_client_profile_picture');
+                $creditFacility->addMedia($request->file('profile_picture'))->toMediaCollection('facility_client_profile_picture');
+            }
+
+            if ($request->hasFile('signing_picture')) {
+                $creditFacility->clearMediaCollection('facility_client_signing_picture');
+                $creditFacility->addMedia($request->file('signing_picture'))->toMediaCollection('facility_client_signing_picture');
+            }
+
+            $creditFacility->touch();
+            optional($creditFacility->application)->touch();
+
+            return $this->showFacility($creditFacility);
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);

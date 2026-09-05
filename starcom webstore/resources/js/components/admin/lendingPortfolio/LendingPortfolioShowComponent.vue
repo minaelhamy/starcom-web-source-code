@@ -365,6 +365,67 @@
             </div>
         </div>
 
+        <div v-if="canManageClientPhotos || facility.client_profile_picture || facility.client_signing_picture" class="db-card mb-4">
+            <div class="db-card-header border-none">
+                <h3 class="db-card-title">صور العميل والتوقيع</h3>
+            </div>
+            <div class="row p-4">
+                <div class="col-12 lg:col-6">
+                    <div class="db-card p-4 h-full">
+                        <h4 class="font-semibold mb-3">الصورة الشخصية للعميل</h4>
+                        <template v-if="facility.client_profile_picture">
+                            <img
+                                :src="facility.client_profile_picture.url"
+                                alt="الصورة الشخصية للعميل"
+                                class="w-full h-48 object-contain border border-gray-200 mb-3"
+                            />
+                            <a :href="facility.client_profile_picture.url" target="_blank" download class="db-btn py-2 text-white bg-primary">
+                                تحميل الصورة الشخصية
+                            </a>
+                        </template>
+                        <span v-else class="text-sm text-text">غير مرفوعة.</span>
+                    </div>
+                </div>
+                <div class="col-12 lg:col-6">
+                    <div class="db-card p-4 h-full">
+                        <h4 class="font-semibold mb-3">صورة توقيع العميل</h4>
+                        <template v-if="facility.client_signing_picture">
+                            <img
+                                :src="facility.client_signing_picture.url"
+                                alt="صورة توقيع العميل"
+                                class="w-full h-48 object-contain border border-gray-200 mb-3"
+                            />
+                            <a :href="facility.client_signing_picture.url" target="_blank" download class="db-btn py-2 text-white bg-primary">
+                                تحميل صورة التوقيع
+                            </a>
+                        </template>
+                        <span v-else class="text-sm text-text">غير مرفوعة.</span>
+                    </div>
+                </div>
+                <div v-if="canManageClientPhotos" class="col-12 mt-4">
+                    <div class="db-card p-4">
+                        <h4 class="font-semibold mb-3">رفع أو استبدال صور العميل</h4>
+                        <p class="text-sm text-text mb-4">في أول رفع يجب اختيار الصورتين. بعد ذلك يمكن استبدال أي صورة بشكل مستقل.</p>
+                        <div class="row">
+                            <div class="col-12 md:col-6">
+                                <label class="db-field-title" :class="{ required: !facility.client_profile_picture }">الصورة الشخصية للعميل</label>
+                                <input type="file" class="db-field-control" accept=".jpg,.jpeg,.png,.webp" @change="setClientPhoto('profile_picture', $event)" />
+                                <small class="db-field-alert" v-if="clientPhotoErrors.profile_picture">{{ clientPhotoErrors.profile_picture[0] }}</small>
+                            </div>
+                            <div class="col-12 md:col-6">
+                                <label class="db-field-title" :class="{ required: !facility.client_signing_picture }">صورة توقيع العميل</label>
+                                <input type="file" class="db-field-control" accept=".jpg,.jpeg,.png,.webp" @change="setClientPhoto('signing_picture', $event)" />
+                                <small class="db-field-alert" v-if="clientPhotoErrors.signing_picture">{{ clientPhotoErrors.signing_picture[0] }}</small>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button class="db-btn py-2 text-white bg-primary" @click="uploadClientPhotos">حفظ صور العميل والتوقيع</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div v-if="canManageFacilityDates" class="db-card mb-4">
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">تعديل بداية المدة</h3>
@@ -484,6 +545,11 @@ export default {
                 signed_contract_documents: [],
             },
             signedContractErrors: {},
+            clientPhotoForm: {
+                profile_picture: null,
+                signing_picture: null,
+            },
+            clientPhotoErrors: {},
             dateForm: {
                 starts_at: "",
             },
@@ -558,6 +624,11 @@ export default {
                 this.facility.status === "approved";
         },
         canManageSignedContracts: function () {
+            return this.isAdminLike &&
+                this.facility.id &&
+                this.facility.status === "approved";
+        },
+        canManageClientPhotos: function () {
             return this.isAdminLike &&
                 this.facility.id &&
                 this.facility.status === "approved";
@@ -699,6 +770,9 @@ export default {
         setSignedContractFiles: function (event) {
             this.signedContractForm.signed_contract_documents = Array.from(event.target.files || []);
         },
+        setClientPhoto: function (field, event) {
+            this.clientPhotoForm[field] = event.target.files?.[0] || null;
+        },
         handleInstitutionChange: function () {
             const selectedEmployeeId = Number(this.assignmentForm.financial_institution_employee_user_id || 0);
             if (selectedEmployeeId > 0) {
@@ -823,6 +897,44 @@ export default {
             }).catch((err) => {
                 this.signedContractErrors = err.response?.data?.errors || {};
                 alertService.error(err.response?.data?.message || "تعذر رفع العقود الموقعة.");
+            }).finally(() => {
+                this.loading.isActive = false;
+            });
+        },
+        uploadClientPhotos: function () {
+            const needsProfilePicture = !this.facility.client_profile_picture;
+            const needsSigningPicture = !this.facility.client_signing_picture;
+
+            if ((needsProfilePicture && !this.clientPhotoForm.profile_picture) || (needsSigningPicture && !this.clientPhotoForm.signing_picture)) {
+                alertService.error("يرجى اختيار الصورة الشخصية وصورة التوقيع في أول رفع.");
+                return;
+            }
+
+            if (!this.clientPhotoForm.profile_picture && !this.clientPhotoForm.signing_picture) {
+                alertService.error("يرجى اختيار صورة واحدة على الأقل.");
+                return;
+            }
+
+            this.loading.isActive = true;
+            const form = new FormData();
+            if (this.clientPhotoForm.profile_picture) {
+                form.append("profile_picture", this.clientPhotoForm.profile_picture);
+            }
+            if (this.clientPhotoForm.signing_picture) {
+                form.append("signing_picture", this.clientPhotoForm.signing_picture);
+            }
+
+            this.$store.dispatch("creditApplicationReview/uploadFacilityClientPhotos", {
+                id: this.facility.id,
+                form,
+            }).then((res) => {
+                alertService.success(res.data.message || "تم رفع صور العميل والتوقيع بنجاح.");
+                this.clientPhotoErrors = {};
+                this.clientPhotoForm.profile_picture = null;
+                this.clientPhotoForm.signing_picture = null;
+            }).catch((err) => {
+                this.clientPhotoErrors = err.response?.data?.errors || {};
+                alertService.error(err.response?.data?.message || "تعذر رفع صور العميل والتوقيع.");
             }).finally(() => {
                 this.loading.isActive = false;
             });
