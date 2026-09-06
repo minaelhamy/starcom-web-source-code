@@ -104,7 +104,9 @@ export default {
         clear() { this.dateRange = null; this.searchParams = { paginate: 1, page: 1, per_page: 10, order_column: 'products.name', order_type: 'asc', name: '', product_category_id: null, from_date: '', to_date: '' }; this.list(1); },
         list(page = 1) {
             this.loading.isActive = true; this.searchParams.page = page;
-            Promise.all([this.$store.dispatch('profitLossReport/lists', this.searchParams), this.$store.dispatch('profitLossReport/summary', this.searchParams)]).catch(() => {}).finally(() => { this.loading.isActive = false; });
+            Promise.all([this.$store.dispatch('profitLossReport/lists', this.searchParams), this.$store.dispatch('profitLossReport/summary', this.searchParams)])
+                .catch(error => alertService.error(error.response?.data?.message || 'Unable to load the report.'))
+                .finally(() => { this.loading.isActive = false; });
         },
         download(type) {
             this.loading.isActive = true;

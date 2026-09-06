@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Product;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -79,11 +80,11 @@ class ProfitLossReportService
             ]);
 
         if ($request->filled('from_date')) {
-            $query->whereDate('orders.order_datetime', '>=', $request->get('from_date'));
+            $query->where('orders.order_datetime', '>=', Carbon::parse($request->get('from_date'))->startOfDay());
         }
 
         if ($request->filled('to_date')) {
-            $query->whereDate('orders.order_datetime', '<=', $request->get('to_date'));
+            $query->where('orders.order_datetime', '<=', Carbon::parse($request->get('to_date'))->endOfDay());
         }
 
         if ($request->filled('name')) {
