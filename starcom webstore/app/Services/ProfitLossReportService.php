@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Builder;
@@ -71,7 +70,6 @@ class ProfitLossReportService
                     ->where('stocks.model_type', '=', Order::class);
             })
             ->join('orders', 'orders.id', '=', 'stocks.model_id')
-            ->whereNotIn('orders.status', [OrderStatus::CANCELED, OrderStatus::REJECTED])
             ->groupBy([
                 'products.id',
                 'products.name',
