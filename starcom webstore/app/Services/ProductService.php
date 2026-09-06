@@ -360,26 +360,13 @@ class ProductService
             $methodValue = $request->get('paginate', 0) == 1 ? $request->get('per_page', 10) : '*';
             $orderColumn = $request->get('order_column') ?? 'id';
             $orderType   = $request->get('order_type') ?? 'asc';
-            return Product::withCount('orders')->where(function ($query) use ($requests) {
-                if (isset($requests['from_date']) && isset($requests['to_date'])) {
-                    $first_date = date('Y-m-d', strtotime($requests['from_date']));
-                    $last_date  = date('Y-m-d', strtotime($requests['to_date']));
-                    $query->whereDate('created_at', '>=', $first_date)->whereDate(
-                        'created_at',
-                        '<=',
-                        $last_date
-                    );
-                }
-                foreach ($requests as $key => $request) {
-                    if (in_array($key, $this->productFilter)) {
-                        if ($key == "product_category_id") {
-                            $query->where($key, $request);
-                        } else {
-                            $query->where($key, 'like', '%' . $request . '%');
-                        }
-                    }
-                }
-            })->orderBy($orderColumn, $orderType)->$method(
+            $productOrders = $this->productOrderDateConstraint($requests);
+
+            return $this->productReportQuery($requests, $productOrders)
+                ->with('category')
+                ->with(['productOrders' => $productOrders])
+                ->withSum(['productOrders as sold_quantity' => $productOrders], 'quantity')
+                ->orderBy($orderColumn, $orderType)->$method(
                 $methodValue
             );
         } catch (Exception $exception) {
@@ -395,38 +382,64 @@ class ProductService
     {
         try {
             $requests    = $request->all();
-            $products =  Product::withSum('productOrders', 'quantity')->where(function ($query) use ($requests) {
-                if (isset($requests['from_date']) && isset($requests['to_date'])) {
-                    $first_date = date('Y-m-d', strtotime($requests['from_date']));
-                    $last_date  = date('Y-m-d', strtotime($requests['to_date']));
-                    $query->whereDate('created_at', '>=', $first_date)->whereDate(
-                        'created_at',
-                        '<=',
-                        $last_date
-                    );
-                }
-                foreach ($requests as $key => $request) {
-                    if (in_array($key, $this->productFilter)) {
-                        if ($key == "product_category_id") {
-                            $query->where($key, $request);
-                        } else {
-                            $query->where($key, 'like', '%' . $request . '%');
-                        }
-                    }
-                }
-            })->get();
+            $productOrders = $this->productOrderDateConstraint($requests);
+            $products = $this->productReportQuery($requests, $productOrders)
+                ->withSum(['productOrders as sold_quantity' => $productOrders], 'quantity')
+                ->get();
 
             $productsReportArray = [];
 
             $productsReportArray['total_products']      = $products->count();
             $productsReportArray['total_categories']    = $products->groupBy('product_category_id')->count();
-            $productsReportArray['total_sold_quantity'] = abs($products->sum('product_orders_sum_quantity'));
+            $productsReportArray['total_sold_quantity'] = abs($products->sum('sold_quantity'));
 
             return $productsReportArray;
         } catch (Exception $exception) {
             Log::info($exception->getMessage());
             throw new Exception(QueryExceptionLibrary::message($exception), 422);
         }
+    }
+
+    private function productReportQuery(array $requests, callable $productOrders)
+    {
+        $query = Product::query()->where(function ($query) use ($requests) {
+            foreach ($requests as $key => $request) {
+                if (in_array($key, $this->productFilter)) {
+                    if ($key == 'product_category_id') {
+                        $query->where($key, $request);
+                    } else {
+                        $query->where($key, 'like', '%' . $request . '%');
+                    }
+                }
+            }
+        });
+
+        if ($this->hasProductReportDateRange($requests)) {
+            $query->whereHas('productOrders', $productOrders);
+        }
+
+        return $query;
+    }
+
+    private function productOrderDateConstraint(array $requests): callable
+    {
+        return function ($query) use ($requests) {
+            if (!$this->hasProductReportDateRange($requests)) {
+                return;
+            }
+
+            $firstDate = Carbon::parse($requests['from_date'])->startOfDay();
+            $lastDate = Carbon::parse($requests['to_date'])->endOfDay();
+
+            $query->whereHas('order', function ($orderQuery) use ($firstDate, $lastDate) {
+                $orderQuery->whereBetween('order_datetime', [$firstDate, $lastDate]);
+            });
+        };
+    }
+
+    private function hasProductReportDateRange(array $requests): bool
+    {
+        return !empty($requests['from_date']) && !empty($requests['to_date']);
     }
 
     /**

@@ -18,6 +18,10 @@ class ProductAdminResource extends JsonResource
     public function toArray($request): array
     {
         $price = count($this->variations) > 0 ? $this->variation_price : $this->selling_price;
+        $soldQuantity = array_key_exists('sold_quantity', $this->getAttributes())
+            ? $this->sold_quantity
+            : $this->productOrders->sum('quantity');
+
         return [
             "id"                         => $this->id,
             "name"                       => $this->name,
@@ -42,7 +46,7 @@ class ProductAdminResource extends JsonResource
             "shipping_and_return"        => $this->shipping_and_return === null ? '' : $this->shipping_and_return,
             "product_tags"               => ProductTagResource::collection($this->tags),
             "category_name"              => $this?->category?->name,
-            "order"                      => abs($this?->productOrders->sum('quantity')),
+            "order"                      => abs($soldQuantity),
             'currency_price'             => AppLibrary::currencyAmountFormat($price),
             "cover"                      => $this->cover,
             'flash_sale'                 => $this->add_to_flash_sale == Ask::YES,

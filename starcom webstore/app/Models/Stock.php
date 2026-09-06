@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Staudenmeir\LaravelAdjacencyList\Eloquent\HasRecursiveRelationships;
 
@@ -56,6 +57,11 @@ class Stock extends Model
     public function product(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Product::class)->withTrashed();
+    }
+
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class, 'model_id');
     }
 
     public function productTax(): \Illuminate\Database\Eloquent\Relations\BelongsTo

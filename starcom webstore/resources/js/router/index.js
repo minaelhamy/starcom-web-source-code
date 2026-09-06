@@ -25,6 +25,7 @@ import posOrderRoutes from "./modules/posOrderRoutes";
 import posRoutes from "./modules/posRoutes";
 import ProductSectionRoutes from "./modules/ProductSectionRoutes";
 import productsReportRoutes from "./modules/productsReportRoutes";
+import profitLossReportRoutes from "./modules/profitLossReportRoutes";
 import productsRoutes from "./modules/productsRoutes";
 import profileRoutes from "./modules/profileRoutes";
 import PromotionRoutes from "./modules/PromotionRoutes";
@@ -100,6 +101,7 @@ const routes = baseRoutes.concat(
     damageRoutes,
     onlineOrderRoutes,
     productsReportRoutes,
+    profitLossReportRoutes,
     posOrderRoutes,
     posRoutes,
     returnAndRefundRoutes,

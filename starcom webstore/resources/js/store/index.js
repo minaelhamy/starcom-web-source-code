@@ -85,6 +85,7 @@ import { productSection } from "./modules/productSection";
 import { productSectionProduct } from "./modules/productSectionProduct";
 import { productSeo } from "./modules/productSeo";
 import { productsReport } from "./modules/productsReport";
+import { profitLossReport } from "./modules/profitLossReport";
 import { productVariation } from "./modules/productVariation";
 import { productVideo } from "./modules/productVideo";
 import { promotion } from "./modules/promotion";
@@ -214,6 +215,7 @@ export default new createStore({
         frontendPayLater,
         onlineOrder,
         productsReport,
+        profitLossReport,
         myOrderDetails,
         frontendProductReview,
         posOrder,

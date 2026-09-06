@@ -27,11 +27,12 @@ class ProductsReportExport implements FromCollection, WithHeadings
 
         $total = 0;
         foreach ($productsReportsArray as $product) {
-            $total              += $product?->productOrders->count();
+            $soldQuantity = abs($product->sold_quantity ?? $product?->productOrders->sum('quantity'));
+            $total              += $soldQuantity;
             $productsReportArray[] = [
                 $product->name,
                 optional($product->category)->name,
-                abs($product?->productOrders->sum('quantity'))
+                $soldQuantity
             ];
         }
         $productsReportArray[] = [

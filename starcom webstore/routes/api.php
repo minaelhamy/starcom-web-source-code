@@ -50,6 +50,7 @@ use App\Http\Controllers\Admin\ProductSectionController;
 use App\Http\Controllers\Admin\ProductSectionProductController;
 use App\Http\Controllers\Admin\ProductSeoController;
 use App\Http\Controllers\Admin\ProductsReportController;
+use App\Http\Controllers\Admin\ProfitLossReportController;
 use App\Http\Controllers\Admin\ProductVariationController;
 use App\Http\Controllers\Admin\ProductVideoController;
 use App\Http\Controllers\Admin\PromotionController;
@@ -770,6 +771,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/overview', [ProductsReportController::class, 'productsReportOverview']);
         Route::get('/export', [ProductsReportController::class, 'export']);
         Route::get('/export-pdf', [ProductsReportController::class, 'exportPdf']);
+    });
+
+    Route::prefix('profit-loss-report')->name('profit-loss-report.')->group(function () {
+        Route::get('/', [ProfitLossReportController::class, 'index']);
+        Route::get('/summary', [ProfitLossReportController::class, 'summary']);
+        Route::get('/export', [ProfitLossReportController::class, 'export']);
+        Route::get('/export-pdf', [ProfitLossReportController::class, 'exportPdf']);
     });
 
     Route::prefix('pos-order')->name('posOrder.')->group(function () {

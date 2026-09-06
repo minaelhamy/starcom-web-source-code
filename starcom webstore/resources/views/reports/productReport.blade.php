@@ -111,12 +111,13 @@
                 <tbody>
                     @foreach ($products as $product)
                         @php
-                            $total += abs($product?->productOrders->sum('quantity'));
+                            $soldQuantity = abs($product->sold_quantity ?? $product?->productOrders->sum('quantity'));
+                            $total += $soldQuantity;
                         @endphp
                         <tr>
                             <td>{{ $product->name }}</td>
                             <td>{{ $product?->category->name }}</td>
-                            <td>{{ abs($product?->productOrders->sum('quantity')) }}</td>
+                            <td>{{ $soldQuantity }}</td>
                         </tr>
                     @endforeach
                     <tr class="total">
