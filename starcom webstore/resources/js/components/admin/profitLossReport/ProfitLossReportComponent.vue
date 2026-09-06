@@ -99,7 +99,20 @@ export default {
     },
     methods: {
         handleSlide(id) { return appService.handleSlide(id); },
-        handleDate(range) { this.searchParams.from_date = range ? range[0] : ''; this.searchParams.to_date = range ? range[1] : ''; },
+        handleDate(range) {
+            this.searchParams.from_date = range ? this.formatDate(range[0]) : '';
+            this.searchParams.to_date = range ? this.formatDate(range[1]) : '';
+        },
+        formatDate(value) {
+            const date = value instanceof Date ? value : new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return '';
+            }
+
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${date.getFullYear()}-${month}-${day}`;
+        },
         search() { this.list(1); },
         clear() { this.dateRange = null; this.searchParams = { paginate: 1, page: 1, per_page: 10, order_column: 'products.name', order_type: 'asc', name: '', product_category_id: null, from_date: '', to_date: '' }; this.list(1); },
         list(page = 1) {

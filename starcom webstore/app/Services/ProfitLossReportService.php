@@ -80,11 +80,11 @@ class ProfitLossReportService
             ]);
 
         if ($request->filled('from_date')) {
-            $query->where('orders.order_datetime', '>=', Carbon::parse($request->get('from_date'))->startOfDay());
+            $query->where('orders.order_datetime', '>=', $this->parseRequestDate($request->get('from_date'))->startOfDay());
         }
 
         if ($request->filled('to_date')) {
-            $query->where('orders.order_datetime', '<=', Carbon::parse($request->get('to_date'))->endOfDay());
+            $query->where('orders.order_datetime', '<=', $this->parseRequestDate($request->get('to_date'))->endOfDay());
         }
 
         if ($request->filled('name')) {
@@ -96,5 +96,13 @@ class ProfitLossReportService
         }
 
         return $query;
+    }
+
+    private function parseRequestDate(string $value): Carbon
+    {
+        // Older browser bundles can append a timezone label after the GMT offset.
+        $value = preg_replace('/\\s*\\([^)]*\\)\\s*$/', '', trim($value));
+
+        return Carbon::parse($value);
     }
 }
