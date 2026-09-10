@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -50,13 +49,10 @@ class HistoricalInvoicePdfExportService
                             Str::slug($order->user?->name ?: 'customer')
                         );
 
-                        $pdf = Pdf::loadView('pdf.bulk-pos-invoice', [
-                            'order' => $order,
-                            'customer' => $order->user,
-                            'items' => $order->orderProducts,
-                        ])->setPaper('a4');
-
-                        Storage::disk('public')->put("{$directory}/{$fileName}", $pdf->output());
+                        Storage::disk('public')->put(
+                            "{$directory}/{$fileName}",
+                            app(InvoicePdfRenderer::class)->render($order)
+                        );
                         $summary['exported']++;
                     } catch (\Throwable) {
                         $summary['failed']++;

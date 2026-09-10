@@ -31,6 +31,7 @@
         "laravel/tinker": "^2.10.1",
         "league/flysystem-aws-s3-v3": "^3.29",
         "maatwebsite/excel": "*",
+        "mpdf/mpdf": "^8.2",
         "mollie/laravel-mollie": "^3.0",
         "myfatoorah/library": "^2.2",
         "obydul/laraskrill": "*",

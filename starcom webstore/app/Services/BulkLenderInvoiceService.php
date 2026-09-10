@@ -15,7 +15,6 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Stock;
 use App\Models\User;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Collection;
@@ -513,13 +512,7 @@ class BulkLenderInvoiceService
         $fileName = $order->order_serial_no . '-' . Str::slug($order->user?->name ?: 'customer') . '.pdf';
         $storagePath = "{$directory}/{$fileName}";
 
-        $pdf = Pdf::loadView('pdf.bulk-pos-invoice', [
-            'order' => $order,
-            'customer' => $order->user,
-            'items' => $order->orderProducts,
-        ])->setPaper('a4');
-
-        Storage::disk('public')->put($storagePath, $pdf->output());
+        Storage::disk('public')->put($storagePath, app(InvoicePdfRenderer::class)->render($order));
 
         return 'storage/' . $storagePath;
     }
