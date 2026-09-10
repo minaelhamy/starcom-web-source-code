@@ -3,6 +3,7 @@
 use App\Services\BulkLenderInvoiceService;
 use App\Services\CartonaCustomerOnboardingService;
 use App\Services\CustomerServiceLeadService;
+use App\Services\HistoricalInvoicePdfExportService;
 use App\Models\User;
 use App\Enums\Role as RoleEnum;
 use Carbon\Carbon;
@@ -15,6 +16,40 @@ use Illuminate\Support\Facades\Schema;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+Artisan::command('starcom:export-invoice-pdfs
+    {--from= : First invoice date in YYYY-MM-DD}
+    {--to= : Last invoice date in YYYY-MM-DD}
+    {--batch= : Folder and ZIP name}', function (HistoricalInvoicePdfExportService $service) {
+    $from = $this->option('from');
+    $to = $this->option('to');
+
+    if (!$from || !$to) {
+        $this->error('Both --from and --to are required in YYYY-MM-DD format.');
+        return self::FAILURE;
+    }
+
+    try {
+        $summary = $service->export($from, $to, $this->option('batch'));
+    } catch (\Throwable $exception) {
+        $this->error($exception->getMessage());
+        return self::FAILURE;
+    }
+
+    $this->table(
+        ['From', 'To', 'Processed', 'Exported', 'Failed'],
+        [[
+            $summary['from_date'],
+            $summary['to_date'],
+            $summary['processed'],
+            $summary['exported'],
+            $summary['failed'],
+        ]]
+    );
+    $this->info('Invoice ZIP: ' . ($summary['zip_path'] ?: 'ZIP creation is unavailable on this server.'));
+
+    return self::SUCCESS;
+})->purpose('Export existing invoice PDFs for a date range without changing order data');
 
 Artisan::command('cartona:sync-customers {--file=} {--pull}', function (CartonaCustomerOnboardingService $service) {
     $orders = [];
