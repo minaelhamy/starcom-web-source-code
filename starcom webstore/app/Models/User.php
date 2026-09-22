@@ -48,6 +48,12 @@ class User extends Authenticatable implements HasMedia
         'longitude',
         'distribution_route',
         'estimated_average_monthly_purchase',
+        'credit_blacklisted_at',
+        'credit_blacklisted_by_user_id',
+        'credit_blacklist_reason',
+        'is_top_credit_customer',
+        'top_credit_customer_at',
+        'top_credit_customer_by_user_id',
         'financial_institution_owner_user_id',
         'financial_institution_role',
         'is_guest',
@@ -86,6 +92,12 @@ class User extends Authenticatable implements HasMedia
         'longitude'         => 'string',
         'distribution_route'=> 'string',
         'estimated_average_monthly_purchase' => 'decimal:6',
+        'credit_blacklisted_at' => 'datetime',
+        'credit_blacklisted_by_user_id' => 'integer',
+        'credit_blacklist_reason' => 'string',
+        'is_top_credit_customer' => 'boolean',
+        'top_credit_customer_at' => 'datetime',
+        'top_credit_customer_by_user_id' => 'integer',
         'financial_institution_owner_user_id' => 'integer',
         'financial_institution_role' => 'string',
         'is_guest'          => 'integer',
@@ -161,6 +173,11 @@ class User extends Authenticatable implements HasMedia
     public function creditApplications(): HasMany
     {
         return $this->hasMany(CreditApplication::class);
+    }
+
+    public function latestCreditApplication(): HasOne
+    {
+        return $this->hasOne(CreditApplication::class)->latestOfMany();
     }
 
     public function creditFacilities(): HasMany

@@ -10,6 +10,7 @@ import administratorRoutes from "./modules/administratorRoutes";
 import authRoutes from "./modules/authRoutes";
 import couponRoutes from "./modules/couponRoutes";
 import creditRequestRoutes from "./modules/creditRequestRoutes";
+import creditCustomerStatusRoutes from "./modules/creditCustomerStatusRoutes";
 import creditBalanceReportRoutes from "./modules/creditBalanceReportRoutes";
 import customerRoutes from "./modules/customerRoutes";
 import customerServiceRoutes from "./modules/customerServiceRoutes";
@@ -88,6 +89,7 @@ const routes = baseRoutes.concat(
     salesReportRoutes,
     creditBalanceReportRoutes,
     creditRequestRoutes,
+    creditCustomerStatusRoutes,
     lendingPortfolioRoutes,
     paymentCollectionReportRoutes,
     pushNotificationRoutes,

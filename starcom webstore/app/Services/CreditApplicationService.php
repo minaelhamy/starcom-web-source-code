@@ -53,6 +53,7 @@ class CreditApplicationService
             'facilities.institution.financialInstitutionProfile',
             'facilities.employee',
         ])
+            ->whereHas('user', fn ($query) => $query->whereNull('credit_blacklisted_at'))
             ->where(function ($query) use ($institutionId) {
                 $query->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
                     $facilityQuery->where('financial_institution_user_id', $institutionId);
@@ -89,7 +90,8 @@ class CreditApplicationService
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
             'facilities.employee',
-        ])->where(function ($query) use ($institutionId) {
+        ])->whereHas('user', fn ($query) => $query->whereNull('credit_blacklisted_at'))
+            ->where(function ($query) use ($institutionId) {
             $query->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
                 $facilityQuery->where('financial_institution_user_id', $institutionId);
             })->orWhere(function ($institutionScopedQuery) use ($institutionId) {
@@ -123,7 +125,8 @@ class CreditApplicationService
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
             'facilities.employee',
-        ])->whereHas('facilities', function ($facilityQuery) use ($institutionId) {
+        ])->whereHas('user', fn ($query) => $query->whereNull('credit_blacklisted_at'))
+            ->whereHas('facilities', function ($facilityQuery) use ($institutionId) {
             $facilityQuery->where('financial_institution_user_id', $institutionId)
                 ->where('status', CreditFacilityStatus::PENDING_APPROVAL);
         });
@@ -554,6 +557,7 @@ class CreditApplicationService
     public function show(CreditApplication $creditApplication): CreditApplication
     {
         $actor = Auth::user();
+        $this->assertLenderCanAccessApplication($creditApplication, $actor);
 
         return $creditApplication->load([
             'user',
@@ -594,6 +598,16 @@ class CreditApplicationService
             'employee',
             'repayments.creator.financialInstitutionOwner.financialInstitutionProfile',
         ]);
+    }
+
+    private function assertLenderCanAccessApplication(CreditApplication $creditApplication, ?User $actor): void
+    {
+        if (
+            $actor?->hasRole(EnumRole::FINANCIAL_INSTITUTION)
+            && $creditApplication->user?->credit_blacklisted_at
+        ) {
+            throw new Exception('هذا العميل مدرج في القائمة السوداء ولا يتاح للجهات التمويلية كطلب جديد.', 422);
+        }
     }
 
     public function assignmentOptions(): array
@@ -1050,6 +1064,8 @@ class CreditApplicationService
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
 
+            $this->assertLenderCanAccessApplication($creditApplication, $actor);
+
             if (
                 $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
                 $this->isFinancialInstitutionLimitedEmployee($actor)
@@ -1127,6 +1143,8 @@ class CreditApplicationService
             if (!$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) && !$actor->hasRole(EnumRole::ADMIN)) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
+
+            $this->assertLenderCanAccessApplication($creditApplication, $actor);
 
             if (
                 $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&
@@ -1210,6 +1228,8 @@ class CreditApplicationService
             if (!$actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) && !$actor->hasRole(EnumRole::ADMIN)) {
                 throw new Exception(trans('all.message.permission_denied'), 422);
             }
+
+            $this->assertLenderCanAccessApplication($creditApplication, $actor);
 
             if (
                 $actor->hasRole(EnumRole::FINANCIAL_INSTITUTION) &&

@@ -173,6 +173,7 @@
                             <td class="db-table-body-td">
                                 <div class="font-semibold">{{ item.user?.name || "--" }}</div>
                                 <div class="text-xs text-text">{{ item.user?.phone || "" }}</div>
+                                <span v-if="item.user?.is_top_credit_customer" class="inline-block mt-1 px-2 py-1 text-xs font-semibold text-amber-800 bg-amber-100 rounded">عميل مميز</span>
                             </td>
                             <td class="db-table-body-td">{{ item.full_name || "--" }}</td>
                             <td class="db-table-body-td">{{ item.national_id_number || "--" }}</td>

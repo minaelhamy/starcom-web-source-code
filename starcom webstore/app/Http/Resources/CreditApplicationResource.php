@@ -126,6 +126,7 @@ class CreditApplicationResource extends JsonResource
                 'longitude'       => $this->user->display_longitude,
                 'balance'         => $walletBalanceAmount,
                 'wallet_balance'  => AppLibrary::currencyAmountFormat($walletBalanceAmount),
+                'is_top_credit_customer' => (bool) $this->user->is_top_credit_customer,
             ] : null,
             'starcom_intelligence'         => StarcomIntelligenceCalculator::forUser($this->user),
             'facilities'                    => CreditFacilityResource::collection($visibleFacilities),

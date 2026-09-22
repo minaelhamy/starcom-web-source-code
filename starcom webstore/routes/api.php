@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\CityController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\CookiesController;
 use App\Http\Controllers\Admin\CreditApplicationController;
+use App\Http\Controllers\Admin\CreditCustomerStatusController;
 use App\Http\Controllers\Admin\CountryCodeController;
 use App\Http\Controllers\Admin\CountryController;
 use App\Http\Controllers\Admin\CouponController;
@@ -778,6 +779,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:sanctum'])->group(func
         Route::get('/summary', [ProfitLossReportController::class, 'summary']);
         Route::get('/export', [ProfitLossReportController::class, 'export']);
         Route::get('/export-pdf', [ProfitLossReportController::class, 'exportPdf']);
+    });
+
+    Route::prefix('credit-customer-status')->name('credit-customer-status.')->group(function () {
+        Route::get('/', [CreditCustomerStatusController::class, 'index']);
+        Route::get('/summary', [CreditCustomerStatusController::class, 'summary']);
+        Route::put('/{user}/blacklist', [CreditCustomerStatusController::class, 'blacklist']);
+        Route::put('/{user}/top-customer', [CreditCustomerStatusController::class, 'topCustomer']);
     });
 
     Route::prefix('pos-order')->name('posOrder.')->group(function () {
