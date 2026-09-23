@@ -40,6 +40,7 @@ import LoadingComponent from '../components/LoadingComponent';
 import PaginationTextComponent from '../components/pagination/PaginationTextComponent';
 import PaginationBox from '../components/pagination/PaginationBox';
 import PaginationSMBox from '../components/pagination/PaginationSMBox';
+import axios from 'axios';
 import alertService from '../../../services/alertService';
 
 export default {
