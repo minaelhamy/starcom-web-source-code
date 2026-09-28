@@ -41,10 +41,12 @@ return new class extends Migration
 
         $permissionId = DB::table('permissions')->where('name', 'credit-customer-status')->where('guard_name', 'sanctum')->value('id');
         if ($permissionId) {
-            DB::table('role_has_permissions')->insertOrIgnore([
-                'permission_id' => $permissionId,
-                'role_id' => RoleEnum::ADMIN,
-            ]);
+            foreach ([RoleEnum::ADMIN, RoleEnum::MANAGER] as $roleId) {
+                DB::table('role_has_permissions')->insertOrIgnore([
+                    'permission_id' => $permissionId,
+                    'role_id' => $roleId,
+                ]);
+            }
         }
     }
 

@@ -29,7 +29,7 @@ class CreditCustomerStatusController extends AdminController implements HasMiddl
     public function index(PaginateRequest $request)
     {
         try {
-            $this->ensureAdmin();
+            $this->ensureAdminOrManager();
             return CreditCustomerStatusResource::collection($this->creditCustomerStatusService->list($request));
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
@@ -39,7 +39,7 @@ class CreditCustomerStatusController extends AdminController implements HasMiddl
     public function summary(Request $request)
     {
         try {
-            $this->ensureAdmin();
+            $this->ensureAdminOrManager();
             return response(['data' => $this->creditCustomerStatusService->summary()]);
         } catch (Exception $exception) {
             return response(['status' => false, 'message' => $exception->getMessage()], 422);
@@ -49,7 +49,7 @@ class CreditCustomerStatusController extends AdminController implements HasMiddl
     public function blacklist(User $user, CreditCustomerStatusRequest $request)
     {
         try {
-            $this->ensureAdmin();
+            $this->ensureAdminOrManager();
             return new CreditCustomerStatusResource($this->creditCustomerStatusService->setBlacklist(
                 $user,
                 $request->boolean('blacklisted'),
@@ -63,7 +63,7 @@ class CreditCustomerStatusController extends AdminController implements HasMiddl
     public function topCustomer(User $user, CreditCustomerStatusRequest $request)
     {
         try {
-            $this->ensureAdmin();
+            $this->ensureAdminOrManager();
             return new CreditCustomerStatusResource($this->creditCustomerStatusService->setTopCustomer(
                 $user,
                 $request->boolean('is_top_credit_customer')
@@ -73,9 +73,11 @@ class CreditCustomerStatusController extends AdminController implements HasMiddl
         }
     }
 
-    private function ensureAdmin(): void
+    private function ensureAdminOrManager(): void
     {
-        if (!Auth::user()?->hasRole(RoleEnum::ADMIN)) {
+        $user = Auth::user();
+
+        if (!$user?->hasRole(RoleEnum::ADMIN) && !$user->hasRole(RoleEnum::MANAGER)) {
             throw new Exception(trans('all.message.permission_denied'), 422);
         }
     }
