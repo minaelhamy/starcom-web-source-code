@@ -23,6 +23,26 @@ const lenderDashboardMenu = {
     priority: 0,
 };
 
+const creditCustomerStatusPermission = {
+    id: "credit-customer-status",
+    title: "Credit Customer Status",
+    name: "credit-customer-status",
+    url: "credit-customer-status",
+    access: true,
+};
+
+const creditCustomerStatusMenu = {
+    id: "credit-customer-status",
+    name: "Credit Customer Status",
+    language: "credit_customer_status",
+    url: "credit-customer-status",
+    icon: "lab lab-line-user",
+    status: 1,
+    parent: null,
+    type: null,
+    priority: 110,
+};
+
 const limitedLenderAllowedUrls = new Set([
     "lending-portfolio",
     "lending-portfolio/show",
@@ -104,6 +124,30 @@ const augmentLenderDashboardAccess = function (state) {
     if (!state.authDefaultMenu?.url || state.authDefaultMenu?.url === "credit-requests") {
         state.authDefaultMenu = { ...lenderDashboardMenu };
     }
+};
+
+const augmentCreditCustomerStatusAccess = function (state) {
+    if (![roleEnum.ADMIN, roleEnum.MANAGER].includes(state.authInfo?.role_id)) {
+        return;
+    }
+
+    const permissions = Array.isArray(state.authPermission) ? [...state.authPermission] : [];
+    const existingPermission = permissions.find((permission) => permission?.url === "credit-customer-status");
+
+    if (existingPermission) {
+        existingPermission.access = true;
+    } else {
+        permissions.push({ ...creditCustomerStatusPermission });
+    }
+
+    state.authPermission = permissions;
+
+    const menus = Array.isArray(state.authMenu) ? [...state.authMenu] : [];
+    if (!menus.some((menu) => menu?.url === "credit-customer-status")) {
+        menus.push({ ...creditCustomerStatusMenu });
+    }
+
+    state.authMenu = menus;
 };
 
 export const auth = {
@@ -378,6 +422,7 @@ export const auth = {
             state.authDefaultPermission = payload.defaultPermission;
             state.authDefaultMenu = payload.defaultMenu;
             augmentLenderDashboardAccess(state);
+            augmentCreditCustomerStatusAccess(state);
         },
         authLogout: function (state) {
             state.authStatus = false;
@@ -401,6 +446,7 @@ export const auth = {
         authInfo: function (state, payload) {
             state.authInfo = payload;
             augmentLenderDashboardAccess(state);
+            augmentCreditCustomerStatusAccess(state);
         },
         phone: function (state, payload) {
             state.phone.otp = payload;

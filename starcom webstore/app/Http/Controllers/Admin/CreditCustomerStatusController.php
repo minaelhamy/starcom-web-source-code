@@ -10,20 +10,13 @@ use App\Models\User;
 use App\Services\CreditCustomerStatusService;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Controllers\HasMiddleware;
-use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Auth;
 
-class CreditCustomerStatusController extends AdminController implements HasMiddleware
+class CreditCustomerStatusController extends AdminController
 {
     public function __construct(private readonly CreditCustomerStatusService $creditCustomerStatusService)
     {
         parent::__construct();
-    }
-
-    public static function middleware(): array
-    {
-        return [new Middleware('permission:credit-customer-status')];
     }
 
     public function index(PaginateRequest $request)
