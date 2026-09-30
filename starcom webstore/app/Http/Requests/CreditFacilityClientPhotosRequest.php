@@ -16,6 +16,8 @@ class CreditFacilityClientPhotosRequest extends FormRequest
         return [
             'profile_picture' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'signing_picture' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'additional_signing_pictures' => ['nullable', 'array', 'max:3'],
+            'additional_signing_pictures.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ];
     }
 }

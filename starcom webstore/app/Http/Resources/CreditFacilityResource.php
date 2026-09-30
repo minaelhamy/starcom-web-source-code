@@ -164,6 +164,7 @@ class CreditFacilityResource extends JsonResource
             'signed_contract_documents' => $isLimitedLender ? [] : $this->signed_contract_documents,
             'client_profile_picture' => $isLimitedLender ? null : $this->client_profile_picture,
             'client_signing_picture' => $isLimitedLender ? null : $this->client_signing_picture,
+            'additional_client_signing_pictures' => $isLimitedLender ? [] : $this->additional_client_signing_pictures,
         ];
     }
 

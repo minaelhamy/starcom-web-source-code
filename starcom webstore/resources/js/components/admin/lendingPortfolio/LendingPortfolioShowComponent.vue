@@ -365,7 +365,7 @@
             </div>
         </div>
 
-        <div v-if="canManageClientPhotos || facility.client_profile_picture || facility.client_signing_picture" class="db-card mb-4">
+        <div v-if="canManageClientPhotos || facility.client_profile_picture || facility.client_signing_picture || (facility.additional_client_signing_pictures || []).length" class="db-card mb-4">
             <div class="db-card-header border-none">
                 <h3 class="db-card-title">صور العميل والتوقيع</h3>
             </div>
@@ -402,10 +402,27 @@
                         <span v-else class="text-sm text-text">غير مرفوعة.</span>
                     </div>
                 </div>
+                <div
+                    v-for="(picture, index) in facility.additional_client_signing_pictures || []"
+                    :key="picture.id"
+                    class="col-12 lg:col-4"
+                >
+                    <div class="db-card p-4 h-full">
+                        <h4 class="font-semibold mb-3">صورة توقيع إضافية {{ index + 1 }}</h4>
+                        <img
+                            :src="picture.url"
+                            :alt="`صورة توقيع إضافية ${index + 1}`"
+                            class="w-full h-48 object-contain border border-gray-200 mb-3"
+                        />
+                        <a :href="picture.url" target="_blank" download class="db-btn py-2 text-white bg-primary">
+                            تحميل صورة التوقيع
+                        </a>
+                    </div>
+                </div>
                 <div v-if="canManageClientPhotos" class="col-12 mt-4">
                     <div class="db-card p-4">
                         <h4 class="font-semibold mb-3">رفع أو استبدال صور العميل</h4>
-                        <p class="text-sm text-text mb-4">في أول رفع يجب اختيار الصورتين. بعد ذلك يمكن استبدال أي صورة بشكل مستقل.</p>
+                        <p class="text-sm text-text mb-4">في أول رفع يجب اختيار الصورتين. بعد ذلك يمكن استبدال أي صورة بشكل مستقل وإضافة حتى ثلاث صور توقيع إضافية.</p>
                         <div class="row">
                             <div class="col-12 md:col-6">
                                 <label class="db-field-title" :class="{ required: !facility.client_profile_picture }">الصورة الشخصية للعميل</label>
@@ -416,6 +433,13 @@
                                 <label class="db-field-title" :class="{ required: !facility.client_signing_picture }">صورة توقيع العميل</label>
                                 <input type="file" class="db-field-control" accept=".jpg,.jpeg,.png,.webp" @change="setClientPhoto('signing_picture', $event)" />
                                 <small class="db-field-alert" v-if="clientPhotoErrors.signing_picture">{{ clientPhotoErrors.signing_picture[0] }}</small>
+                            </div>
+                            <div class="col-12 mt-4">
+                                <label class="db-field-title">صور توقيع إضافية (حتى {{ additionalSigningPicturesRemaining }})</label>
+                                <input type="file" multiple class="db-field-control" accept=".jpg,.jpeg,.png,.webp" @change="setAdditionalSigningPictures" />
+                                <small class="text-sm text-text">يمكن رفع ثلاث صور إضافية للتوقيع كحد أقصى.</small>
+                                <small class="db-field-alert block" v-if="clientPhotoErrors.additional_signing_pictures">{{ clientPhotoErrors.additional_signing_pictures[0] }}</small>
+                                <small class="db-field-alert block" v-if="clientPhotoErrors['additional_signing_pictures.0']">{{ clientPhotoErrors['additional_signing_pictures.0'][0] }}</small>
                             </div>
                         </div>
                         <div class="mt-3">
@@ -548,6 +572,7 @@ export default {
             clientPhotoForm: {
                 profile_picture: null,
                 signing_picture: null,
+                additional_signing_pictures: [],
             },
             clientPhotoErrors: {},
             dateForm: {
@@ -632,6 +657,9 @@ export default {
             return this.isAdminLike &&
                 this.facility.id &&
                 this.facility.status === "approved";
+        },
+        additionalSigningPicturesRemaining: function () {
+            return Math.max(3 - (this.facility.additional_client_signing_pictures || []).length, 0);
         },
         canDeleteContracts: function () {
             return (this.isAdminLike || this.isFinancialInstitutionManager) &&
@@ -773,6 +801,9 @@ export default {
         setClientPhoto: function (field, event) {
             this.clientPhotoForm[field] = event.target.files?.[0] || null;
         },
+        setAdditionalSigningPictures: function (event) {
+            this.clientPhotoForm.additional_signing_pictures = Array.from(event.target.files || []);
+        },
         handleInstitutionChange: function () {
             const selectedEmployeeId = Number(this.assignmentForm.financial_institution_employee_user_id || 0);
             if (selectedEmployeeId > 0) {
@@ -910,8 +941,13 @@ export default {
                 return;
             }
 
-            if (!this.clientPhotoForm.profile_picture && !this.clientPhotoForm.signing_picture) {
+            if (!this.clientPhotoForm.profile_picture && !this.clientPhotoForm.signing_picture && !this.clientPhotoForm.additional_signing_pictures.length) {
                 alertService.error("يرجى اختيار صورة واحدة على الأقل.");
+                return;
+            }
+
+            if (this.clientPhotoForm.additional_signing_pictures.length > this.additionalSigningPicturesRemaining) {
+                alertService.error(`يمكن رفع ${this.additionalSigningPicturesRemaining} صورة توقيع إضافية فقط.`);
                 return;
             }
 
@@ -923,6 +959,9 @@ export default {
             if (this.clientPhotoForm.signing_picture) {
                 form.append("signing_picture", this.clientPhotoForm.signing_picture);
             }
+            this.clientPhotoForm.additional_signing_pictures.forEach((picture) => {
+                form.append("additional_signing_pictures[]", picture);
+            });
 
             this.$store.dispatch("creditApplicationReview/uploadFacilityClientPhotos", {
                 id: this.facility.id,
@@ -932,6 +971,7 @@ export default {
                 this.clientPhotoErrors = {};
                 this.clientPhotoForm.profile_picture = null;
                 this.clientPhotoForm.signing_picture = null;
+                this.clientPhotoForm.additional_signing_pictures = [];
             }).catch((err) => {
                 this.clientPhotoErrors = err.response?.data?.errors || {};
                 alertService.error(err.response?.data?.message || "تعذر رفع صور العميل والتوقيع.");

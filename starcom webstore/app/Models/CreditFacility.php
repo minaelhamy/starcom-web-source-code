@@ -123,4 +123,15 @@ class CreditFacility extends Model implements HasMedia
             'url' => $media->getUrl(),
         ] : null;
     }
+
+    public function getAdditionalClientSigningPicturesAttribute(): array
+    {
+        return $this->getMedia('facility_client_additional_signing_pictures')->map(function ($media) {
+            return [
+                'id' => $media->id,
+                'name' => $media->file_name,
+                'url' => $media->getUrl(),
+            ];
+        })->values()->all();
+    }
 }

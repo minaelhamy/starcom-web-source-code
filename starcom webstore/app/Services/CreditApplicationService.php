@@ -881,6 +881,11 @@ class CreditApplicationService
 
             $hasProfilePicture = (bool) $creditFacility->getFirstMedia('facility_client_profile_picture');
             $hasSigningPicture = (bool) $creditFacility->getFirstMedia('facility_client_signing_picture');
+            $additionalSigningPictures = $request->file('additional_signing_pictures', []);
+            $additionalSigningPicturesCount = count($additionalSigningPictures);
+            $existingAdditionalSigningPicturesCount = $creditFacility
+                ->getMedia('facility_client_additional_signing_pictures')
+                ->count();
 
             if (!$request->hasFile('profile_picture') && !$hasProfilePicture) {
                 throw new Exception('يرجى رفع صورة العميل الشخصية.', 422);
@@ -888,6 +893,10 @@ class CreditApplicationService
 
             if (!$request->hasFile('signing_picture') && !$hasSigningPicture) {
                 throw new Exception('يرجى رفع صورة توقيع العميل.', 422);
+            }
+
+            if ($existingAdditionalSigningPicturesCount + $additionalSigningPicturesCount > 3) {
+                throw new Exception('يمكن رفع ثلاث صور إضافية للتوقيع كحد أقصى.', 422);
             }
 
             if ($request->hasFile('profile_picture')) {
@@ -898,6 +907,12 @@ class CreditApplicationService
             if ($request->hasFile('signing_picture')) {
                 $creditFacility->clearMediaCollection('facility_client_signing_picture');
                 $creditFacility->addMedia($request->file('signing_picture'))->toMediaCollection('facility_client_signing_picture');
+            }
+
+            foreach ($additionalSigningPictures as $additionalSigningPicture) {
+                $creditFacility
+                    ->addMedia($additionalSigningPicture)
+                    ->toMediaCollection('facility_client_additional_signing_pictures');
             }
 
             $creditFacility->touch();
