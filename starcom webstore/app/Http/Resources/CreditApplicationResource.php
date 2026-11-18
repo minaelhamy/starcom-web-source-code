@@ -48,6 +48,7 @@ class CreditApplicationResource extends JsonResource
                     ->sortByDesc('id')
                     ->first(function ($facility) use ($institutionId, $actor) {
                         return (int)$facility->financial_institution_user_id === (int)$institutionId ||
+                            (int)($facility->institution?->financial_institution_owner_user_id ?? 0) === (int)$institutionId ||
                             (int)$facility->financial_institution_employee_user_id === (int)$actor->id;
                     });
                 $reviewedByMe = (bool)$myFacility;

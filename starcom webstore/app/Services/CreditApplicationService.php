@@ -51,30 +51,15 @@ class CreditApplicationService
             'submittedByCustomerService',
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
+            'facilities.institution.financialInstitutionOwner',
             'facilities.employee',
         ])
             ->whereHas('user', fn ($query) => $query->whereNull('credit_blacklisted_at'))
-            ->where(function ($query) use ($institutionId) {
-                $query->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
-                    $facilityQuery->where('financial_institution_user_id', $institutionId);
-                })->orWhere(function ($institutionScopedQuery) use ($institutionId) {
-                    $institutionScopedQuery
-                        ->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
-                            $facilityQuery
-                                ->where('financial_institution_user_id', $institutionId)
-                                ->where('status', CreditFacilityStatus::APPROVED);
-                        })
-                        ->whereHas('facilities', function ($facilityQuery) use ($institutionId) {
-                            $facilityQuery->where('financial_institution_user_id', $institutionId)
-                                ->whereIn('status', [
-                                    CreditFacilityStatus::PENDING_APPROVAL,
-                                    CreditFacilityStatus::READY_FOR_REVIEW,
-                                    CreditFacilityStatus::DECLINED,
-                                    CreditFacilityStatus::SETTLED,
-                                    CreditFacilityStatus::EXPIRED,
-                                ]);
-                        });
-                });
+            // A facility belonging to another lender must never hide a request.
+            // Only this lender's currently active facility blocks the next cycle.
+            ->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
+                $this->scopeFacilitiesForInstitution($facilityQuery, $institutionId);
+                $facilityQuery->where('status', CreditFacilityStatus::APPROVED);
             });
     }
 
@@ -89,28 +74,28 @@ class CreditApplicationService
             'submittedByCustomerService',
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
+            'facilities.institution.financialInstitutionOwner',
             'facilities.employee',
         ])->whereHas('user', fn ($query) => $query->whereNull('credit_blacklisted_at'))
             ->where(function ($query) use ($institutionId) {
-            $query->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
-                $facilityQuery->where('financial_institution_user_id', $institutionId);
-            })->orWhere(function ($institutionScopedQuery) use ($institutionId) {
-                $institutionScopedQuery
-                    ->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
-                        $facilityQuery
-                            ->where('financial_institution_user_id', $institutionId)
-                            ->where('status', CreditFacilityStatus::APPROVED);
-                    })
-                    ->whereHas('facilities', function ($facilityQuery) use ($institutionId) {
-                        $facilityQuery->where('financial_institution_user_id', $institutionId)
-                            ->whereIn('status', [
+                $query->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
+                    $this->scopeFacilitiesForInstitution($facilityQuery, $institutionId);
+                })->orWhere(function ($institutionScopedQuery) use ($institutionId) {
+                    $institutionScopedQuery
+                        ->whereDoesntHave('facilities', function ($facilityQuery) use ($institutionId) {
+                            $this->scopeFacilitiesForInstitution($facilityQuery, $institutionId);
+                            $facilityQuery->where('status', CreditFacilityStatus::APPROVED);
+                        })
+                        ->whereHas('facilities', function ($facilityQuery) use ($institutionId) {
+                            $this->scopeFacilitiesForInstitution($facilityQuery, $institutionId);
+                            $facilityQuery->whereIn('status', [
                                 CreditFacilityStatus::READY_FOR_REVIEW,
                                 CreditFacilityStatus::SETTLED,
                                 CreditFacilityStatus::EXPIRED,
                             ]);
-                    });
+                        });
+                });
             });
-        });
     }
 
     public function lenderPendingApprovalQuery(User $actor)
@@ -124,12 +109,13 @@ class CreditApplicationService
             'submittedByCustomerService',
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
+            'facilities.institution.financialInstitutionOwner',
             'facilities.employee',
         ])->whereHas('user', fn ($query) => $query->whereNull('credit_blacklisted_at'))
             ->whereHas('facilities', function ($facilityQuery) use ($institutionId) {
-            $facilityQuery->where('financial_institution_user_id', $institutionId)
-                ->where('status', CreditFacilityStatus::PENDING_APPROVAL);
-        });
+                $this->scopeFacilitiesForInstitution($facilityQuery, $institutionId);
+                $facilityQuery->where('status', CreditFacilityStatus::PENDING_APPROVAL);
+            });
     }
 
     public function customerList(PaginateRequest $request)
@@ -426,6 +412,7 @@ class CreditApplicationService
             'submittedByCustomerService',
             'notesHistory.author.financialInstitutionOwner.financialInstitutionProfile',
             'facilities.institution.financialInstitutionProfile',
+            'facilities.institution.financialInstitutionOwner',
             'facilities.employee',
         ]);
 
@@ -1092,8 +1079,9 @@ class CreditApplicationService
 
             $facility = DB::transaction(function () use ($creditApplication, $institution, $employee, $request) {
                 $application = CreditApplication::lockForUpdate()->findOrFail($creditApplication->id);
-                $existingFacility = CreditFacility::where('credit_application_id', $application->id)
-                    ->where('financial_institution_user_id', $institution->id)
+                $existingFacilityQuery = CreditFacility::where('credit_application_id', $application->id);
+                $this->scopeFacilitiesForInstitution($existingFacilityQuery, $institution->id);
+                $existingFacility = $existingFacilityQuery
                     ->orderByDesc('id')
                     ->lockForUpdate()
                     ->first();
@@ -1172,8 +1160,9 @@ class CreditApplicationService
 
             $facility = DB::transaction(function () use ($creditApplication, $institution, $employee, $request) {
                 $application = CreditApplication::lockForUpdate()->findOrFail($creditApplication->id);
-                $existingFacility = CreditFacility::where('credit_application_id', $application->id)
-                    ->where('financial_institution_user_id', $institution->id)
+                $existingFacilityQuery = CreditFacility::where('credit_application_id', $application->id);
+                $this->scopeFacilitiesForInstitution($existingFacilityQuery, $institution->id);
+                $existingFacility = $existingFacilityQuery
                     ->orderByDesc('id')
                     ->lockForUpdate()
                     ->first();
@@ -1261,8 +1250,9 @@ class CreditApplicationService
 
             $facility = DB::transaction(function () use ($creditApplication, $institution, $employee, $note, $request) {
                 $application = CreditApplication::lockForUpdate()->findOrFail($creditApplication->id);
-                $existingFacility = CreditFacility::where('credit_application_id', $application->id)
-                    ->where('financial_institution_user_id', $institution->id)
+                $existingFacilityQuery = CreditFacility::where('credit_application_id', $application->id);
+                $this->scopeFacilitiesForInstitution($existingFacilityQuery, $institution->id);
+                $existingFacility = $existingFacilityQuery
                     ->orderByDesc('id')
                     ->lockForUpdate()
                     ->first();
@@ -1332,7 +1322,7 @@ class CreditApplicationService
         ]);
 
         if ($actor->hasRole(EnumRole::FINANCIAL_INSTITUTION)) {
-            $query->where('financial_institution_user_id', $this->resolveInstitutionUserId($actor));
+            $this->scopeFacilitiesForInstitution($query, $this->resolveInstitutionUserId($actor));
         }
 
         return $query;
@@ -1508,7 +1498,7 @@ class CreditApplicationService
             ->where('status', CreditFacilityStatus::APPROVED);
 
         if ($institutionUserId) {
-            $query->where('financial_institution_user_id', $institutionUserId);
+            $this->scopeFacilitiesForInstitution($query, $institutionUserId);
         }
 
         $query->get()->each(function (CreditFacility $facility) {
@@ -1547,6 +1537,21 @@ class CreditApplicationService
         }
 
         $creditApplication->save();
+    }
+
+    /**
+     * Includes both current facilities (stored against the lender owner) and
+     * legacy facilities that were stored against one of that lender's employees.
+     */
+    protected function scopeFacilitiesForInstitution($query, int $institutionUserId): void
+    {
+        $query->where(function ($institutionQuery) use ($institutionUserId) {
+            $institutionQuery
+                ->where('financial_institution_user_id', $institutionUserId)
+                ->orWhereHas('institution', function ($institution) use ($institutionUserId) {
+                    $institution->where('financial_institution_owner_user_id', $institutionUserId);
+                });
+        });
     }
 
     protected function notifyInstitutionsApplicationIsReadyForReview(CreditApplication $creditApplication, $facilities): void
